@@ -60,3 +60,7 @@ For the first GitHub push from the current repository state, read [docs/FIRST-PU
 ## Planned social layer
 
 The later backend is intentionally separate from the static repository and from `geno-dice.com`. Planned capabilities include user points, creation of new points attached to existing points, support/opposition, delegated trust, chronological feeds, and derived social geometry. Root Markdown points remain repository-backed.
+
+## Navigation model
+
+The field is the primary interface. Point text is secondary and opens as an overlay above the field; opening a point does not navigate away from the graph. Stable `/p/<id>/` URLs remain only as compatibility/deep-link entry points and redirect into the field overlay.

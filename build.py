@@ -134,7 +134,6 @@ def validate(points: dict[str, Point]) -> None:
 def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") -> str:
     nav = (
         f'<a href="/{lang}/">NODE06</a>'
-        f'<a href="/{lang}/field/">FIELD</a>'
         f'<a href="/{lang}/recent/">RECENT</a>'
         f'<a href="/{lang}/about/">ABOUT</a>'
     )
@@ -182,43 +181,30 @@ def build() -> None:
             "created_at": p.created_at,
             "last_interaction_at": p.updated_at,
             "preview": preview(p.text),
+            "html": render_markdown(p.text, set(points), p.lang),
             "origin": "root",
         })
 
-        links_html = "".join(
-            f'<li><a class="point-link" data-point-id="{n}" href="/{points[n].lang}/p/{n}/">{html.escape(preview(points[n].text, 90))}</a></li>'
-            for n in neighbors
-        )
-        body = f'''<article class="point-page">
-<div class="eyebrow">ROOT POINT · {html.escape(p.id)}</div>
-<div class="point-text">{render_markdown(p.text, set(points), p.lang)}</div>
-<section><h2>LINKS</h2><ul class="links-list">{links_html}</ul></section>
-<p class="meta">created {p.created_at[:10]} · last interaction {p.updated_at[:10]} · {len(neighbors)} links</p>
-</article>'''
-        write(DIST / p.lang / "p" / p.id / "index.html", shell(preview(p.text, 70), body, p.lang, "point", p.id))
+        # Keep stable point URLs as compatibility/deep-link entry points, but the map remains primary.
+        target = f"/{p.lang}/?open={p.id}"
+        redirect = f'''<!doctype html><html lang="{p.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url={target}"><link rel="canonical" href="{target}"><title>node06 · {html.escape(p.id)}</title></head><body><p><a href="{target}">Open in field</a></p></body></html>'''
+        write(DIST / p.lang / "p" / p.id / "index.html", redirect)
 
     write(DIST / "data" / "points.json", json.dumps(index, ensure_ascii=False, indent=2))
 
     langs = sorted({p.lang for p in points.values()})
     for lang in langs:
         lang_points = [p for p in points.values() if p.lang == lang]
-        root_copy = {
-            "ru": ("NODE06", "Статическое поле корневых точек. Пока без пользователей, веса и координат.", "Открыть поле", "Последнее", "О проекте"),
-            "en": ("NODE06", "A static field of root points. No users, weight or coordinates yet.", "Enter field", "Recent", "About"),
-        }.get(lang, ("NODE06", "Static root field.", "Enter field", "Recent", "About"))
-        title, desc, field_label, recent_label, about_label = root_copy
-        body = f'''<section class="landing">
-<div class="eyebrow">ROOT ERA</div><h1>{title}</h1><p>{desc}</p>
-<div class="actions"><a href="/{lang}/field/">{field_label}</a><a href="/{lang}/recent/">{recent_label}</a><a href="/{lang}/about/">{about_label}</a></div>
-<p class="counter">{len(lang_points)} root points</p></section>'''
-        write(DIST / lang / "index.html", shell("NODE06", body, lang, "home"))
-
-        field_body = '''<section class="field-shell"><div class="field-head"><div><div class="eyebrow">FIELD / DEPTH 2</div><h1>NODE06</h1></div><div id="field-legend">hover a sphere · click to enter</div></div><div id="field-map" class="field-map" aria-label="Point field"></div><aside id="hover-card" class="hover-card" hidden></aside></section>'''
+        field_hint = "наведите на сферу · кликните для открытия" if lang == "ru" else "hover a sphere · click to open"
+        field_body = f'''<section class="field-shell"><div class="field-head"><div><div class="eyebrow">FIELD / DEPTH 2</div><h1>NODE06</h1><div class="field-center">center: <span id="field-center-id"></span></div></div><div id="field-legend">{field_hint}</div></div><div id="field-map" class="field-map" aria-label="Point field"></div><aside id="hover-card" class="hover-card" hidden></aside></section>
+<div id="point-modal" class="point-modal" hidden><article class="point-modal-panel" role="dialog" aria-modal="true"><div class="point-modal-actions"><button id="point-modal-focus" type="button"></button><button id="point-modal-close" class="point-modal-close" type="button">×</button></div><div id="point-modal-body"></div></article></div>'''
+        write(DIST / lang / "index.html", shell("FIELD", field_body, lang, "field"))
+        # Legacy /field/ URL remains as the same primary map rather than a separate section.
         write(DIST / lang / "field" / "index.html", shell("FIELD", field_body, lang, "field"))
 
         sorted_recent = sorted(lang_points, key=lambda p: p.updated_at, reverse=True)
         rows = "".join(
-            f'<li><time>{p.updated_at[:10]}</time><a href="/{lang}/p/{p.id}/">{html.escape(preview(p.text, 150))}</a><span>{len(p.links)} links</span></li>'
+            f'<li><time>{p.updated_at[:10]}</time><a href="/{lang}/?open={p.id}">{html.escape(preview(p.text, 150))}</a><span>{len(p.links)} links</span></li>'
             for p in sorted_recent
         )
         recent_body = f'<section class="recent"><div class="eyebrow">ROOT ACTIVITY</div><h1>RECENT</h1><ul>{rows}</ul></section>'
