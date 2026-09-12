@@ -145,7 +145,7 @@ def validate(points: dict[str, Point]) -> None:
 
 def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") -> str:
     nav = (
-        f'<a href="/{lang}/">NODE06</a>'
+        '<a href="/">NODE06</a>'
         f'<a href="/{lang}/recent/">RECENT</a>'
         f'<a href="/{lang}/about/">ABOUT</a>'
     )
@@ -219,7 +219,7 @@ def build() -> None:
             field_hint = 'drag / arrows / WASD · wheel / Q/E — zoom'
         view_buttons = '<span class="control-label">view</span><button data-view="left">◀</button><button data-view="up">▲</button><button data-view="reset">◎</button><button data-view="down">▼</button><button data-view="right">▶</button>'
         field_body = f'''<section class="field-shell">
-<div class="field-head"><div><div class="eyebrow">FIELD / DEPTH 2</div><h1>NODE06</h1><div class="field-center">center: <span id="field-center-id"></span></div></div>
+<div class="field-head"><div><div class="eyebrow">FIELD / DEPTH 2</div><h1><a href="/">NODE06</a></h1><div class="field-center">center: <span id="field-center-id"></span></div></div>
 <div id="field-controls" class="field-controls"><div class="control-group">{mode_buttons}</div><div class="control-group">{layout_buttons}</div><div class="control-group">{view_buttons}</div></div></div>
 <div class="field-workspace" data-layout="side"><div class="field-stage"><div id="field-map" class="field-map" aria-label="Point field"></div><aside id="hover-card" class="hover-card" hidden></aside><div class="field-help">{field_hint}</div></div>
 <aside id="point-panel" class="point-panel"><button id="point-panel-close" class="point-panel-close" type="button">×</button><div id="point-panel-body"></div></aside></div></section>'''
