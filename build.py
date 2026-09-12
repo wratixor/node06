@@ -53,7 +53,7 @@ def render_inline(text: str, point_ids: set[str], lang: str) -> str:
     def internal(match: re.Match[str]) -> str:
         label = html.escape(match.group(1), quote=False)
         target = match.group(3)
-        href = f"/{lang}/p/{target}/"
+        href = f"/{lang}/?p={target}&open={target}"
         return f'<a class="point-link" data-point-id="{target}" href="{href}">{label}</a>'
 
     def external(match: re.Match[str]) -> str:
@@ -69,7 +69,7 @@ def render_inline(text: str, point_ids: set[str], lang: str) -> str:
 
     def restore_internal(m: re.Match[str]) -> str:
         label, target = m.group(1), m.group(2)
-        return f'<a class="point-link" data-point-id="{html.escape(target, quote=True)}" href="/{lang}/p/{html.escape(target, quote=True)}/">{html.escape(label)}</a>'
+        return f'<a class="point-link" data-point-id="{html.escape(target, quote=True)}" href="/{lang}/?p={html.escape(target, quote=True)}&open={html.escape(target, quote=True)}">{html.escape(label)}</a>'
 
     def restore_external(m: re.Match[str]) -> str:
         label, url = m.group(1), m.group(2)
@@ -186,7 +186,7 @@ def build() -> None:
         })
 
         # Keep stable point URLs as compatibility/deep-link entry points, but the map remains primary.
-        target = f"/{p.lang}/?open={p.id}"
+        target = f"/{p.lang}/?p={p.id}&open={p.id}"
         redirect = f'''<!doctype html><html lang="{p.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url={target}"><link rel="canonical" href="{target}"><title>node06 · {html.escape(p.id)}</title></head><body><p><a href="{target}">Open in field</a></p></body></html>'''
         write(DIST / p.lang / "p" / p.id / "index.html", redirect)
 
@@ -195,16 +195,26 @@ def build() -> None:
     langs = sorted({p.lang for p in points.values()})
     for lang in langs:
         lang_points = [p for p in points.values() if p.lang == lang]
-        field_hint = "наведите на сферу · кликните для открытия" if lang == "ru" else "hover a sphere · click to open"
-        field_body = f'''<section class="field-shell"><div class="field-head"><div><div class="eyebrow">FIELD / DEPTH 2</div><h1>NODE06</h1><div class="field-center">center: <span id="field-center-id"></span></div></div><div id="field-legend">{field_hint}</div></div><div id="field-map" class="field-map" aria-label="Point field"></div><aside id="hover-card" class="hover-card" hidden></aside></section>
-<div id="point-modal" class="point-modal" hidden><article class="point-modal-panel" role="dialog" aria-modal="true"><div class="point-modal-actions"><button id="point-modal-focus" type="button"></button><button id="point-modal-close" class="point-modal-close" type="button">×</button></div><div id="point-modal-body"></div></article></div>'''
+        if lang == "ru":
+            mode_buttons = '<span class="control-label">режим</span><button data-mode="explore">ИССЛЕДОВАНИЕ</button><button data-mode="read">ЧТЕНИЕ</button><button data-mode="feed">ЛЕНТА</button>'
+            layout_buttons = '<span class="control-label">текст</span><button data-layout="side">СПРАВА</button><button data-layout="below">СНИЗУ</button><button data-layout="overlay">ПОВЕРХ</button>'
+            field_hint = 'drag / стрелки / WASD · wheel / Q/E — масштаб'
+        else:
+            mode_buttons = '<span class="control-label">mode</span><button data-mode="explore">EXPLORE</button><button data-mode="read">READ</button><button data-mode="feed">FEED</button>'
+            layout_buttons = '<span class="control-label">text</span><button data-layout="side">RIGHT</button><button data-layout="below">BELOW</button><button data-layout="overlay">OVERLAY</button>'
+            field_hint = 'drag / arrows / WASD · wheel / Q/E — zoom'
+        view_buttons = '<span class="control-label">view</span><button data-view="left">◀</button><button data-view="up">▲</button><button data-view="reset">◎</button><button data-view="down">▼</button><button data-view="right">▶</button>'
+        field_body = f'''<section class="field-shell">
+<div class="field-head"><div><div class="eyebrow">FIELD / DEPTH 2</div><h1>NODE06</h1><div class="field-center">center: <span id="field-center-id"></span></div></div>
+<div id="field-controls" class="field-controls"><div class="control-group">{mode_buttons}</div><div class="control-group">{layout_buttons}</div><div class="control-group">{view_buttons}</div></div></div>
+<div class="field-workspace" data-layout="side"><div class="field-stage"><div id="field-map" class="field-map" aria-label="Point field"></div><aside id="hover-card" class="hover-card" hidden></aside><div class="field-help">{field_hint}</div></div>
+<aside id="point-panel" class="point-panel"><button id="point-panel-close" class="point-panel-close" type="button">×</button><div id="point-panel-body"></div></aside></div></section>'''
         write(DIST / lang / "index.html", shell("FIELD", field_body, lang, "field"))
-        # Legacy /field/ URL remains as the same primary map rather than a separate section.
         write(DIST / lang / "field" / "index.html", shell("FIELD", field_body, lang, "field"))
 
         sorted_recent = sorted(lang_points, key=lambda p: p.updated_at, reverse=True)
         rows = "".join(
-            f'<li><time>{p.updated_at[:10]}</time><a href="/{lang}/?open={p.id}">{html.escape(preview(p.text, 150))}</a><span>{len(p.links)} links</span></li>'
+            f'<li><time>{p.updated_at[:10]}</time><a href="/{lang}/?p={p.id}&open={p.id}">{html.escape(preview(p.text, 150))}</a><span>{len(p.links)} links</span></li>'
             for p in sorted_recent
         )
         recent_body = f'<section class="recent"><div class="eyebrow">ROOT ACTIVITY</div><h1>RECENT</h1><ul>{rows}</ul></section>'
@@ -213,19 +223,24 @@ def build() -> None:
         if lang == "ru":
             about_text = '''<section class="prose"><div class="eyebrow">PROTOCOL / 0</div><h1>Что это</h1>
 <p>NODE06 сейчас является статическим полем корневых точек. Каждая точка — текстовый Markdown-файл. Точки соединяются взаимными ссылками и не имеют заранее заданного типа.</p>
-<p>Позже появится социальный слой: регистрация, создание пользовательских точек, поддержка и несогласие, передача части влияния другим людям, временная лента и вычисляемая карта общественного отношения.</p>
-<p>Сейчас здесь нет пользователей, веса, координат или социального цвета. Это намеренно.</p>
-<p>NODE06 основан на <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. Исходники NODE06 и карта лицензий опубликованы в <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">репозитории</a>.</p><p><a href="/en/about/">English root</a></p></section>'''
+<p>Карта первична: выбор точки всегда переносит центр поля. В режиме чтения текст выбранной точки открывается автоматически; в режиме исследования остаётся только карта; лента показывает последние изменения.</p>
+<p>Позже появится социальный слой: регистрация, пользовательские точки, поддержка и несогласие, передача части влияния другим людям и вычисляемая карта общественного отношения.</p>
+<p>Сейчас здесь нет пользователей, веса, координат или социального цвета. Цветные оси — только ориентир вращения статического поля.</p>
+<p>NODE06 основан на <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. Исходники NODE06 и карта лицензий опубликованы в <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">репозитории</a>.</p></section>'''
         else:
             about_text = '''<section class="prose"><div class="eyebrow">PROTOCOL / 0</div><h1>What this is</h1>
 <p>NODE06 is currently a static field of root points. Every point is a Markdown text file. Points are connected by reciprocal links and have no predefined content type.</p>
-<p>A social layer is planned: registration, user-created points, support and opposition, delegation of influence to other people, a chronological feed, and an emergent map of collective perception.</p>
-<p>There are no users, weight, coordinates or social color yet. That is intentional.</p>
-<p>NODE06 is based on <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. NODE06 source code and its licensing map are published in the <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">repository</a>.</p><p><a href="/ru/about/">Русская точка</a></p></section>'''
+<p>The map is primary: selecting a point always recenters the field. Reading mode opens the selected text automatically; Explore keeps only the map; Feed shows the latest changes.</p>
+<p>A social layer is planned: registration, user-created points, support and opposition, delegation of influence to other people, and an emergent map of collective perception.</p>
+<p>There are no users, weight, coordinates or social color yet. The colored axes are only orientation aids for the static field.</p>
+<p>NODE06 is based on <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. NODE06 source code and its licensing map are published in the <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">repository</a>.</p></section>'''
         write(DIST / lang / "about" / "index.html", shell("ABOUT", about_text, lang, "about"))
 
-    # neutral entrance
-    root = '''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>node06</title><link rel="stylesheet" href="/assets/site.css"></head><body><main class="language-gate"><div class="eyebrow">NODE06 / ROOT ERA</div><h1>Choose an entry point</h1><div class="actions"><a href="/ru/">Русский</a><a href="/en/">English</a></div></main></body></html>'''
+    # Bilingual entrance. Languages are separate points, not localization identities.
+    root = '''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>node06</title><link rel="stylesheet" href="/assets/site.css"></head><body><main class="language-gate"><div class="eyebrow">NODE06 / ROOT ERA</div><h1>NODE06</h1><div class="welcome-grid">
+<section class="welcome-card" lang="en"><h2>Welcome to the field.</h2><p>NODE06 is an experimental graph of points. A point may be a word, a thought, a link or a longer text. The map comes first; texts are opened from inside it. The current root era is static. A social layer is planned.</p><div class="welcome-links"><a href="/en/?p=node06-en&open=node06-en">NODE06</a><a href="/en/?p=point-en&open=point-en">POINT</a><a href="/en/?p=field-en&open=field-en">FIELD</a><a href="/en/?p=root-era-en&open=root-era-en">ROOT ERA</a></div></section>
+<section class="welcome-card" lang="ru"><h2>Добро пожаловать в поле.</h2><p>NODE06 — экспериментальный граф точек. Точкой может быть слово, мысль, ссылка или длинный текст. Карта первична, тексты открываются из неё. Сейчас идёт статическая корневая эпоха. Позже появится социальный слой.</p><div class="welcome-links"><a href="/ru/?p=node06-ru&open=node06-ru">NODE06</a><a href="/ru/?p=point-ru&open=point-ru">ТОЧКА</a><a href="/ru/?p=field-ru&open=field-ru">ПОЛЕ</a><a href="/ru/?p=root-era-ru&open=root-era-ru">КОРНЕВАЯ ЭПОХА</a></div></section>
+</div></main><footer>node06 · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer></body></html>'''
     write(DIST / "index.html", root)
     print(f"Built {len(points)} points into {DIST}")
 

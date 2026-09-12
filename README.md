@@ -64,3 +64,16 @@ The later backend is intentionally separate from the static repository and from 
 ## Navigation model
 
 The field is the primary interface. Point text is secondary and opens as an overlay above the field; opening a point does not navigate away from the graph. Stable `/p/<id>/` URLs remain only as compatibility/deep-link entry points and redirect into the field overlay.
+
+## v0.3 field interaction
+
+The field is the primary interface. Selecting a sphere always makes it the new center.
+
+- **READ** (default): recenter and open the selected point text.
+- **EXPLORE**: recenter only, without automatically opening text.
+- **FEED**: keep the map visible and show points ordered by latest interaction.
+- Text can be docked **RIGHT** (default), **BELOW**, or **OVERLAY**.
+- Drag the field or use arrow keys / WASD to rotate it; mouse wheel or Q/E changes zoom.
+- Six colored axis rays are orientation aids in the static era. They do not represent social coordinates yet.
+
+The site root is a bilingual welcome page. Russian and English links lead to separate Russian and English root points; they are independent points rather than locale variants of one object.
