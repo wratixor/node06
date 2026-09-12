@@ -1,6 +1,6 @@
 # NODE06
 
-NODE06 is an experimental static knowledge field and the planned root layer of a social knowledge graph.
+NODE06 is an experimental static knowledge field and the first public surface of a rethought concept engine.
 
 The first version is intentionally backend-free: root points are Markdown files, reciprocal `md://` links form the graph, `build.py` validates and renders the field, and the generated `dist/` directory is deployed to Neocities.
 
@@ -59,9 +59,18 @@ For the first GitHub push from the current repository state, read [docs/FIRST-PU
 
 ## Planned social layer
 
-Backend/API design is fixed in [docs/API-V1.md](docs/API-V1.md).
+The baseline backend/API design is recorded in [docs/API-V1.md](docs/API-V1.md).
+The detailed implementation sequence, open decisions and agent handoff are in
+[docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) (Russian).
 
-The later backend is intentionally separate from the static repository and from `geno-dice.com`. Planned capabilities include user points, creation of new points attached to existing points, support/opposition, delegated trust, chronological feeds, and derived social geometry. Root Markdown points remain repository-backed.
+The target backend lives under `backend/` in this repository and deploys as an
+independent API service on the Amsterdam host, separately from the Neocities
+frontend and the `geno-dice.com` application. It has not been implemented or
+deployed. The current Neocities Free site's CSP blocks direct external API
+requests; transport must be resolved before the social launch. Planned
+capabilities include user points, creation of new points attached to existing
+points, support/opposition, delegated trust, chronological feeds, and derived
+social geometry. Root Markdown points remain repository-backed.
 
 ## Navigation model
 
@@ -78,8 +87,11 @@ The field is the primary interface. Selecting a sphere always makes it the new c
 - Drag the field or use arrow keys / WASD to rotate it; mouse wheel or Q/E changes zoom.
 - Six colored axis rays are orientation aids in the static era. They do not represent social coordinates yet.
 
-The site root is a bilingual welcome page. Russian and English links lead to separate Russian and English root points; they are independent points rather than locale variants of one object.
+The site root is a bilingual welcome page. The NODE06 header link and field
+heading lead to `/`. Russian and English links lead to separate Russian and
+English root points; they are independent points rather than locale variants
+of one object. The implementation plan tracks remaining language-filter and
+cross-language navigation inconsistencies.
 ## Field projection
 
 The root-era map keeps the Hexrelatum six-component contract: three opposed pairs are folded into a local 3D projection only for navigation. The six axis ends use the same complementary preview pairs as Hexrelatum: cyan/red, magenta/green, yellow/blue. A visible unit sphere separates direct links (inside) from depth-2 context (outside). Root-era coordinates are deterministic synthetic values generated at build time; the future social backend will replace them with derived coordinates.
-

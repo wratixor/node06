@@ -2,6 +2,14 @@
 
 This document fixes the intended boundary for the future social backend. It is a design contract, not an implementation yet.
 
+Owner direction, 12 September 2026: NODE06 is the rethought concept engine.
+The target service belongs in this repository's `backend/`, while deployment
+stays separate from the Neocities frontend and Wagtail. Read
+[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for delivery packages, verified
+Neocities Free CSP restrictions, language/identity rules and unresolved
+trust/geometry decisions. Its explicitly marked proposals are not silently
+ratified additions to this contract.
+
 ## 1. Purpose and boundary
 
 The Neocities site remains a static HTML/CSS/JS client and the Git repository remains the canonical source of root Markdown points.
@@ -537,4 +545,3 @@ At minimum:
 - point support budget is conserved;
 - derived state can be deleted and rebuilt from raw data/events;
 - depth-2 field response contains no depth-1 duplicates.
-
