@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import json
 import re
 import shutil
@@ -33,6 +34,17 @@ def iso_mtime(path: Path) -> str:
     ts = path.stat().st_mtime
     return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
 
+
+
+def synthetic_coordinates(point_id: str) -> list[float]:
+    """Deterministic six positive coordinates for the static root era.
+
+    They are only a navigation scaffold. The social backend will replace them
+    with coordinates derived from user reactions while preserving the same
+    six-component contract.
+    """
+    digest = hashlib.sha256(point_id.encode("utf-8")).digest()
+    return [1.0 + digest[i] / 255.0 * 5.0 for i in range(6)]
 
 def strip_markdown(text: str) -> str:
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
@@ -183,6 +195,8 @@ def build() -> None:
             "preview": preview(p.text),
             "html": render_markdown(p.text, set(points), p.lang),
             "origin": "root",
+            "coordinates": synthetic_coordinates(p.id),
+            "coordinate_source": "synthetic-root",
         })
 
         # Keep stable point URLs as compatibility/deep-link entry points, but the map remains primary.
@@ -225,14 +239,14 @@ def build() -> None:
 <p>NODE06 сейчас является статическим полем корневых точек. Каждая точка — текстовый Markdown-файл. Точки соединяются взаимными ссылками и не имеют заранее заданного типа.</p>
 <p>Карта первична: выбор точки всегда переносит центр поля. В режиме чтения текст выбранной точки открывается автоматически; в режиме исследования остаётся только карта; лента показывает последние изменения.</p>
 <p>Позже появится социальный слой: регистрация, пользовательские точки, поддержка и несогласие, передача части влияния другим людям и вычисляемая карта общественного отношения.</p>
-<p>Сейчас здесь нет пользователей, веса, координат или социального цвета. Цветные оси — только ориентир вращения статического поля.</p>
+<p>Сейчас здесь нет пользователей, веса или социального цвета. Для навигации корневые точки временно получают воспроизводимые синтетические шесть координат; будущий backend заменит их координатами, возникающими из пользовательских реакций.</p>
 <p>NODE06 основан на <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. Исходники NODE06 и карта лицензий опубликованы в <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">репозитории</a>.</p></section>'''
         else:
             about_text = '''<section class="prose"><div class="eyebrow">PROTOCOL / 0</div><h1>What this is</h1>
 <p>NODE06 is currently a static field of root points. Every point is a Markdown text file. Points are connected by reciprocal links and have no predefined content type.</p>
 <p>The map is primary: selecting a point always recenters the field. Reading mode opens the selected text automatically; Explore keeps only the map; Feed shows the latest changes.</p>
 <p>A social layer is planned: registration, user-created points, support and opposition, delegation of influence to other people, and an emergent map of collective perception.</p>
-<p>There are no users, weight, coordinates or social color yet. The colored axes are only orientation aids for the static field.</p>
+<p>There are no users, weight or social color yet. For navigation, root points temporarily receive reproducible synthetic six-component coordinates; the future backend will replace them with coordinates emerging from user reactions.</p>
 <p>NODE06 is based on <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. NODE06 source code and its licensing map are published in the <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">repository</a>.</p></section>'''
         write(DIST / lang / "about" / "index.html", shell("ABOUT", about_text, lang, "about"))
 

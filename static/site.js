@@ -120,9 +120,7 @@
       const target=byId.get(pointLink.dataset.pointId);
       if(!target) return;
       e.preventDefault();
-      center=target;
-      renderMap();
-      showPoint(target);
+      focusPoint(target);
       return;
     }
     const feedLink=e.target.closest('a[data-feed-id]');
@@ -149,17 +147,42 @@
     }
   });
 
-  function fibonacciSphere(arr,radius,depth,phase=0){
-    const map=new Map();
-    const n=Math.max(1,arr.length);
-    const golden=Math.PI*(3-Math.sqrt(5));
-    arr.forEach((p,i)=>{
-      const y=1-(i/(Math.max(1,n-1)))*2;
-      const rr=Math.sqrt(Math.max(0,1-y*y));
-      const theta=golden*i+phase;
-      map.set(p.id,{x:Math.cos(theta)*rr*radius,y:y*radius,z:Math.sin(theta)*rr*radius,depth});
-    });
-    return map;
+  function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+
+  // Same six-component -> three opposed local axes idea as Hexrelatum.
+  // Coordinates stay six-dimensional; projection only folds each opposed pair
+  // into one local 3D axis for navigation.
+  function relativeAxis(tp,tn,cp,cn){
+    const numerator=tp*cn-tn*cp;
+    const denominator=tp*cn+tn*cp;
+    return denominator?numerator/denominator:0;
+  }
+
+  function sixToLocal(point,centre){
+    if(point.id===centre.id) return {x:0,y:0,z:0};
+    const t=point.coordinates||[1,1,1,1,1,1];
+    const c=centre.coordinates||[1,1,1,1,1,1];
+    return {
+      x:relativeAxis(t[0],t[1],c[0],c[1]),
+      y:relativeAxis(t[2],t[3],c[2],c[3]),
+      z:relativeAxis(t[4],t[5],c[4],c[5])
+    };
+  }
+
+  function normalize(v){
+    const n=Math.hypot(v.x,v.y,v.z)||1;
+    return {x:v.x/n,y:v.y/n,z:v.z/n,length:n};
+  }
+
+  function displayPosition(point,depth){
+    if(depth===0) return {x:0,y:0,z:0,depth};
+    const local=sixToLocal(point,center);
+    const unit=normalize(local);
+    // Unit sphere separates directly linked points from depth-2 points.
+    // Local six-dimensional magnitude only modulates distance within each band.
+    const magnitude=clamp(unit.length/1.45,0,1);
+    const r=depth===1 ? 0.30+0.62*magnitude : 1.12+0.38*magnitude;
+    return {x:unit.x*r,y:unit.y*r,z:unit.z*r,depth};
   }
 
   function rotate(v){
@@ -173,9 +196,59 @@
 
   function project(v,w,h){
     const rv=rotate(v);
-    const camera=760;
-    const scale=(camera/(camera-rv.z))*zoom;
-    return {x:w/2+rv.x*scale,y:h/2+rv.y*scale,z:rv.z,scale};
+    const camera=3.9;
+    const perspective=zoom/Math.max(2.1,camera-rv.z);
+    const scale=Math.min(w,h)*2.02*perspective;
+    return {x:w/2+rv.x*scale,y:h/2-rv.y*scale,z:rv.z,scale,perspective};
+  }
+
+  function pathFrom3D(points,w,h){
+    return points.map((v,i)=>{
+      const p=project(v,w,h);
+      return `${i?'L':'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+    }).join(' ');
+  }
+
+  function addWireSphere(svg,w,h){
+    const ns='http://www.w3.org/2000/svg';
+    const addPath=(points,cls)=>{
+      const path=document.createElementNS(ns,'path');
+      path.setAttribute('d',pathFrom3D(points,w,h));
+      path.setAttribute('class',cls);
+      path.setAttribute('fill','none');
+      svg.appendChild(path);
+    };
+    const steps=72;
+    // Latitude rings.
+    [-0.75,-0.5,-0.25,0,0.25,0.5,0.75].forEach(y=>{
+      const rr=Math.sqrt(1-y*y);
+      const pts=[];
+      for(let i=0;i<=steps;i++){
+        const a=i/steps*Math.PI*2;
+        pts.push({x:Math.cos(a)*rr,y,z:Math.sin(a)*rr});
+      }
+      addPath(pts,'unit-sphere-grid');
+    });
+    // Longitude rings.
+    for(let ring=0;ring<8;ring++){
+      const phi=ring/8*Math.PI;
+      const pts=[];
+      for(let i=0;i<=steps;i++){
+        const a=i/steps*Math.PI*2;
+        const x=Math.cos(a)*Math.cos(phi);
+        const z=Math.cos(a)*Math.sin(phi);
+        const y=Math.sin(a);
+        pts.push({x,y,z});
+      }
+      addPath(pts,'unit-sphere-grid');
+    }
+    // Equator/boundary emphasis.
+    const eq=[];
+    for(let i=0;i<=steps;i++){
+      const a=i/steps*Math.PI*2;
+      eq.push({x:Math.cos(a),y:0,z:Math.sin(a)});
+    }
+    addPath(eq,'unit-sphere-boundary');
   }
 
   function renderMap(){
@@ -187,8 +260,8 @@
 
     const w=1000,h=650;
     const basePos=new Map([[center.id,{x:0,y:0,z:0,depth:0}]]);
-    for(const [id,v] of fibonacciSphere(d1,175,1,-0.7)) basePos.set(id,v);
-    for(const [id,v] of fibonacciSphere(d2,310,2,0.9)) basePos.set(id,v);
+    d1.forEach(p=>basePos.set(p.id,displayPosition(p,1)));
+    d2.forEach(p=>basePos.set(p.id,displayPosition(p,2)));
 
     const visible=[center,...d1,...d2];
     const visibleIds=new Set(visible.map(p=>p.id));
@@ -201,66 +274,89 @@
       edgeKeys.add(key);edges.push([p.id,q]);
     }));
 
-    const radius=p=>Math.max(10,Math.min(42,10+Math.sqrt(Math.max(0,p.degree))*7));
+    const radius=p=>Math.max(9,Math.min(38,9+Math.sqrt(Math.max(0,p.degree))*6));
     const svgNS='http://www.w3.org/2000/svg';
     const svg=document.createElementNS(svgNS,'svg');
     svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
-    svg.setAttribute('aria-label','Rotatable point field');
+    svg.setAttribute('aria-label','Rotatable six-component point field');
     const defs=document.createElementNS(svgNS,'defs');
     defs.innerHTML='<radialGradient id="sphere" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#e2f0f5"/><stop offset="28%" stop-color="#9eb9c4"/><stop offset="70%" stop-color="#405463"/><stop offset="100%" stop-color="#18232d"/></radialGradient>';
     svg.appendChild(defs);
 
-    // Colored orientation axes. They are view aids only; social coordinates come later.
+    addWireSphere(svg,w,h);
+
+    // Three opposed pairs, six components. Colors intentionally match Hexrelatum:
+    // cyan <-> red, magenta <-> green, yellow <-> blue.
     const axes=[
-      {a:{x:0,y:0,z:0},b:{x:330,y:0,z:0},cls:'axis axis-0'},
-      {a:{x:0,y:0,z:0},b:{x:-330,y:0,z:0},cls:'axis axis-1'},
-      {a:{x:0,y:0,z:0},b:{x:0,y:330,z:0},cls:'axis axis-2'},
-      {a:{x:0,y:0,z:0},b:{x:0,y:-330,z:0},cls:'axis axis-3'},
-      {a:{x:0,y:0,z:0},b:{x:0,y:0,z:330},cls:'axis axis-4'},
-      {a:{x:0,y:0,z:0},b:{x:0,y:0,z:-330},cls:'axis axis-5'}
+      {v:{x:-1.48,y:0,z:0},color:'#00d2dc',name:'x-'},{v:{x:1.48,y:0,z:0},color:'#ee484a',name:'x+'},
+      {v:{x:0,y:-1.48,z:0},color:'#d646d6',name:'y-'},{v:{x:0,y:1.48,z:0},color:'#3ece70',name:'y+'},
+      {v:{x:0,y:0,z:-1.48},color:'#f0cd2c',name:'z-'},{v:{x:0,y:0,z:1.48},color:'#4170ee',name:'z+'}
     ];
+    const origin=project({x:0,y:0,z:0},w,h);
     axes.forEach(axis=>{
-      const A=project(axis.a,w,h),B=project(axis.b,w,h);
+      const B=project(axis.v,w,h);
       const l=document.createElementNS(svgNS,'line');
-      l.setAttribute('x1',A.x);l.setAttribute('y1',A.y);l.setAttribute('x2',B.x);l.setAttribute('y2',B.y);l.setAttribute('class',axis.cls);svg.appendChild(l);
+      l.setAttribute('x1',origin.x);l.setAttribute('y1',origin.y);l.setAttribute('x2',B.x);l.setAttribute('y2',B.y);
+      l.setAttribute('class','axis');l.setAttribute('stroke',axis.color);l.dataset.axis=axis.name;svg.appendChild(l);
+      const dot=document.createElementNS(svgNS,'circle');
+      dot.setAttribute('cx',B.x);dot.setAttribute('cy',B.y);dot.setAttribute('r','4.2');dot.setAttribute('fill',axis.color);dot.setAttribute('class','axis-tip');svg.appendChild(dot);
     });
 
     edges.forEach(([a,b])=>{
       const A=projected.get(a),B=projected.get(b);if(!A||!B)return;
-      const l=document.createElementNS(svgNS,'line');l.setAttribute('x1',A.x);l.setAttribute('y1',A.y);l.setAttribute('x2',B.x);l.setAttribute('y2',B.y);l.setAttribute('class','edge');svg.appendChild(l);
+      const da=basePos.get(a)?.depth||0,db=basePos.get(b)?.depth||0;
+      const l=document.createElementNS(svgNS,'line');
+      l.setAttribute('x1',A.x);l.setAttribute('y1',A.y);l.setAttribute('x2',B.x);l.setAttribute('y2',B.y);
+      l.setAttribute('class',Math.max(da,db)===2?'edge edge-outer':'edge');svg.appendChild(l);
     });
 
     visible.slice().sort((a,b)=>projected.get(a.id).z-projected.get(b.id).z).forEach(p=>{
       const P=projected.get(p.id),g=document.createElementNS(svgNS,'g');
-      g.setAttribute('class','node'+(p.id===center.id?' center':''));
+      const depth=basePos.get(p.id)?.depth||0;
+      g.setAttribute('class','node depth-'+depth+(p.id===center.id?' center':''));
       g.dataset.id=p.id;
       const c=document.createElementNS(svgNS,'circle');
-      c.setAttribute('cx',P.x);c.setAttribute('cy',P.y);c.setAttribute('r',radius(p)*Math.max(.72,Math.min(1.35,P.scale)));
+      c.setAttribute('cx',P.x);c.setAttribute('cy',P.y);c.setAttribute('r',radius(p)*clamp(P.scale*2.5,.72,1.35));
       g.appendChild(c);
       g.addEventListener('mouseenter',()=>{card.hidden=false;card.innerHTML=`${escapeHtml(p.preview)}<span class="id">${escapeHtml(p.id)} · ${p.degree} links</span>`;});
       g.addEventListener('mousemove',e=>{const r=host.getBoundingClientRect();card.style.left=Math.min(e.clientX-r.left+16,r.width-360)+'px';card.style.top=Math.max(8,e.clientY-r.top+16)+'px';});
       g.addEventListener('mouseleave',()=>card.hidden=true);
-      g.addEventListener('click',e=>{e.stopPropagation();if(moved)return;focusPoint(p);});
       svg.appendChild(g);
     });
     host.replaceChildren(svg);
     document.getElementById('field-center-id').textContent=center.id;
   }
 
+  let pointerTargetId=null;
   host.addEventListener('pointerdown',e=>{
     if(e.button!==0) return;
-    dragging=true;moved=false;lastX=e.clientX;lastY=e.clientY;host.setPointerCapture(e.pointerId);host.classList.add('dragging');
+    const node=e.target.closest?.('.node');
+    pointerTargetId=node?.dataset.id||null;
+    dragging=true;moved=false;lastX=e.clientX;lastY=e.clientY;
+    host.setPointerCapture(e.pointerId);host.classList.add('dragging');
   });
   host.addEventListener('pointermove',e=>{
     if(!dragging) return;
     const dx=e.clientX-lastX,dy=e.clientY-lastY;
-    if(Math.abs(dx)+Math.abs(dy)>2) moved=true;
-    rotY+=dx*0.008;rotX+=dy*0.008;
-    rotX=Math.max(-1.45,Math.min(1.45,rotX));
-    lastX=e.clientX;lastY=e.clientY;renderMap();
+    if(Math.abs(dx)+Math.abs(dy)>3) moved=true;
+    if(moved){
+      rotY+=dx*0.008;rotX=clamp(rotX+dy*0.008,-1.45,1.45);
+      renderMap();
+    }
+    lastX=e.clientX;lastY=e.clientY;
   });
-  host.addEventListener('pointerup',e=>{dragging=false;host.classList.remove('dragging');try{host.releasePointerCapture(e.pointerId);}catch(_){}});
-  host.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.65,Math.min(1.7,zoom*(e.deltaY>0?.92:1.08)));renderMap();},{passive:false});
+  host.addEventListener('pointerup',e=>{
+    const id=pointerTargetId;
+    dragging=false;host.classList.remove('dragging');
+    try{host.releasePointerCapture(e.pointerId);}catch(_){}
+    if(!moved&&id){
+      const target=byId.get(id);
+      if(target) focusPoint(target);
+    }
+    pointerTargetId=null;
+  });
+  host.addEventListener('pointercancel',()=>{dragging=false;moved=false;pointerTargetId=null;host.classList.remove('dragging');});
+  host.addEventListener('wheel',e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY>0?.92:1.08),.65,1.7);renderMap();},{passive:false});
 
   document.addEventListener('keydown',e=>{
     if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) return;

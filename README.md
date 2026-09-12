@@ -77,3 +77,7 @@ The field is the primary interface. Selecting a sphere always makes it the new c
 - Six colored axis rays are orientation aids in the static era. They do not represent social coordinates yet.
 
 The site root is a bilingual welcome page. Russian and English links lead to separate Russian and English root points; they are independent points rather than locale variants of one object.
+## Field projection
+
+The root-era map keeps the Hexrelatum six-component contract: three opposed pairs are folded into a local 3D projection only for navigation. The six axis ends use the same complementary preview pairs as Hexrelatum: cyan/red, magenta/green, yellow/blue. A visible unit sphere separates direct links (inside) from depth-2 context (outside). Root-era coordinates are deterministic synthetic values generated at build time; the future social backend will replace them with derived coordinates.
+
