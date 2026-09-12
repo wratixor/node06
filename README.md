@@ -59,6 +59,8 @@ For the first GitHub push from the current repository state, read [docs/FIRST-PU
 
 ## Planned social layer
 
+Backend/API design is fixed in [docs/API-V1.md](docs/API-V1.md).
+
 The later backend is intentionally separate from the static repository and from `geno-dice.com`. Planned capabilities include user points, creation of new points attached to existing points, support/opposition, delegated trust, chronological feeds, and derived social geometry. Root Markdown points remain repository-backed.
 
 ## Navigation model
