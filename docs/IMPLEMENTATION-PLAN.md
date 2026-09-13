@@ -962,7 +962,8 @@ import queue fairness/memory и диск. Это цели исследовани
 | План редакции2 | Сервис/sites/bridge/full/hosted/fork/styles/quota/lore, edits/inbox/search handoff подготовлен |
 | Проверки редакции2 | 5 Markdown files / 20 local links / 4 JSON examples; diff check; общий context validator 136 Markdown и 17 queue records. Runtime в этой правке не менялся |
 | P00 bridge/full transport | Локальный synthetic prototype готов в `prototypes/embed-p00/`: два origin, CSP, handshake, typed read/theme, reload и write boundary. Не deployment и не real-Neocities proof |
-| P01–P14 | Не реализованы: backend/site registry/import/auth/tariffs пока документы |
+| P01 backend bootstrap | `pyproject.toml`, FastAPI service, Alembic bootstrap migration, `/api/v1/{health,ready,meta}` и local tests готовы. Нет domain tables/API, hosted renderer или deployment |
+| P02–P14 | Не реализованы: site registry/import/auth/tariffs пока документы |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
 в Chromium parent CSP заблокировал direct external fetch, bridge вернул точку,
@@ -972,8 +973,15 @@ P00 evidence 13.09: Node protocol tests, Python compile и static build прош
 Не доказаны real Neocities, PKCE, storage/cookie/popup policy, origin revocation,
 multi-frame и полный iframe renderer — это остаётся P03/P08/P12.
 
+P01 evidence 13.09: exact pinned dependencies поставлены в isolated `.venv`;
+`pytest`, Ruff, format check, static build и P00 protocol tests прошли. Alembic
+создал `schema_metadata` и `alembic_version` в свежем временном PostgreSQL 18;
+`/ready` дал 503 без DB и 200 после migration. Временный кластер остановлен;
+это не production. Контрактная таблица users/sites/points начинается
+только с P02/P05, не подменяется bootstrap marker.
+
 Предыдущий план single-site/API-only сохранён историей Git, не является
-действующим target. Текущая реализация ограничена P00 и не меняет production.
+действующим target. Текущая реализация ограничена P00–P01 и не меняет production.
 
 ## 17. Предложения по развитию
 

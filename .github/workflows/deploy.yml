@@ -43,3 +43,26 @@ jobs:
           neocities_supporter: false
           preview_before_deploy: true
           dist_dir: dist
+
+  backend-bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend checks
+        run: python -m pip install '.[dev]'
+
+      - name: Run backend tests and lint
+        run: |
+          pytest
+          ruff check backend
+          ruff format --check backend
+
+      - name: Render bootstrap migration SQL
+        run: alembic upgrade head --sql > /dev/null

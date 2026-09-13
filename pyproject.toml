@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "node06-service"
+version = "0.1.0"
+description = "Shared concept-wiki service for independent sites."
+readme = "backend/README.md"
+requires-python = ">=3.12,<3.15"
+license = {text = "AGPL-3.0-or-later"}
+authors = [{name = "NODE06 contributors"}]
+dependencies = [
+  "alembic==1.20.0",
+  "fastapi==0.141.1",
+  "psycopg[binary]==3.3.5",
+  "pydantic-settings==2.15.0",
+  "SQLAlchemy==2.0.52",
+  "uvicorn==0.52.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "pytest==9.1.1",
+  "ruff==0.16.7",
+]
+
+[project.scripts]
+node06-service = "node06_service.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["backend/src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["backend/tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+ignore = ["RUF001"]
