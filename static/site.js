@@ -97,6 +97,13 @@
       <ul class="feed-list">${sorted.map(p=>`<li><time>${p.last_interaction_at.slice(0,10)}</time><a href="/${lang}/?p=${encodeURIComponent(p.id)}" data-feed-id="${escapeHtml(p.id)}">${escapeHtml(p.preview)}</a><span>${p.degree} links</span></li>`).join('')}</ul>`;
   }
 
+  function closePanel(){
+    openPoint=null;
+    panel.hidden=true;
+    host.focus({preventScroll:true});
+    updateUrl();
+  }
+
   function focusPoint(point,{fromUser=true}={}){
     if(!point) return;
     center=point;
@@ -108,11 +115,7 @@
     if(fromUser) updateUrl();
   }
 
-  panelClose.addEventListener('click',()=>{
-    openPoint=null;
-    if(mode==='feed') showFeed(); else showEmptyPanel();
-    updateUrl();
-  });
+  panelClose.addEventListener('click',closePanel);
 
   panelBody.addEventListener('click',e=>{
     const pointLink=e.target.closest('a.point-link');
@@ -360,13 +363,18 @@
 
   document.addEventListener('keydown',e=>{
     if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) return;
+    if(e.key==='Escape'&&!panel.hidden){
+      e.preventDefault();
+      closePanel();
+      return;
+    }
     let changed=true;
-    if(e.key==='ArrowLeft'||e.key==='a') rotY-=0.12;
-    else if(e.key==='ArrowRight'||e.key==='d') rotY+=0.12;
-    else if(e.key==='ArrowUp'||e.key==='w') rotX-=0.12;
-    else if(e.key==='ArrowDown'||e.key==='s') rotX+=0.12;
-    else if(e.key==='q') zoom=Math.max(.65,zoom*.92);
-    else if(e.key==='e') zoom=Math.min(1.7,zoom*1.08);
+    if(e.key==='ArrowLeft'||e.code==='KeyA') rotY-=0.12;
+    else if(e.key==='ArrowRight'||e.code==='KeyD') rotY+=0.12;
+    else if(e.key==='ArrowUp'||e.code==='KeyW') rotX-=0.12;
+    else if(e.key==='ArrowDown'||e.code==='KeyS') rotX+=0.12;
+    else if(e.code==='KeyQ') zoom=Math.max(.65,zoom*.92);
+    else if(e.code==='KeyE') zoom=Math.min(1.7,zoom*1.08);
     else changed=false;
     if(changed){e.preventDefault();renderMap();}
   });
