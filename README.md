@@ -79,6 +79,10 @@ chosen transport still needs a browser prototype and real-origin validation.
 None of this service has been implemented or deployed. The static builder and
 existing root format described above remain the implemented baseline.
 
+A local two-origin transport prototype is available in
+[`prototypes/embed-p00/`](prototypes/embed-p00/). It is a CSP and iframe protocol
+check with synthetic data, not a backend or deployable embed SDK.
+
 ## Navigation model
 
 The field is the primary interface. Point text is secondary and opens as an overlay above the field; opening a point does not navigate away from the graph. Stable `/p/<id>/` URLs remain only as compatibility/deep-link entry points and redirect into the field overlay.

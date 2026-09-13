@@ -961,10 +961,19 @@ import queue fairness/memory и диск. Это цели исследовани
 | Header/H1 → `/` | Source fix и browser/build verification выполнены, feature branch; main не изменён |
 | План редакции2 | Сервис/sites/bridge/full/hosted/fork/styles/quota/lore, edits/inbox/search handoff подготовлен |
 | Проверки редакции2 | 5 Markdown files / 20 local links / 4 JSON examples; diff check; общий context validator 136 Markdown и 17 queue records. Runtime в этой правке не менялся |
-| P00–P14 | Не реализованы: protocol/backend/site registry/import/auth/tariffs пока документы |
+| P00 bridge/full transport | Локальный synthetic prototype готов в `prototypes/embed-p00/`: два origin, CSP, handshake, typed read/theme, reload и write boundary. Не deployment и не real-Neocities proof |
+| P01–P14 | Не реализованы: backend/site registry/import/auth/tariffs пока документы |
+
+P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
+в Chromium parent CSP заблокировал direct external fetch, bridge вернул точку,
+применил допустимую тему, отверг CSS-like payload и write intent с
+`AUTH_CONFIRMATION_REQUIRED`; reload создал новый handshake. Проверены заголовки
+локальных parent/embed: `frame-src` у parent и точный `frame-ancestors` у child.
+Не доказаны real Neocities, PKCE, storage/cookie/popup policy, origin revocation,
+multi-frame и полный iframe renderer — это остаётся P03/P08/P12.
 
 Предыдущий план single-site/API-only сохранён историей Git, не является
-действующим target. Текущая сессия меняет документацию, не runtime/production.
+действующим target. Текущая реализация ограничена P00 и не меняет production.
 
 ## 17. Предложения по развитию
 
