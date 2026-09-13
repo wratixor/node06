@@ -1,40 +1,66 @@
-# NODE06 — план реализации движка концептов
+# NODE06 — сервис общей вики для независимых сайтов
 
 Статус: исследование выполнено; реализация бэкенда не начата.
-Дата: 12 сентября 2026, Europe/Moscow.
+Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
+Редакция 2: общая сеть сайтов, bridge + full embed + hosted frontend + GitHub roots.
 Владелец продуктовых решений: Wratixor.
-Этот документ — основной план продолжения; [API-V1.md](API-V1.md) — исходный
-контракт. Пометки **Решено**, **Предложение** и **Открыто** различают требования
+Этот документ — основной план продолжения; [API-V1.md](API-V1.md) — актуализированный
+проект контракта HTTP; [EMBED-V1.md](EMBED-V1.md) описывает встраивание,
+[ROOT-IMPORT-V1.md](ROOT-IMPORT-V1.md) — GitHub/Markdown импорт. Пометки **Решено**, **Предложение** и **Открыто** различают требования
 владельца, инженерные рекомендации и ещё не принятые решения. Числа ниже —
 стартовые предложения для измерений, а не незаметно утверждённые правила.
 
-## 1. Результат, который строим
+## 1. Результат и принятые решения
 
-NODE06 — переосмысленный движок концептов и его первый публичный социальный
-эксперимент. Карта первична: мысли, слова, ссылки и большие тексты существуют
-как самостоятельные точки; пользователь исследует их связи, добавляет новые
-точки, поддерживает идеи, выражает несогласие и делегирует доверие людям.
-Геометрия постепенно возникает из наблюдаемых взаимодействий.
+NODE06 — переосмысленный движок концептов, из которого делаем полноценный
+сервис для независимых сайтов, прежде всего Neocities Free. Сайт NODE06 —
+демонстрация сервиса и его участник. Все подключённые сайты, обычные мысли,
+публикации и открытый лор находятся **в одном общем пространстве смыслов**,
+с общей БД, пользователями, графом и расчётом влияния.
 
-**Решено владельцем в этой сессии:**
+**Решено владельцем 13.09.2026:**
 
-- NODE06 продолжает замысел движка концептов; это не посторонняя социальная вики.
-- Фронтенд остаётся на `https://node06.neocities.org/`, сейчас тариф Free.
-- Цель размещения бэкенда — амстердамский сервер. Сейчас нужен план, не деплой.
-- Рабочее предпочтение — `backend/` в этом же репозитории; сервис разворачивается
-  отдельно от фронта и от Wagtail `geno-dice.com`.
-- Нужны классические маленькие веб-баннеры и свой баннер NODE06.
-- NODE06 должен работать как самостоятельное место инди-веба и потайной уголок
-  лора Geno-Dice, без обязательного предварительного знакомства с игрой.
-- RU/EN — самостоятельные точки, не переводы одного объекта. Ссылка NODE06 и
-  заголовок поля ведут на общую стартовую `/`, а не на `/en/` или `/ru/`.
-- Продолжение должно быть возможно по этому плану другим агентом без памяти чата.
+- На Амстердаме размещаются backend и полноценный фронтенд из того же репозитория.
+  Это hosted-версия одного продукта, не отдельная копия контента/базы.
+- Поддерживаются оба режима: маленький iframe-посредник для интерфейса на чужом
+  сайте и iframe всей вики, как встраиваемый видеоплеер. Supporter не нужен
+  как архитектурная предпосылка. Фактическую совместимость проверяем прототипом.
+- Каждый подключённый сайт получает точку `s_<uuid>` с собственной приветственной
+  страницей. Без явной ссылки на другую точку встраивание открывает её по умолчанию.
+- Точка сайта связана с общим Git-owned корнем `all-sites` («Все сайты»).
+  Эта связь обеспечивает общую навигацию, не выдаёт влияние или полномочия.
+- Каждый сайт настраивает приветствие и оформление; CSS остаётся у владельца,
+  с разными механизмами для локального UI и внешнего iframe.
+- Добавляется путь подключения через GitHub fork: дополнительные root Markdown
+  принадлежат репозиторию сайта и импортируются в общий граф с отдельными ID.
+- Будущий `wiki.geno-dice.com` — ещё одна точка входа в **тот же граф** открытого
+  лора. Владелец явно отклонил отдельное изолированное пространство канона.
+- Позже добавить простую ссылку поддержки на существующий кошелёк Geno-Dice.
+  Тарифы/квоты вводить по росту нагрузки и стоимости сервера, без покупки влияния.
+- Базовый характер сохраняется: карта первична, точки не требуют категорий и
+  заголовков, новые мысли связываются с существующими, RU/EN — разные точки.
+- Пользователи общие для всех сайтов; сайт и аккаунт — разные сущности.
+- Автор может править свои точки, владелец сайта — своё приветствие. Поддержавшие
+  изменённую точку получают уведомление. Географическая модерация — на будущее.
+- При написании автор выбирает слово/фразу и через быстрый поиск связывает её
+  с конкретным смыслом, в том числе лорным; можно оставить обычным текстом.
+- Сейчас пересобирается план; сервер, импортер, bridge, платежи не реализуются.
 
-Первый полноценный результат: посетитель читает корневые точки без входа,
-регистрируется, публикует связанную точку, реагирует, поддерживает автора,
-видит честную хронологию и объяснимый вес. При недоступности API корневой сайт
-остаётся читаемым. Социальная геометрия — отдельный обязательный этап целевого
-движка; запуск полезной ранней версии не выдаётся за завершение всего замысла.
+Авторитет канонических текстов определяется **правами редактирования и
+происхождением**, а не отдельным миром и не голосованием. Обычная пользовательская
+точка может ссылаться на лор и обсуждать его. Это не даёт её автору права менять
+канонический Markdown. Общий граф не требует публиковать скрытый лор.
+
+Источники правды: Git — core roots и opt-in site roots; БД — социальные точки,
+связи, сайт-владелец, редакторские настройки, авторизация и события. Один активный
+режим источника приветствия: UI редактор **или** Git, без двух конкурирующих
+писателей. Frontend mirrors ничего из этого не дублируют.
+
+Первый публичный результат: два независимых сайта входят в один граф со своих
+приветствий; публикация на A видна по ссылке на B и hosted-версии, один голос
+не дублируется между сайтами. Оба способа встраивания работают на реальном Free.
+Социальная геометрия остаётся обязательной целью движка, поставляется после
+надёжного сохранения/объяснения raw событий и массы.
 
 ## 2. Проверенная исходная точка
 
@@ -66,7 +92,7 @@ Origin: `git@github.com:wratixor/node06.git`. Это выбранный влад
 
 ### Замеченные технические пробелы
 
-1. README говорит об отдельном репозитории бэкенда, API уже предлагает `backend/`.
+1. В исходной ревизии README говорил об отдельном репозитории бэкенда, API предлагал `backend/`.
    Этот план уточняет: один Git-репозиторий, два независимых способа доставки.
 2. `site.js` предполагает наличие всех точек в памяти, готового `html` и `lang`;
    API этого не гарантирует. Нужен адаптер, а не подмена URL одного fetch.
@@ -89,9 +115,9 @@ Origin: `git@github.com:wratixor/node06.git`. Это выбранный влад
     `docs/FIRST-PUSH.md` содержит одноразовые устаревшие шаги amend/force push.
     Не исполнять их при продолжении. Обновить в этапе подготовки.
 
-## 3. Блокер подключения: Neocities Free
+## 3. Основной транспорт: внешний iframe
 
-12.09.2026 публичный HTTPS HEAD `/en/` вернул HTTP 200 и, среди прочего:
+У NODE06 Free 12 и 13 сентября 2026 проверен HTTP CSP:
 
 ```text
 connect-src 'self' data: blob:;
@@ -99,271 +125,332 @@ form-action 'self';
 frame-src *;
 ```
 
-Это **проверенное ограничение текущего сайта**: прямой браузерный fetch/XHR
-к внешнему API не разрешён. CORS на API, `mode: no-cors` и добавление более
-мягкого CSP meta в HTML его не устраняют. Несколько политик применяются
-совместно, а не заменяют одна другую
-([W3C CSP](https://www.w3.org/TR/CSP/#multiple-policies)).
+Прямой fetch с Neocities к внешнему API запрещён, внешняя HTML-страница в iframe
+разрешена текущим `frame-src`. Она загружается по HTTPS со своего origin и
+обращается к своему API. Это обычное cross-origin встраивание, не отключение CSP.
+Весь код статического/hosted UI принадлежит одному репозиторию.
 
-**Предложение основного пути:** Neocities Supporter + обычный HTTPS JSON API.
-Официальная страница на дату исследования указывает менее строгий CSP и
-cross-origin возможности: [Neocities Supporter](https://neocities.org/supporter).
-Тариф, покупка и возможность оплаты остаются решением владельца; план не
-предполагает, что подписка уже оформлена. После изменения тарифа заново проверить
-GET-заголовки и реальный запрос из опубликованной страницы, включая preflight.
+**Решено:** основной путь — собственный iframe bridge, плюс full embed и
+hosted-вход. Предыдущее предложение Supporter как основного пути отменено.
+CORS-proxy третьих лиц, JSONP, исполняемые API-ответы и CSP meta bypass не нужны.
+`srcdoc`/about:blank не заменяют внешний документ с собственным origin.
 
-**Если Free принципиален:** сначала отдельный транспортный spike и решение.
-Возможный вариант — небольшой cross-origin iframe на API-origin с ограниченным
-`postMessage`-протоколом. Нынешний `frame-src` это потенциально допускает, но
-работоспособность, правила хостинга и безопасность не проверены. Такой вариант
-добавляет HTML/JS-адаптер на сервере и является явным исключением из требования
-«сервер отдаёт только JSON». Он не может появиться скрытно под видом настройки CORS.
+Точный протокол, origin-проверки, версии, вход и темы — [EMBED-V1.md](EMBED-V1.md).
+P00 сначала доказывает в браузере read/write roundtrip с применённым настоящим
+CSP на двух локальных origins; затем отдельный test-page на Neocities и сервере
+проверяет реальную связку после разрешения на test deployment. Локальная
+симуляция не выдаётся за production smoke.
 
-Для такого spike: только собственный adapter, точный `event.origin` и
-`event.source` на обеих сторонах, фиксированный `targetOrigin`, версия протокола,
-allowlist команд вместо произвольных URL/методов, request ID, таймаут, лимит
-размера, отсутствие секретов в URL, защита от повторов и ограничения iframe.
-Проверить Firefox/Chromium/Safari, блокировку third-party storage и logout.
-Предпочесть явный режим входа без зависимости от third-party cookie.
-Не использовать внешний CORS-proxy, JSONP, загрузку исполняемого ответа API
-или отключение защиты браузера. Это исследование, не обещанный Free transport.
+Full embed может работать read-only даже без parent JS. Bridge требует локальный
+loader/SDK и локальный UI. При отказе iframe — понятное сообщение и обычная
+ссылка «Открыть вики» на hosted-версию; root read-only fallback сохраняется.
+Поддержка «любого сайта» означает HTTPS-сайты, разрешающие внешний iframe;
+чужую CSP, запрет iframe или отсутствие JS сервис не может отменить.
 
-До решения можно полностью разрабатывать и проверять домен локально, выпускать
-статические баннеры и навигацию. **Нельзя объявлять Neocities social launch
-готовым**, если интерфейс работает только на localhost. Временная честная
-публичная версия на Free остаётся статической; перенос фронта на иной хост
-не входит в текущий запрос.
+Нельзя требовать third-party cookies для чтения/записи: вход через trusted
+hosted top-level/popup, scoped session внутри iframe, без выдачи пароля/глобальной
+сессии JavaScript владельца сайта. Нужно проверить блокировку popup, storage
+partitioning, reload/logout и отказ cookies в Chromium/Firefox/Safari.
 
-## 4. Отношение к предыдущему движку концептов
+Источники: [iframe](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe),
+[postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage),
+[same-origin](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Same-origin_policy).
+Это подтверждение возможностей браузера; интеграция NODE06 пока не реализована.
 
-В общей документации читать проектную карточку NODE06, Хартии и текущие
-`GENO_DICE_CONCEPT_ENGINE_SPEC.md`, `GENO_DICE_CONCEPT_WIKI.md`,
-`GENO_DICE_MECHANICS_EVOLUTION.md`, `GENO_DICE_LORE_AND_DESIGN.md`.
-Не копировать их закрытые объяснения в публичный репозиторий.
+## 4. Как изменился замысел движка
 
-| Предыдущая линия | Новая граница NODE06 | Что делать следующему агенту |
+Общая документация остаётся источником лора и истории решений. Текущий
+прикладной контракт ниже учитывает явные уточнения владельца, не возвращает
+старые схемы между строк.
+
+| Ранее | Теперь | Инвариант |
 |---|---|---|
-| Концепты и граф | Точка без обязательного title/type/category | Сохранять простую модель |
-| Симметричная связь | Старые root-рёбра и новые рёбра при создании точки | Не добавлять редактор произвольных old↔old рёбер |
-| Пользователь как концепт | В API есть отдельные users и будущие user points не детализированы | Решение D06: адресуемая публичная проекция без смешения auth и контента |
-| Много миров и канон | Сначала один NODE06; закрытый канон отдельно | Изолированные инсталляции, не общий публично-приватный dump |
-| Теги, ссылки-концепты, вложения | Обычный текст и URL, связи равноправных точек | Не возвращать обязательные теги/категории |
-| F–S, два верхних класса | Сейчас локальная карта depth 2 | Классификацию сохранить в roadmap после геометрии, статус D07 |
-| Авторский якорь, четвёртый сторонник | API допускает null/low confidence | D05: не переносить старый порог 4 как утверждённый NODE06 закон |
-| Старые семантические полюса | Пока только шесть компонент и три цветовые пары | Названия осей не назначены текущим API |
-| Оценка и подписка отдельно | support/oppose взаимоисключающи; trust к людям отдельно | D03: явно описать семантику новых сигналов |
-| Рекурсивная масса | Каждый active user вводит 1; точки не ретранслируют | Сохранение бюджета, никакого бонуса за количество публикаций |
-| Причинные срезы | Raw events + версионируемые вычисления | Полностью сохраняется |
-| Популярность и канон | Независимые полномочия | Голоса NODE06 не меняют канон или реальный код автоматически |
+| NODE06 как один эксперимент | NODE06 демонстрирует сервис многих сайтов | Один shared graph и DB, не копия на каждый iframe |
+| Server только JSON | API + bridge HTML + full frontend в Амстердаме | Wagtail/кошелёк отдельные приложения |
+| Supporter или невыбранный transport | Два iframe режима — основная поставка | Реальный Free smoke обязателен |
+| Один root tree | Core tree + проверенные site Git imports | Namespace/provenance, стабильные ID |
+| Вход в RU/EN-раздел | Общий граф; конкретная точка сайта — default | Язык интерфейса не меняет identity |
+| Отдельный мир лора | Лор в общем пространстве, отдельный вход | Редакционные права и скрытые исходники не становятся общими |
+| Старые обязательные теги/категории | Untyped point body + links | Сайт и импорт — metadata происхождения/управления |
+| Только root/user origin | root/user/site origin | `s_` — site point, `r_` — namespaced Git root |
+| Связи только при создании | Автор может менять текст и исходящие ссылки своей точки; системные/import связи имеют происхождение | Нет права соединять две произвольные чужие точки |
+| F–S и legacy self-anchors | Отдельные будущие ADR | Не отменять и не внедрять тайно |
+| Влияние отдельного экземпляра | N active людей на весь shared graph | Количество сайтов/форков/встраиваний не добавляет массу |
+| Монетизация вне задачи | Простая ссылка кошелька, позже resource tiers | Оплата не меняет голос, канон или право на чужие данные |
 
-Старые спецификации не удаляются и не объявляются целиком отменёнными. Здесь
-фиксируется новая реализационная ветвь; перенос каждого ещё спорного свойства
-требует явного решения, а не памяти другого чата.
+Открытая вики лора будет иметь site point и reviewed Git roots в этой же модели.
+Ссылка `all-sites↔s_lore`, внешние discussion points и соседство допустимы;
+редактировать авторские roots можно только через их разрешённый источник.
 
-## 5. Архитектура и границы модулей
-
-```text
-Git content/ -> build.py -> dist/ -> Neocities
-                    | root-manifest.json
-                    v
-              reviewed root import
-                    v
-Browser ------ HTTPS /api/v1 ------ FastAPI ------ PostgreSQL
-                                       |
-                              bounded snapshot job
-                            trust -> mass -> geometry
-```
-
-**Предложение:** Python 3.12 baseline совпадает с текущей CI-сборкой; FastAPI,
-Pydantic 2, SQLAlchemy 2, Alembic, PostgreSQL, psycopg 3, Argon2id, Uvicorn.
-Точные совместимые версии зафиксировать lock-файлом в P01 после проверки
-поддержки и окружения сервера. Не записывать в план выдуманные latest-версии.
-Рекомендуется синхронный SQLAlchemy и обычные FastAPI `def` handlers для первого
-малого сервиса; не блокировать event loop синхронным SQL/Argon2 внутри `async def`.
+## 5. Архитектура, точки сайтов и владение
 
 ```text
-backend/
-  pyproject.toml, <lockfile>, .env.example, alembic.ini
-  app/{main,config,db}.py
-  app/api/{auth,points,users,feed,meta}.py
-  app/models/  app/schemas/
-  app/domain/{trust,mass,geometry}.py
-  app/services/{root_sync,events,snapshots,moderation}.py
-  app/cli.py
-  alembic/versions/  tests/
-static/
-  site.js                 # bootstrap/interaction, постепенно разделить
-  api-client.js           # transport and errors
-  point-store.js          # root + dynamic merge
-  field-view.js           # map rendering
-  safe-text.js             # UGC rendering boundary
-  badges/                 # approved public exports only
-docs/
-  API-V1.md, IMPLEMENTATION-PLAN.md
-  decisions/, deployment/, asset-credits.md   # создавать по мере задач
+Core Git roots -----------+                    Neocities A: local UI + CSS
+Site forks (MD only) -----+--> validated import       | postMessage
+                         |                           v
+                         +--> shared PostgreSQL <--- API <-- bridge iframe
+                         |                           ^
+                         |                     full iframe on site B
+                         |                           ^
+                         +--> versioned snapshots --> hosted full wiki
+                                                     + future wiki.geno-dice.com
 ```
 
-Не добавлять Redis, Celery, Kafka, WebSocket, общую учетку Geno-Dice, кошелёк,
-платежи, нейросетевой inference или микросервисы. Для вычислений сначала
-отдельная CLI-команда + периодический systemd job; не запускать вычислитель
-в каждом web worker или на каждый GET. SQL и domain math тестируются отдельно.
-Чистое ядро принимает снимок данных и конфигурацию без FastAPI/ORM-зависимости;
-выделение reusable package возможно позднее без преждевременного фреймворка.
+Один репозиторий, один frontend source/renderer, три оболочки: standalone,
+full embed, SDK + local renderer. Один backend и одна PostgreSQL DB. Nginx
+раздаёт versioned static assets, bridge/embed HTML и проксирует same-origin API.
+Separate origins для management/login и embed предпочтительны: недоверенное
+оформление/embedding не расширяют доступ к аккаунту владельца.
 
-## 6. Данные, импорт корней и миграции
+Стек-предложение: Python 3.12 baseline, FastAPI/Pydantic2, SQLAlchemy2 sync,
+psycopg3, Alembic, PostgreSQL, Argon2id, Uvicorn. Проверить совместимые версии
+и lock в P01; не смешивать blocking SQL/hash с `async def`. Чистая математика
+без ORM, одна отдельная snapshot CLI/job вместо расчёта в web handlers.
 
-### 6.1. Стабильный root release
+```text
+backend/app/
+  api/{auth,points,users,feed,sites,imports,meta}.py
+  domain/{trust,mass,geometry,quotas}.py
+  services/{site_claims,root_sync,events,snapshots,moderation,embed_sessions}.py
+  models/ schemas/ cli.py
+backend/alembic/versions/ backend/tests/
+static/                        # общие UI/renderer/safe-text/point-store
+  embed/                       # минимальная bridge страница и iframe shell
+  sdk/                         # versioned loader + theme adapter
+content/                       # существующие core roots
+site-content/                  # opt-in roots владельца fork; не весь content/
+node06.site.example.json        # шаблон, не действующая регистрация
+build.py                       # Neocities/hosted/embed artifacts из одной базы
+```
 
-Сохранить совместимый `points.json`; добавить отдельный manifest, например
-`root-manifest.json`, со `schema_version`, `root_revision`, `source_commit`,
-`content_digest` и списком ID/языков/дат/рёбер. Digest считается по канонически
-сериализованным данным, без времени запуска сборки. Root metadata не включает
-аккаунты, секреты и закрытый лор. Runtime не импортирует `html` как доверенный UGC.
+### Точка сайта и его приветствие
 
-Заменить mtime на явные versioned metadata даты: `created_at` фиксируется при
-первом учёте, `content_updated_at` меняется только с текстом/связями. Существующие
-даты восстановить из проверенной истории Git, а неизвестные обозначить
-`date_source=imported/unknown`, не выдавать текущий checkout-time за рождение.
-Время релиза, изменение текста и социальная активность — три разных поля.
+`sites.id = points.id = s_<uuid32>`: это одна публичная точка и одна служебная
+site registration, не две точки. `home_point_id` фиксирован на этом ID в MVP;
+`?p=`/встроенная deep link может открыть другую public point. Site point body
+— приветствие, optional preview/title сайта живут в site settings и не делают
+поле title обязательным у всех concepts. Темы/раскладка — настройки оболочки.
 
-Первый импорт — локальный артефакт конкретного проверенного commit, не загрузка
-произвольного URL. Neocities-опрос допустим позже только по фиксированному HTTPS
-адресу, с ограничением размера/редиректов/таймаутов и валидатором всего снимка.
-Никогда не брать root snapshot из пользовательского запроса.
+На регистрации создаётся pending site без public directory spam. После
+подтверждения владения в одной транзакции появляются site point, active site,
+системная симметричная связь `s_id↔all-sites`, событие и готовая embed config.
+Повтор verify не создаёт дублей. Все сайты проходят тот же протокол, включая
+NODE06 и будущую lore wiki; bootstrap core `all-sites` не создаётся посетителем.
 
-В одной транзакции: проверить версию, checksum, уникальность ID, симметрию,
-концы рёбер, даты; upsert только root-owned поля и root-origin edges; сохранить
-активную ревизию и журнал изменения. Повтор одинакового snapshot — no-op.
-Пустой/обрезанный snapshot отклоняется. Удаление корня — retire/tombstone,
-без каскадного удаления реакций, authored points и событий. Переименование
-root ID по умолчанию запрещено: отдельная миграция alias/redirect.
+**Предложение проверки владения:** уникальный challenge-файл по фиксированному
+пути на claimed HTTPS origin; для Neocities это обычный допустимый `.txt` файл.
+Сервис запрашивает только этот фиксированный путь с лимитами и SSRF-защитой,
+а не произвольный URL. Full contract — ROOT-IMPORT-V1. Public `site_id` не ключ.
+MVP один verified primary origin на site, coowners/admins имеют отдельные роли.
+Custom domain/alias добавляется после отдельного proof; не даёт вторую точку.
 
-Изменившиеся root-root рёбра согласовать с выбранной ревизией; удалять можно
-только root-origin ребро, никогда user-origin. Старые static/API ревизии должны
-сосуществовать во время доставки: frontend сообщает `root_revision`, API
-возвращает совместимость; при несовпадении refresh/read-only вместо неверной
-смеси топологии. Минимум текущая и предыдущая root revision хранятся до
-завершения перехода; неизвестный корень не позволяет создать висящую связь.
+Onboarding: создать аккаунт на trusted hosted domain → заявить origin →
+разместить proof → настроить приветствие/тему → выбрать full iframe или local UI
+SDK → скопировать snippet → выполнить диагностику. GitHub fork — дополнительный
+путь, не обязательное условие использования сервиса.
 
-### 6.2. Таблицы и ограничения
+**Права:** site owner меняет своё приветствие, источники и theme; автор меняет
+допустимое им содержимое; operator осуществляет общую abuse moderation. Владение
+сайтом не даёт контроля над соседними точками и чужими реакциями. Сайт может
+курировать отображение своей оболочки без удаления объектов общего графа.
+Уход/блокировка сайта не удаляет чужие точки; каталог хранит inactive tombstone,
+а imports/связи меняются по отдельному lifecycle. Домен не переуступается новому
+владельцу аккаунта без reverify и явной передачи авторских объектов.
 
-Исходная схема — API-V1 §5, со следующими **предложенными уточнениями**:
+`all-sites` быстро становится hub: вид должен иметь directory pagination,
+поиск и bounded field. Не загружать всех зарегистрированных соседей и их depth2
+на открытие каждого сайта. Site→all-sites — directory edge; в default локальном
+виде сам каталог виден, его массовое расширение идёт по запросу с cursor.
+Это правило раскрытия UI/API, а не отдельное пространство смыслов.
 
-| Таблица | Дополнение и инвариант |
+## 6. Данные и синхронизация Git
+
+### Источники и стабильные ID
+
+Core roots сохраняют существующие slug IDs; новый core ID `all-sites` будет
+добавлен отдельной задачей. Sites: `s_<uuid32>`, users: `u_<uuid32>`, authored
+points: `p_<uuid32>`. Site Git roots: `r_<site_uuid32>_<stable_local_id>`.
+Тип происхождения не превращает мысль в жёсткую смысловую категорию.
+
+`namespace=core` или `site_id` — происхождение/владение и защита имён,
+**не фильтр видимости и не отдельный граф**. Одинаковые слова/slug на двух
+сайтах могут быть двумя самостоятельными связанными точками. Переименование
+файла не меняет manifest stable ID. Не объединять roots по одинаковому body.
+
+Core Markdown остаётся в основном Git. Site roots — в подключённом GitHub fork
+или другом public GitHub repository того же формата. Не импортировать всю копию
+core `content/` из форка, иначе every fork размножит исходный мир. Import opt-in
+только manifest path и `site-content/`, без запуска workflow/build.py форка.
+Точная схема manifest/ссылок/проверок — [ROOT-IMPORT-V1.md](ROOT-IMPORT-V1.md).
+
+`points.json` оставить совместимым для статического demo. Versioned manifest
+фиксирует schema/root revision, исходный commit, content digest, namespace,
+даты и root edges. Даты не из mtime: creation фиксирована, update зависит от
+content/links digest, build_time отдельный. Unknown historical date помечать.
+
+### Таблицы и ограничения
+
+| Таблица | Инварианты |
 |---|---|
-| `users` | immutable ID; unique normalized handle; active/blocked; creation/activation events; отсутствие email в MVP по умолчанию |
-| `sessions` | hash криптографически случайного opaque token, expiry/revocation; никакого plaintext token в БД/логе |
-| `points` | root: author/body null; user: author/body required; `lang` nullable как metadata текста, lifecycle public/hidden/retired |
-| `point_edges` | canonical ASCII ordering, PK(a,b), CHECK a<b, FK; origin root/user; authorship отдельно |
-| `point_reactions` | PK(user,point), CHECK value IN(-1,1); no duplicate influence |
-| `user_supports` | PK(source,target), CHECK source!=target; только активные участники расчёта |
-| `events` | ordered sequence, schema version, operation ID, before/after, server time; atomic with mutation |
-| `root_revisions` | manifest digest, source revision, accepted metadata and topology |
-| `idempotency_keys` | user+operation+key, request digest, completed result, TTL; unique constraint |
-| `calculation_runs` | input revision/digest, config/algorithm versions, status, cutoff, timestamps, residual |
-| derived tables | run ID + entity ID; weights/mass/coordinates/confidence; publish pointer changes atomically |
-| `moderation_actions` | operator, target, reason code, before/after, time; private detail excluded from public feed |
+| `users`, `sessions` | Одна учётка сервиса, active state, password hash, expiry/revoke; глобальный session не передаётся чужому parent |
+| `sites` | PK=s_point ID; unique verified origin; owner; welcome source; state; immutable public ID; план ресурса |
+| `site_members` | Explicit owner/editor roles; не привилегии над shared neighbours |
+| `site_claims` | Challenge digest, normalized origin, expiry/attempt count, verified time; no implicit claim by embed |
+| `points`, `point_revisions` | PK стабильный ID; origin=root/user/site; immutable body/declared refs/citation pins/editor/source revisions, current pointer, author, lifecycle |
+| `root_sources`, `root_revisions` | site/core namespace, registered repo+ref+subtree; immutable SHA/digest, candidate/active run |
+| `point_edges` | PK(a,b), CHECK a<b, FK; одна semantic relation; provenance claims отдельно |
+| `edge_claims` | edge + source revision/creation op; removal одного import не снимает чужой claim |
+| `point_reactions`, `reaction_history` | PK(user,point), value±1, endorsed_revision, confirmed/pending; один голос независимо от site/iframe |
+| `notifications` | Личный inbox, durable fanout/cutoff/dedup, old/new revisions, read state; parent не читает личные данные |
+| `user_supports` | PK(source,target), no explicit self; один global trust graph |
+| `events` | committed order, schema/operation ID, before/after, timestamps, provenance incl site when applicable |
+| `embed_grants` | user+site+verified parent origin+capability+expiry/revocation; не доверять site_id URL как grant |
+| `idempotency_keys` | actor+operation+key/request digest; повтор transport/iframe не создаёт новый point |
+| `calculation_runs`, derived tables | input cutoff/config/version/digest, last-good pointer, reproducible caches |
+| `site_plans`, `usage_counters` | server-owned entitlements и атомарные счетчики; embedding ID не доказывает оплаченный доступ |
+| `moderation_actions` | operator, target, reason, audit; sanitized public projection |
 
-Предложение ID: `u_`/`p_` + UUID4 hex, стандартная библиотека, lowercase,
-отдельный синтаксис от root ID. Внешний ID не является правом доступа.
-Handle: начальный ASCII диапазон 3–32, casefold/lower unique; Unicode тексты
-точек свободны. Если нужны Unicode handles — сначала отдельная нормализация
-и политика confusable, не ломать unique позже.
+Индексы по обоим концам edges; reactions/trust source и target; feed sequence,
+point+sequence, author+time; origin registry; source/revision; session digests.
+Migrations/гонки на настоящем PostgreSQL, не на SQLite substitute. Рассчитать
+стоимость `edge_claims`: импорт/сайт/авторское создание имеют различимое
+происхождение, чтобы один source не удалял связь другого.
+Индексы поиска текущего текста обновляются транзакционно с revision pointer;
+исторические версии доступны по явному ID и не смешиваются с обычной выдачей.
 
-Индексы: обе стороны edge lookup (PK(a,b) + (b,a)); события `(seq)` и
-`(point_id,seq)`/`(actor_user_id,seq)`; reactions по point/value и user/value;
-trust target; points author/time; session hash и expiry. Не добавлять индекс
-каждому полю без query plan. Миграции гонять на настоящем PostgreSQL, не SQLite.
+### Атомарность, импорт и журнал
 
-### 6.3. Журнал и конкурентность
+Root import: schema/files/IDs/URLs/edges/limits → preview diff → accepted run →
+atomic source pointer. Нельзя частично опубликовать 8 из 10 файлов. Повтор commit
+— no-op. Временно пропавший GitHub не retire-ит roots; сохраняется last-good.
+Удаление файла даёт pending retire в preview, не cascade реакций/истории.
+Root source меняется только его owner; Git welcome и UI welcome взаимоисключены.
 
-Изменение строки, `last_interaction_at` и event — одна транзакция. Повтор PUT
-того же значения и DELETE отсутствующей реакции не меняет время и не создаёт
-новое событие. Смена support→oppose записывает одно operation ID и оба
-перехода (либо один versioned `reaction_changed`); feed показывает одну операцию.
-Создание точки с N связями либо фиксирует всё, либо ничего.
+Social mutation, edge, reaction, time and event фиксируются вместе. PUT same
+value / DELETE absent — no-op без повышения активности. Reactions idempotent;
+POST point обязательно request key. Смена support→oppose — один operation ID,
+с полным before/after; связанная новая точка обновляет last_interaction соседей.
+Правка обновляет активность авторской точки; изменение её ссылок — затронутых
+концов один раз за operation. Чтение, reload iframe, visitor counter,
+прочтение уведомления и import unchanged этого не делают. Возможное оформление
+старой точки трещинами выводится из last_interaction, без abandoned-флага и без
+автоматического уменьшения массы. Edit spam ограничивается квотой.
 
-Нельзя считать `bigserial` автоматически порядком commit: ранний номер может
-зафиксироваться позже. Для MVP предложен короткий transaction-level advisory
-lock вокруг всех social mutations и выдачи event sequence; никаких сетевых
-вызовов/Argon2 под этим lock. Freeze cutoff/run input использует тот же порядок.
-Это простая начальная гарантия, подлежит замеру; при масштабировании перейти
-к явно commit-ordered ingestion, сохранив API cursor. Добавить adversarial test
-с задержанным commit, чтобы не потерять событие между страницами/срезами.
+Event seq не является автоматически commit order. MVP использует короткий
+transaction advisory lock вокруг social mutation/event sequence; freeze cutoff
+согласован с тем же порядком. Network/root fetching/hash выполняются вне lock.
+Тест задержанного commit обязателен. История includes site verify/deactivate,
+source import/retire, revisions, point create, trust/reaction и moderation.
+Пароли/session secrets там отсутствуют. Body redaction может ограничить
+исторический текстовый replay и описывается политикой, не скрывается.
 
-Raw state — авторитет текущего состояния; event schema должна хранить достаточно
-для его исторической реконструкции: registration/deactivation, root changes,
-point/edge creation, reaction/trust before-after, moderation и версии настроек.
-Одного текста `point_created` без тела и списка связей недостаточно. Секреты
-никогда не попадают в журнал; для удалённого по политике контента допустимы
-redaction/tombstone, это явно ограничивает текстовый replay, не математический.
+## 7. HTTP, UGC и сессии
 
-## 7. HTTP и клиентский контракт
+Точный актуализированный draft — [API-V1.md](API-V1.md). Единый `/api/v1` для
+shared graph; site ID задаёт контекст входа/темы/квоты, а не tenant partition.
 
-Все маршруты ниже **планируемые**, до реализации команд запуска у них нет.
-Префикс `/api/v1`; исходный перечень API-V1 сохраняется.
-
-| Сценарий | Контракт/уточнение |
+| Группа | Поставка |
 |---|---|
-| `GET /health`, новый `/ready` | liveness отдельно от DB/schema/root readiness; без конфигурации и секретов в ответе |
-| Новый `GET /meta` | api/schema/root revisions, capabilities, feature switches, configured limits, latest snapshot |
-| register/login/me/logout | register 201; login 200; logout 204/idempotent; неверные credentials 401; inactive user не входит |
-| `POST /points` | 1–16 разных существующих targets, body 1–8192 Unicode символов/до 32 KiB UTF-8; эти лимиты предлагаются |
-| `POST /points` retry | обязательный Idempotency-Key, одинаковый payload возвращает тот же результат; иной payload 409 |
-| `GET /points/{id}` | root body берётся из static; user body — plain text/ограниченный Markdown; shared shape через adapter |
-| `GET /points/{id}/field` | depth 1/2 only, center+D1+D2 без повторов; nodes/edges bound, revision and truncation explicit |
-| PUT/DELETE reaction | idempotent state assignment; opposition не отдельный способ забанить текст |
-| PUT/DELETE user support | self запрещён; отсутствующий/inactive target проверяется |
-| global feed | события в server sequence, keyset pagination; raw repeated clicks не разгоняют ленту |
-| mine feed | point_created через текущую поддержку автора ИЛИ связанной точки; объединение без дубля |
+| Health/meta | live/ready, versions, capabilities, root revisions, latest snapshot, configured limits |
+| Auth | register/login/logout/me, отдельный trusted top-level login, recovery и scoped embed grants |
+| Sites | claim/verify/read/settings, welcome revision, theme, origin aliases, disable/reverify |
+| Point/field | lookup shared ID, bounded depth1/2, neighbours cursor, origins/provenance |
+| Create/edit/reactions/trust | author/source ACL, immutable revisions, atomic writes, idempotency, one vote across all sites |
+| Notifications | Личный общий inbox, diff изменённых поддержанных точек, подтверждение новой версии |
+| Feeds/search | global и mine; optional site entry view не изолирует граф; search targets bounded |
+| Root imports | owner preview/accept/status, fixed registered GitHub source, immutable revision |
+| Usage | own limits/current consumption/retry, server-authoritative counters |
 
-Field limit proposal: до 200 nodes/600 edges, стабильный порядок ID или явно
-описанный порядок snapshot, `truncated`, `next_cursor` и endpoint/параметр
-страницы соседей для остального. Сначала ограничивать SQL expansion, затем
-сериализацию, а не строить весь граф в RAM и обрезать ответ. `degree_total`
-отличать от `degree_visible`; скрытые/private targets не раскрывать счётчиками.
+Point creation proposal: 1–16 distinct existing targets, body1–8192 Unicode
+symbols/32KiB UTF8. Returned error envelope code/message/request_id, explicit
+413/422/429 Retry-After, 401/403, conflict409, stale import/version and ready503.
+Root fields выигрывает их active source revision; dynamic API не переписывает
+canonical root body. Safe snapshots доступны через same-origin bridge/hosted
+API — другие сайты не обязаны скачивать весь Git root index сервиса.
 
-Cursor feed: opaque versioned keyset, фиксированный upper cutoff, filter hash,
-last sequence, page size default 30/max100. Поддержки для mine фиксируются на
-первой странице короткоживущим query snapshot либо revision check; при смене
-подписок явный `CURSOR_STALE` и refresh. Новые события приходят в начало после
-обновления, не сдвигают уже прочитанные страницы. Cursor не содержит session.
+Field proposal cap200 nodes/600 edges; ограничить SQL expansion, не только JSON.
+`degree_total` и `degree_visible` разные. Общий directory hub `all-sites` имеет
+cursor page вместо взрыва depth2 (§5); `truncated` всегда явен. Feed limit30/max100,
+keyset upper cutoff/filter revision, mine OR-dedupe. Cursors без session secrets.
 
-Errors: `{error:{code,message,request_id}}`; 400 invalid cursor, 401 session,
-403 authorization, 404 unknown/hidden, 409 conflict/revision/idempotency,
-413 body size, 422 validation, 429 + Retry-After, 503 not ready. Не отдавать
-traceback/SQL. Успех с устаревшими derived values отмечать run ID и временем.
+Auth baseline: opaque random256bit secret, digest в БД; Argon2id для password,
+измеренная стоимость; plaintext/hash/password никогда в API/logs. Идентичность
+одна на сервис. Однако automatic silent SSO на любом embedded сайте не обещать:
+scoped grants и ограничения third-party storage определены в EMBED-V1.
 
-### Сессии, CORS и UGC
+**Недоверенный parent — принципиально новый риск сервиса:** origin verification
+доказывает владение сайтом, а не честность его JS. Поэтому bridge не передаёт
+ему глобальный bearer, password или admin API. Привилегии управления сайтом,
+Git sources, кошельком и recovery доступны только trusted management UI.
 
-- Непрозрачный случайный token не меньше 256 bit; в БД SHA-256 digest, password
-  через проверенную Argon2id библиотеку. Стоимость hash измерить на сервере.
-- Для первого direct-API клиента token только в памяти вкладки: reload требует
-  входа. Персистентный вход — отдельное решение после оценки XSS/UX; не сохранять
-  token в localStorage как незаметный default. Preference storage отделён.
-- Session lifetime proposal 24h; revoke on logout, block, password reset;
-  неактивные sessions чистит job. Восстановление доступа: одноразовый recovery
-  secret, хранимый только hash, либо честно отсутствие recovery в закрытой alpha;
-  публичная регистрация не открывается без документированного решения D08.
-- CORS exact origin `https://node06.neocities.org`, отдельный dev allowlist;
-  explicit methods/headers Authorization, Content-Type, Idempotency-Key;
-  `credentials: omit`, без cookie auth. Проверить OPTIONS и CORS на ошибках.
-  CORS не аутентификация и не защита от curl-ботов.
-- UGC не вставляется в `innerHTML` как доверенный серверный HTML. Начать с
-  textContent + безопасные ссылки или audited Markdown parser с raw HTML off
-  и sanitizer. Общие fixtures для Python root renderer и JS dynamic renderer.
-- Разрешены явные http(s) ссылки; `javascript:`, `data:`, raw iframe, handlers,
-  SVG и неизвестные схемы блокируются. Внешние изображения/видео не подгружать
-  автоматически, backend не делает unfurl/preview и не fetch-ит URL.
-- Root `html` считается build-owned только из своего проверенного артефакта.
-  Нельзя переносить существующий regex renderer на hostile Markdown без тестов
-  поддельных placeholder-токенов, кавычек, HTML entities и md:// dynamic IDs.
+CORS exact origins нужен opt-in direct clients; bridge/full embed ходят в
+same-origin API. Allowlist postMessage != CORS != auth. Все три проверки
+раздельны. `credentials: omit` в embed API с ограниченным bearer; management
+first-party cookie/session и CSRF обрабатываются отдельным контуром.
+
+UGC: textContent или проверенный Markdown parser/sanitizer, raw HTML off.
+Никаких arbitrary scripts/iframes, `javascript:`, `data:` URLs, on* handlers;
+external URL только обычные ссылки. Никакого unfurl/server fetch по тексту.
+Git roots также недоверенный Markdown: владелец форка не оператор сервиса.
+Root imports и origin verification — два narrowly-scoped network executors,
+не универсальный fetch endpoint. Сохраняются fixtures parser placeholders,
+quotes/entities, links, dynamic IDs, long input и unknown targets.
+
+### Авторство, изменение смысла и поиск при письме
+
+Права MVP: автор правит свою DB-точку и её объявленные ссылки; владелец сайта —
+своё приветствие; Git roots меняются через источник. Владение сайтом не даёт
+прав на все тексты посетителей, близость в графе пока вообще не выдаёт прав.
+Снятие своего edge claim сохраняет встречные/чужие claims. `expected_revision`
+и транзакционная проверка защищают параллельные изменения от потери текста.
+
+**Требование:** поддержавший должен узнать, что поддерживаемая точка изменилась.
+**Предложение защиты:** неизменяемые версии тела/авторских ссылок, поддержка
+конкретной прочитанной версии. После любой такой правки поддержка становится
+pending; новая формулировка не получает старую массу автоматически. Inbox
+показывает безопасный diff и позволяет подтвердить новую версию, возразить или
+снять реакцию. Изменения Git импортом подчиняются тому же правилу. Тема, входящие
+ссылки, чтение и no-op ничего не переподтверждают. Накопленные уведомления
+группируются, но история сохраняется; даже возврат старого текста требует
+явного подтверждения. Детали outbox/fanout и гонок — API-V1 §4.
+
+Редактор: выделить «воля» → поиск по всем точкам → увидеть определение, автора,
+сайт/источник и версию → выбрать → вставить ссылку либо оставить слово текстом.
+Поддерживаются фразы, клавиатура, снятие ссылки без удаления слова, одинаковые
+слова с разными значениями. Подсказки не требуют заголовка у точки, не создают
+новые точки автоматически и не превращают все совпадения в ссылки.
+
+Пример владельца: «[воля](md://point/r_example_will) влияет на длительность
+воздействия» в авторской публикации ссылается на выбранное лорное объяснение.
+Это фиксирует, что автор использует именно этот смысл. Утверждение об эффекте
+принадлежит публикации; автор определения не становится его соавтором или
+подписантом. Если нужно отдельно обсуждать причинную связь, предлагается
+выделить её в самостоятельную точку-утверждение со ссылками на оба понятия;
+типизированная онтология и обязательные теги для этого не нужны.
+
+Ссылка хранит ID смысла и выбранную версию объяснения. При чтении можно открыть
+цитируемую версию и увидеть обновление. Если цель изменилась между поиском и
+публикацией, 409 предлагает сравнить/перевыбрать либо явно цитировать старую
+доступную версию. Простое ребро остаётся между постоянными ID. **Открыто D17:**
+выбор ссылки и голос поддержки предлагается разделять, с отдельным явным
+действием «Также поддержать». До ответа владельца автоматический расход
+влияния не вводить. Пример не утверждает новую формулу игровых навыков.
+
+Географическая модерация — отдельное позднее исследование: определить расстояние
+(число рёбер/социальные координаты), право и устойчивость к манипуляциям. Близость
+может предлагать кандидатов на модерирование, но перемещение точки не должно
+само давать права изменять канон/чужой текст. В MVP только авторство, явные роли
+сайта и журналируемые действия оператора. Порог и делегирование не придуманы.
 
 ## 8. Доверие и масса: сначала проверяемый расчёт
 
-API фиксирует 1 unit base influence на active user и бюджеты people=0.5,
+API фиксирует 1 unit base influence на active user **во всём общем графе** и бюджеты people=0.5,
 points=0.5. Формула рекурсии ещё не определена. Ниже **кандидат T1**, который
 нужно принять отдельной короткой ADR после проверки синтетическими сценариями.
+
+Регистрация сайта, импорт Markdown, второе iframe и открытие того же пользователя
+на другом сайте не добавляют base mass. Site points и Git roots — terminal sinks,
+как обычные points. Каталог не передаёт массу всем сайтам.
 
 Пусть N — число активных пользователей, `T[i,j]=1/(k_i+1)` для self и каждого
 активного поддержанного человека. Иначе T=0. T row-stochastic.
@@ -374,9 +461,11 @@ w(t+1) = (1-d) * [1, ..., 1] + d * transpose(T) * w(t)
 0 <= d < 1; начальный исследуемый d = 0.5
 people_i = 0.5 * w_i
 point_budget_i = 0.5 * w_i
-contribution(i,p) = point_budget_i / n_i, если support(i,p)
+n_i = число confirmed И pending положительных реакций i
+contribution(i,p) = point_budget_i / n_i, если confirmed support(i,p)
+held_pending = sum_i (point_budget_i / n_i) * pending_positive_count_i, n_i > 0
 mass_p = sum_i contribution(i,p)
-idle = sum_i point_budget_i, для пользователей без supported points
+idle = sum_i point_budget_i, для пользователей с n_i = 0
 ```
 
 `w` — нормированное распределение эффективного влияния, не ещё один запас
@@ -389,14 +478,17 @@ idle = sum_i point_budget_i, для пользователей без supported 
 ```text
 sum(w) = N
 sum(people) = N/2
-sum(mass) + idle = N/2
-sum(people) + sum(mass) + idle = N
+sum(mass) + held_pending + idle = N/2
+sum(people) + sum(mass) + held_pending + idle = N
 ```
 
 Примеры при d=0.5: один человек без поддержок имеет w=1 и idle=0.5; поддержка
 двух точек даёт по 0.25. Два взаимно поддерживающих человека имеют w=(1,1).
 Если A поддерживает B, а B только себя, решение w=(2/3,4/3), не (1,2).
 Добавление публикаций без новых пользователей не меняет N.
+Если из двух поддержанных точек одну изменили, её 0.25 уходит в held_pending,
+другая остаётся 0.25. Подтверждение возвращает долю новой версии, снятие реакции
+явно меняет распределение. Это предложение, требующее принятия вместе с T1.
 
 Суммарная погрешность proposal ≤1e-9*max(1,N), L1 residual проверяется; максимум
 итераций 500, non-convergence/NaN/negative result не публикуются. Обход ID
@@ -417,6 +509,10 @@ block/reactivate, remove trust, remove final point support, одинаковый
 degraded-after 5 минут; уточнить по замеру. Одновременные jobs не конкурируют.
 Проверять удаление всех derived caches и полную пересборку. Не говорить, что
 последняя реакция уже изменила карту, пока её event не вошёл в опубликованный run.
+
+Старый run нельзя приписывать новому тексту: response сравнивает content revision
+и при несовпадении отдаёт mass/geometry=null, calculation_pending=true. Историческая
+масса показывается отдельно со своей версией, никогда как поддержка нового смысла.
 
 ## 9. Шесть координат и настоящий социальный движок
 
@@ -462,57 +558,70 @@ Golden datasets: пустой мир; один сторонник; четыре 
 аккаунта; permutation invariance. Публичный экспериментальный отчёт показывает
 до/после и выбранные коэффициенты до замены synthetic geometry.
 
-F–S hierarchy, recursive containment/color layers и несколько миров — P10,
-после ядра. В каждом случае отдельная ADR: чего добавляет механизм, как не
+F–S hierarchy и recursive containment/color layers — P10, после ядра.
+Несколько изолированных миров не являются текущей архитектурой: открытый лор
+владелец поместил в shared graph. Кастомный домен не создаёт другой мир. В каждом случае отдельная ADR: чего добавляет механизм, как не
 меняет raw edges/authorship, какие данные экспортируются. Не записывать
 вычисленного родителя обратно в point_edges. Пользовательская публичная точка
 должна ссылаться на отдельный user ID, не включать password/session поля и не
 давать автоматической массы по двум путям.
 
-## 10. Фронтенд и инди-веб
+## 10. Три фронтенда из одного исходника и оформление
 
-### Совместимое подключение API
+### Локальный UI + bridge
 
-1. Сначала отрисовать static root index, затем обогащать через API.
-2. `point-store` объединяет по ID. Root text/html/lang/root links из static
-   выбранной ревизии; dynamic links, reactions, mass и activity из API.
-3. По клику загрузить point+bounded field, использовать AbortController/request
-   generation: медленный ответ предыдущего центра не заменяет новый.
-4. Dynamic body рендерится безопасно; подпись ROOT POINT меняется по origin.
-5. `404`/hidden/deleted point показывает понятное состояние и путь в `/`.
-   API outage не делает динамическую точку «корневой» и не выдумывает её текст.
-6. Read/explore/feed и docking остаются. Нет JS/API — root permalink + список
-   соседей; работа без сети возможна только для уже доступных локально данных,
-   не обещать полноценный offline/PWA без отдельного cache механизма.
-7. API base/config публичны, секретов в dist нет. Feature flags включают
-   read-only/social/geometry независимо, непонимаемая версия закрывает запись.
+Neocities хранит свою HTML/CSS/JS оболочку, roots demo и versioned SDK.
+Point-store читает public dynamic data через hidden bridge; root static fallback
+сохраняется. Локальный CSS может оформлять весь этот DOM. Обновление SDK можно
+делать через Git fork/release, без runtime исполнения ответов GitHub/API.
 
-### Языки и адреса
+### Full iframe и hosted-вики
 
-- `/` — общий вход, header brand и field H1 всегда туда.
-- `/en/`, `/ru/` сохранить как совместимые входы/язык интерфейса, а не пространства
-  с разными идентичностями. Любой `?p=<id>&open=<id>` может открыть любую точку.
-- `lang` описывает текст; предложения перевода — новая точка и явная связь.
-  Не создавать translation_group, hreflang-equivalence или автоматический merge.
-- Root `/en/p/<id>/` и `/ru/p/<id>/` сохраняют свои ID и совместимость.
-  Dynamic permalink — уже существующий static shell query route, не несуществующий
-  серверный `/p/p_.../` на Neocities. Красивые пути — позже при доказанном fallback.
-- UI copy RU/EN может локализоваться независимо от графа. Редактор текста не
-  теряет черновик при навигации; хранение черновиков только opt-in на устройстве.
+Одинаковый renderer/point-store/router используется как hosted standalone и
+`/embed/v1/sites/<s_id>/`. Full iframe показывает целую вики, не только welcome:
+поле, тексты, реакции, лента и навигация по **всему** shared graph доступны по
+правам. Без явного point ID начинает с site point. При переходе на другой сайт
+в графе welcome/point меняется, shell theme остаётся того embedding сайта,
+пока человек не выбрал внешний переход. Browser back/deep links сохраняют ID.
 
-### Малый социальный интерфейс
+Hosted-вики полноценно работает вне iframe; абсолютный service permalink можно
+передать другу. Embed page имеет обычную «Открыть отдельно» ссылку. Новые site
+records/root imports не требуют deployment кода; renderer получает runtime
+config и bounded snapshots. Git mirror хранит только public static outputs,
+не live DB и не аккаунты.
 
-В карточке: текст, автор/происхождение, ссылки, support/oppose/clear, объяснение
-веса, дата появления и последнего взаимодействия. Создание — текст и выбор
-существующих targets, без обязательного заголовка/категории. Нужен bounded
-поиск targets (`GET /points?query=...` как согласованное дополнение API) либо
-явный ввод стабильного ID с lookup. Новая точка не публикуется при пустом списке.
+### CSS и пользовательское оформление
 
-Профиль: handle, ссылка на публичную user projection по D06, trust action,
-список публичных authored points; не публичные self-coordinate и данные сессий.
-Лента всегда объясняет включение: «автор, которого вы поддерживаете» или
-«связано с вашей точкой». Чтение не считается голосом и не поднимает запись.
-Отдельное client mute скрывает нежелательное, не меняя mass; opposition не mute.
+CSS родителя не наследуется внешним iframe. **Решение предлагаемого MVP:**
+локальный `.css` задаёт публичные `--node06-*` переменные на iframe/container;
+loader читает допустимые значения и посылает theme message. Full iframe
+проверяет поля и применяет только известные tokens. Сохранённая owner theme
+работает и с bare iframe без loader. Пример и exact allowlist — EMBED-V1.
+
+Произвольный URL stylesheet не принимается: такой CSS может скрывать действия,
+подменять интерфейс или обращаться к внешним адресам. Элементы входа/согласия и
+служебные сообщения не подчиняются tenant theme. Свободная стилизация доступна
+через local UI + bridge; расширенный CSS для full embed — будущая отдельная
+изолированная реализация, а не необходимая фича запуска.
+
+### Навигация, язык, доступность
+
+- Header/H1 NODE06 на demo ведёт на `/`; там общая стартовая. После появления
+  social service стартовое содержимое demo берётся из его `s_id`, с сохранением
+  существующих языковых ссылок и deep links.
+- В embed «Главная этого сайта» возвращает к `s_id`. «Все сайты» ведёт к
+  `all-sites`. Эти две команды не зависят от языка UI.
+- `/en/`, `/ru/` сохраняются как совместимые shell входы; любой `p` открывает
+  любую общую public point. Нет translation_group и языковой изоляции графа.
+- Welcome редактируется отдельно каждым owner, source UI/Git объявлен явно;
+  можно добавить ссылки на свои root MD, кнопку сайта и короткое вступление.
+- При недоступности API: static roots demo readable; full iframe fallback —
+  пояснение/retry/standalone link. Не выдавать missing dynamic point за root.
+- AbortController/request generation: устаревший ответ не меняет новый центр.
+- READ/EXPLORE/FEED и три docking варианта сохраняются; клавиатура, touch,
+  текстовый список соседей, focus, 320px viewport и reduced-motion обязательны.
+- Root/user/site происхождение видно в карточке. Цвет не заменяет подпись
+  canonical/source/import; покупка тарифа не раскрашивает достоверность.
 
 ### Баннеры 88×31
 
@@ -559,7 +668,7 @@ webring/blogroll ссылки. Webmention/IndieAuth — позже, с отде�
 
 ## 11. Лор и социальный эксперимент
 
-Ценность NODE06: посетитель действительно меняет локальный мир своим вкладом,
+Ценность сервиса: посетители разных сайтов действительно меняют общее поле своим вкладом,
 а не только читает рекламный тизер Geno-Dice. Корневые «наблюдение», «внешнее»,
 «поле» и `welcome` уже дают подходящее чувство обнаружения.
 
@@ -569,7 +678,8 @@ webring/blogroll ссылки. Webmention/IndieAuth — позже, с отде�
    честные правила участия. Работает без знания Geno-Dice.
 2. Находки для любопытного: редкие фрагменты/переклички и следы прошлых эпох;
    открываются обычной навигацией, не требуют массового голосования.
-3. Авторская связь с каноном: только отдельно отобранные публичные тексты;
+3. Открытый лор через будущий `wiki.geno-dice.com`: своя site point и Git roots
+   в том же shared graph, только отдельно отобранные публичные тексты;
    полное объяснение остаётся в общей документации и закрытом авторском слое.
 
 Не создавать сейчас «секретные» public JSON-флаги с расшифровками. Всё в public
@@ -620,192 +730,259 @@ MVP в корпоративную платформу:
 - Logs: request ID, status, duration, counters; без Authorization/password/body,
   query-токенов и дампов. IP retention минимальна и объявлена.
 
-## 13. Амстердам: отдельный API-сервис
+### Квоты и будущая монетизация
 
-Текущая серверная установка **не исследовалась по SSH в этой задаче**. Host
-resources, Python/Postgres versions, точный путь, service user, свободный порт,
-DNS и актуальность recovery нужно проверить до развертывания.
-Общие runbooks местами расходятся по свежести; текущая инвентаризация важнее
-их старой таблицы. Не копировать настройки wallet или Wagtail для NODE06.
+Первый шаг монетизации — простая явная ссылка «Поддержать сервис» на согласованную
+страницу существующего кошелька. Не внедрять оплату внутри iframe, не выдавать
+после return URL тариф или GC. В этом этапе нет SDK acquiring, webhook, invoice,
+платёжных секретов, новой валюты или импорта финансовой базы на Амстердам.
 
-Предлагаемый host profile `geno-dice`, отдельный сервис `node06-api`, отдельная
-Postgres БД/роль, runtime user без shell/sudo; app слушает только loopback.
-DNS вроде `node06-api.geno-dice.com` — кандидат, не существующая запись.
-Nginx + TLS проксирует только нужный API; сайт/HTML остаются на Neocities
-за исключением возможного отдельно согласованного Free adapter.
+С самого MVP заложить quotas/usage/feature flags, но не выдумывать цены:
+`site_plans` и server-owned entitlements. Первый free plan и operator trial
+используют одну схему будущих tiers. Donation сама по себе не меняет лимиты.
+Если появятся платные планы — wallet-owned подтверждение оплаченного права,
+идемпотентная доставка entitlement и отдельное согласование продукта.
 
-Приложение владеет app config schema и примером unit; привилегированная установка,
-inventories, Nginx, backups и rollout принадлежат `geno-dice-deploy`.
-В исследованном `deploy/deploy-all.sh` NODE06 отсутствует в allowlist.
-Нельзя обещать уже работающую команду `--project node06`.
+Метрики лимитов: site roots count/bytes, import frequency/candidate size,
+verified aliases, cumulative source storage, authenticated write rate,
+concurrent jobs и costly reads. Вдобавок global/user/IP quotas. Один public
+`site_id` легко скопировать: не выставлять счёт только по входному query/site ID.
+Signed/scoped embed grants дают attribution, а анонимное чтение всё равно
+защищается общими budget/cache/abuse ограничениями. Host header и Referer не
+доказательство покупателя; обход лимитов через standalone/import API запрещён.
 
-Порядок первого запуска (будущая отдельная авторизованная задача):
+Предложение начальных мягких пределов на site: 100 root MD, 1 MiB суммарного
+root text, один import одновременно, не чаще одного приёма раз в 15 минут.
+Точные размеры проверить по нагрузке; это research defaults, не объявленный
+тариф. Социальные ограничения user/shared остаются отдельными: через многие
+сайты нельзя создавать N аккаунтов/голосов за одного участника автоматически.
 
-1. Проверить host identity/access и read-only inventory; выбрать пути/порт/домен,
-   ресурсные лимиты, runtime vs deploy identities. Без изменения соседних сервисов.
-2. Проверить точный reviewed application SHA, lockfile, CI и migration head;
-   read-only GitHub deploy key с доступом только к NODE06 либо reviewed artifact.
-3. Подготовить secrets вне Git и dist, root-owned env mode0600; systemd читает
-   env, runtime получает только нужные значения. Права runtime и migration роли
-   разделить по возможности, не использовать DB superuser.
-4. Проверить backup и restore на disposable database. Перед миграцией существующих
-   данных обязательный dump/checksum/restore evidence.
-5. Выполнить Alembic под deployment lock ровно один раз, импортировать validated
-   roots, посчитать первый snapshot. Ни одна миграция не стартует от каждого worker.
-6. Поднять один API worker, health/readiness локально; проверить restart и
-   доступность БД, запрет внешнего DB/listener access.
-7. Добавить Nginx/TLS, проверить конфиг, HTTPS, OPTIONS, exact origin и ошибки.
-8. Выполнить smoke с реального Neocities origin; только затем включить UI записи
-   и ограниченную alpha. Не использовать реальные чужие данные в smoke.
-9. Настроить отдельные job/backup/health проверки и ресурсные ограничения;
-   не включать автоматически общий deploy timer для всех приложений.
-10. Проверить наблюдаемый интервал alpha, затем отдельное решение open launch.
+Показывать usage/remaining/reset и причину 429; заранее предупреждать о лимите.
+Не удалять общие точки после понижения тарифа; сначала остановить новые imports
+или дорогостоящие операции, сохранить чтение/export и last-good state. Paid
+capacity не даёт массу, ранжирование, канон, дополнительные голоса или moderation.
+Server circuit breaker может временно заморозить costly imports/geometry,
+сохраняя bounded read и last-good snapshot. Donor badge, если появится, отдельный
+визуальный канал от influence/confidence.
 
-### Версии, CI и rollback
+## 13. Амстердам: hosted frontend, embed и API
 
-- Neocities workflow публикует только `dist/`; backend, `.env`, тестовые БД и
-  operational docs туда не попадают. Документационный PR не обязан запускать deploy.
-- Разделить static checks, backend tests с PostgreSQL, lint/migrations/security
-  checks. `main` frontend deployment условно только при relevant path changes;
-  workflow changes также запускают проверки. Не выдавать production secrets PR jobs.
-- Backend delivery — reviewed SHA + explicit operator action на первом этапе.
-  Build один artifact и продвигать его, не разные случайные dependency resolution.
-- Порядок совместимого релиза: additive DB/API capability → root compatibility →
-  frontend. Удаление старого API/полей только после окна перехода и новой версии.
-- Rollback: переключить frontend read-only/предыдущий dist, остановить snapshot
-  writer при его ошибке, вернуть прошлый compatible API SHA и published run.
-  Не запускать слепой `alembic downgrade`: для несовместимой миграции нужен
-  конкретный restore plan и учёт записей после backup.
-- Backup proposal: daily encrypted off-host DB dump, 7 daily/4 weekly копии,
-  root manifests/revisions/config schema; секреты восстанавливаются отдельным
-  защищённым путём. RPO24h/RTO4h — исходные цели на согласование и restore drill,
-  не уже обеспеченная гарантия.
-- Метрики: error rate, p95 latency, DB pool, job duration/failure, snapshot lag,
-  rejected writes, disk/backup age. Alert на значимое отклонение, без публичных
-  leaderboards персональных действий для операционного мониторинга.
+Live сервер **не исследовался** этой задачей. До deployment нужны inventory,
+точные домены/порты/пользователи/ресурсы/DB, совместимость текущего recovery и
+соседних сервисов. Backend/frontend остаются независимы от Wagtail и кошелька.
 
-## 14. Пакеты работы и критерии завершения
+Proposed routes, не действующие URL:
 
-Каждый пакет — отдельная небольшая feature-ветка/PR. Исполнитель сначала
-сверяет state таблицы с кодом, фиксирует решение/контракт, затем пишет код и
-тесты. Не реализует спорные исследования между строк CRUD-задачи.
+```text
+<service-origin>/                  hosted wiki + user-facing service entry
+<service-origin>/sites/<s_id>/     standalone entry конкретного сайта
+<service-origin>/api/v1/           same-origin API для hosted
+<embed-origin>/bridge/v1/<s_id>/   маленький transport document
+<embed-origin>/embed/v1/<s_id>/    полный UI
+<embed-origin>/api/v1/             scoped API proxy к тому же backend
+<auth-origin>/                    top-level login/management, frame-ancestors none
+wiki.geno-dice.com                 будущий официальный frontend, fixed lore s_id
+```
 
-| ID | Зависит от | Содержание | Проверка завершения | Откат/граница |
-|---|---|---|---|---|
-| P00 | — | Подтвердить transport D01, decision register; homepage link; убрать ложную локализацию; безопасная публикация | Header/H1→`/`; любая точка через RU/EN; publish не трогает чужие файлы | Только static; backend ещё нет |
-| P01 | P00 архитектура | `backend/`, config, lock, health/ready, PostgreSQL CI, SQLAlchemy/Alembic, AGENTS | Fresh DB upgrade; startup fails safe без config; no source side effects | API выключен |
-| P02 | P01 | Stable root metadata/manifest/import и compatibility | Idempotency, corrupted snapshot rollback, retire, no UGC overwrite, old/new release | Старый root registry остаётся |
-| P03 | P01 | Accounts/sessions, hash, expiry/revoke, quotas, D08 recovery | Duplicate handle race, expired/revoked/blocked token, redacted logs, hash timing/resource bounds | Registration off |
-| P04 | P02,P03 | Points+edges+events, keyset order, idempotency, read/field API | C linked A,B exactly once; missing target full rollback; concurrent retry; bounded depth2 | Read-only writes switch |
-| P05 | P04 | Reactions/trust, timestamps, global/mine feeds | State no-ops; switch reaction; no self-support; no duplicate feed; commit-order test | Derived mass ещё не обещать |
-| P06 | P05,D03 | T1 ADR, pure trust/mass + snapshots | Conservation, clique/Sybil distinction, deterministic rebuild, failure keeps old snapshot | Last good run |
-| P07 | P06,D05 | Geometry experiment, fixture report, approved algorithm | Six-axis contract, cold start, opposition, stability, confidence, no fake placement | `coordinates=null` |
-| P08 | P04–P07 | Point-store/API client/UI social; language independence; accessibility | Full E2E; slow/offline API; safe Markdown; back/forward; keyboard/mobile | Static fallback |
-| P09 | P00; параллельно по этапам | Own/neighbor badges, asset credits, public lore crumbs, root permalinks/feed/export design | 88×31 actual pixels, rights/provenance, links, no spoilers, reduced-motion | Static asset rollback |
-| P10 | P07,P08,D06,D07 | User-concept projection, reusable engine boundary; optional F–S/multi-world ADR | No dual influence, independent worlds, authorship unchanged, snapshot explanations | Separate features off |
-| P11 | P03–P09 | Moderation/recovery/export/retention, load/security checks, deploy package | Abuse paths bounded; moderation leaks absent; restore drill; exact release manifest | Writes/registration off |
-| P12 | P11,D01,D09 + deployment authority | Amsterdam staging/alpha, real Neocities E2E, observation, open launch | Public-origin smoke, backup/rollback, error/latency evidence, owner launch decision | Reviewed rollback runbook |
+Точное разделение DNS можно сократить на старте, если auth/management всё равно
+не встраиваются и не принимают theme/custom content. Предпочтение — изоляция
+management от embed origin. Это не три базы: same backend DB, same public graph,
+одни provenance и события. Full assets доставляются одним версионированным
+artifact в hosted/embed outputs; frontend fixes не расходятся между копиями.
 
-P09 можно выполнять независимо от backend. Это порядок независимых задач,
-не поручение автоматически запускать других агентов. Размеры пакетов уточнять
-по фактическим diff; особенно P07 и P10 дробить на исследование и реализацию.
+Nginx TLS: same-origin API proxy, security headers **по маршрутам**.
+Для embed/bridge frame-ancestors из зарегистрированных точных origins по site;
+для generic read-only embed отдельный явно public режим; для login/manage
+frame-ancestors none. Не ставить глобальный X-Frame-Options DENY/SAMEORIGIN на
+embed. CSP cache key включает site/origin policy revision, иначе можно выдать
+заголовки другого tenant. Credentials-bearing ответы не shared-cache.
 
-### Обязательная матрица проверок
+Привилегированные scripts/Nginx/backups принадлежат `geno-dice-deploy`. NODE06
+пока отсутствует в deployment allowlist. Добавить целевой project только после
+review, не включать автоматически общий timer всех сервисов.
 
-| Группа | Сценарии |
+Порядок первого rollout, будущая отдельно авторизованная задача:
+
+1. Inventory/trusted host; выбрать origin topology, DB/runtime/deploy roles,
+   limits. Проверить DNS/TLS, не переносить wallet на Амстердам.
+2. Exact reviewed SHA + lock + CI; create/test-restore DB backup, validate env
+   без вывода значений. Отдельный runtime user, loopback API, DB least privilege.
+3. Alembic под single deployment lock; import core roots/all-sites, demo pending
+   site, prove origin, activate; первый shared snapshot. Без fake user mass.
+4. Раздать versioned hosted/bridge/embed assets, установить route-specific CSP,
+   проверить auth denial-of-framing, origin revoke и cache isolation.
+5. Два контролируемых внешних сайта (включая Neocities Free) проходят full и
+   bridge E2E, локальный CSS tokens, вход с cookies off, shared votes и deep links.
+6. Третий fixture fork проходит import preview/accept и correction/retire;
+   ломаный/враждебный import оставляет last-good. Не запускать GitHub code.
+7. Проверить quotas, owner separation, downtime/restore/rollback, bounded
+   all-sites hub, failover «Открыть отдельно», alerts и operator moderation.
+8. Alpha ограниченного числа владельцев; затем open onboarding по измерениям.
+   Будущий официальный lore frontend добавляется как site, не новая база.
+
+### CI, совместимость и восстановление
+
+- Static source один; Neocities bundle и hosted/embed artifacts versioned.
+  Только allowlisted public roots/JS/CSS/assets в outputs. Не shipping DB/env.
+- CI: static checks; backend PostgreSQL/migrations; malicious imports;
+  protocol/auth/CSP/theme E2E на разных origins; contract golden fixtures.
+  PR не получает production credentials. CI форка — у владельца форка, без
+  доступа к нашим runners, tokens и deploy keys.
+- SDK/protocol major pin; сервер поддерживает текущую и предыдущую совместимую
+  версию. Old loader получает readable upgrade notice, не непонятную поломку.
+- Runtime site/theme/root updates без deploy статической демо-сборки. GitHub
+  polling отдельно bounded job, secrets отсутствуют для public repo read.
+- Rollback: запрет writes/import intake → last-good frontend/protocol + API SHA
+  + root/source pointers + snapshot; shared data не теряется от возврата assets.
+  Миграции additive; несовместимый schema rollback только с reviewed restore и
+  учётом новых writes, не автоматический downgrade.
+- Backup proposal daily encrypted off-host dump, 7daily/4weekly, manifests и
+  source revisions/config schema. RPO24h/RTO4h — цели, доказать restore drill.
+- Метрики: errors/p95, DB pool, shared snapshot lag, import backlog/bytes, costs
+  по безопасному attribution, quota reject, disk/backup age. Logs без tokens,
+  private text и полного содержимого пользовательских страниц.
+
+## 14. Пакеты работы и приёмка
+
+Это новая последовательность редакции 2: старые ссылки на P-номера сверять с
+этой таблицей. Каждый пакет завершается малым PR, evidence и обновлением Progress.
+
+| ID | Зависит | Задача | Критерий завершения |
+|---|---|---|---|
+| P00 | — | Прототип bridge/full embed/тема/auth handoff под точным CSP Free | Два разных origins; CSP parent блокирует fetch, bridge roundtrip работает; blocked storage, timeout/reload, spoof message rejected; real-origin proof отдельно |
+| P01 | P00 contracts | Backend/config/PG/migrations/CI, hosted/embed build targets | Fresh PG upgrade; independent static build; exact artifact/version/config |
+| P02 | P01 | Site claim/verify/welcome/all-sites/settings | Два verified сайта дают две `s_` точки в одном графе; duplicate/reclaim/unauthorized changes rejected |
+| P03 | P01,P02 | Auth/recovery/scoped embed sessions | Нет глобальных credentials у parent; no third-party cookie dependency; revoked origin/grant fails; consent grants exact action |
+| P04 | P01,P02 | Core + site Git import, stable ID/provenance/edge claims | Manifest validation, preview/accept, namespace collisions, fork/core dedup, missing target/SSRF/symlink/cross-source deletion rejected |
+| P05 | P02–P04,D16,D17 | Public point/field/search, create/edit/revisions/reactions/trust/events/inbox | Atomic idempotency, commit-order, bounded hub, one user vote across sites, same point in hosted/full/bridge; author ACL, edit/reaction races, durable notifications |
+| P06 | P05,D03,D16 | Pure trust/mass + shared snapshots | Conservation N incl held_pending, stale-revision gate, no site/fork mass, deterministic rebuild and last-good publish |
+| P07 | P06,D05 | Geometry prototype/approved formula | Six values, cold start, opposition/confidence, cross-site layout consistency, no false certainty |
+| P08 | P03–P07 | Общий renderer/SDK/standalone/full/local UI, semantic editor/diff/inbox | Default `s_`, full navigation, deep links/history, local CSS tokens, version-pinned word links, plain words, homonyms, old SDK compatibility, keyboard/mobile |
+| P09 | P02,P08 | Onboarding UI, docs/snippets, demo, badges/link-to-us | Nontechnical owner connects Free site; CSS preview; copy snippet has no secret; correct support/source links |
+| P10 | P06–P08 | User-concept/F–S research | ADR + fixtures; derived hierarchy не меняет raw source/authorship; optional feature off |
+| P11 | P02–P09 | Moderation/export/quotas/usage; wallet link later | Owner isolation; no arbitrary CSS/script; downgrades retain data; wallet plain link only |
+| P12 | P11 + explicit deploy authority | Amsterdam real alpha + Free E2E + load/restore | 2 independent sites+fork, hosted+both embeds; no secret leak; measured host budget; operator rollback |
+| P13 | P04,P08,P11 | Открытый lore frontend на будущем wiki.geno-dice.com | Lore site point и approved roots в shared graph; general links work; only authorized editors change canonical sources |
+| P14 | Measured demand | Resource tariffs/entitlements | Pricing separately approved, server-enforced quotas, wallet verified billing contract if needed; payment never buys influence |
+
+P00 исследует механизм и не открывает production; P12 доказывает реальную
+доступность на Free. Не ждать геометрию для read-only embed alpha, но не объявлять
+alpha завершённым concept engine. P09 badges можно делать раньше независимо.
+
+### Матрица обязательных проверок
+
+| Группа | Проверки |
 |---|---|
-| Build | invalid/duplicate IDs; missing/asymmetric/self edges; intentional orphan; stable dates; reproducible manifest; own header root URL |
-| PostgreSQL | empty upgrade, last release upgrade, FK/check constraints, unique races, rollback partial create/import, prepared restore |
-| Auth | success/failure, no user enumeration details, expiry/revoke, inactive state, registration limits, password length bounds, no plaintext secrets |
-| HTTP | methods, JSON/content type, 413/422/429, CORS+OPTIONS/error responses, prohibited origin, revision conflict, bounded queries |
-| Graph | same C retry, duplicate/self targets, old↔old mutation absent, D1/D2 uniqueness, overflow cursor, user/root collision |
-| Events/feed | exact state transition, no-op timestamp, no read bump, commit inversion, cutoff race, mine OR dedupe/filter change |
-| Math | conservation, idle budget, roots zero initial mass, isolated/cyclic/star graphs, no doubled user projection, deterministic rebuild |
-| Renderer | quotes/entities, JS/data URLs, placeholders/raw HTML, malformed md links, giant body, unknown ID, unsafe embeds |
-| Browser | desktop+mobile/touch, keyboard/focus, 320px viewport, reduced-motion, login/logout, RU↔EN points, history/deep links, slow/stale response, no storage |
-| Operations | job overlap/crash, failed migration/import, backup restore, last-good snapshot, DB down, API down from real Neocities |
-| Publication | dist contains only allowlisted public inputs, no private lore/secret paths, badges credit, source/license links |
+| Existing static | 23 initial roots/35 edges и orphan сохраняются до intentional content additions; header/H1→`/`; RU/EN cross-links |
+| Site registry | Verify replay/race, wrong file/origin, reused domain, alias proof, owner/coowner scope, delete/tombstone |
+| Shared graph | A/B/hosted видят один ID/одну реакцию; general↔lore navigation; site count не входит в N |
+| Bridge | origin/source/session/nonce/version/size checks, request timeouts/reload, no arbitrary URL/method, 429/backpressure |
+| Auth | blocked cookies/popup, spoof auth result, PKCE/code replay, logout across grants, parent cannot get global token or admin action |
+| Theme | parent CSS doesn't auto-cross; allowlisted local tokens do; malicious CSS values/url ignored; auth unthemeable |
+| Import | public pinned SHA, repo proof, GitHub unavailable, changed branch, partial files, traversal/symlink/LFS/html, root IDs protected |
+| Root edges | intra-source reciprocity, explicit external refs, edge claims independent, import retry/retire leaves user data |
+| API/PG | FK/unique/race, idempotency, strict validation, bound search/field hub/feed, CORS and route-specific frame CSP |
+| Edits/search | author vs site ownership; semantic homonyms/phrases/plain text; citation revisions; diff inbox; source edits; pending/reaffirm races |
+| Math | pending holds/stale revision gate/cycles/stars/idle, N conservation globally, unchanged on second site, mass not degree, reproducible cutoff/rebuild |
+| Lifecycle | owner transfer/revoke, code version old SDK, source revisions rollback, database restore, shutdown/degraded fallback |
+| Quotas | simultaneous writes/imports atomic, cheap ID spoof no entitlement, global+site+user limits, downgrade no deletion |
+| Accessibility | keyboard/focus, iframe title, 320px, mobile scroll/resize, reduced motion, external-open fallback |
+| Lore/finance | no hidden source in public artifacts; source ACL despite same graph; wallet return URL never grants paid plan |
 
-Синтетическая нагрузка proposal: 1k accounts, 10k points, 100k relations/reactions,
-hub with high degree, 20 concurrent readers. На согласованной машине измерить
-bounded field/feed p95 (начальная цель <500ms API), snapshot duration (<30s для
-60s cadence), memory и отсутствие остановки соседних сервисов. Это целевые
-параметры, не результаты текущих измерений.
+Нагрузочная модель proposal: 100 sites/1k users/10k points/100k edges+reactions,
+плюс hub10000 sites stress, 20 concurrent readers и overlapping import jobs.
+Измерить p95 bound field/feed (<500ms исходная цель), snapshot<30s при cadence60s,
+import queue fairness/memory и диск. Это цели исследования, не результаты.
 
 ## 15. Реестр решений
 
-| ID | Решение | Рекомендация/статус | Блокирует |
-|---|---|---|---|
-| D01 | Neocities transport | Free CSP подтверждён; Supporter — проще; Free adapter только отдельный spike/явное исключение | Реальный social launch |
-| D02 | Repo/stack | Один repo, backend/; Python/FastAPI/Postgres соответствует API draft; sync ORM предложен | P01 |
-| D03 | Trust formula и смысл support/oppose | T1 кандидат; support распределяет бюджет, oppose отдельный signal; no default follow=authority | P06 |
-| D04 | Linking/edit lifecycle | 1–16 links при создании предложено; no edits/arbitrary old↔old в MVP; corrections через новые точки | P04 |
-| D05 | Координаты/пороги/полюса | Self anchors vs emergent signed layout; требуется просмотр prototype; null до решения | P07 |
-| D06 | Пользователь-концепт | Отдельная безопасная graph projection, auth остаётся users; exact edges/actions ещё не определены | P10 |
-| D07 | F–S и recursive layers | Часть дальнейшего движка на отдельную ADR; не обязательная скрытая миграция MVP | P10 |
-| D08 | Recovery, moderation, export, retention | Минимальный operator CLI + опубликованные правила до open signup | P11/open launch |
-| D09 | Host/DNS/resources | Amsterdam задан; точный endpoint/user/DB/port и delivery устанавливаются inventory | P12 |
-| D10 | Лор и баннер | «Тихий узел» предложен; публичные фрагменты выбираются отдельно, никакой авто-канонизации | P09 content approval |
+| ID | Решение | Статус/остаток |
+|---|---|---|
+| D01 | Bridge + full iframe, Neocities Free | Выбрано владельцем; production feasibility проверяется P00/P12, не покупать Supporter |
+| D02 | Один repo/API/DB и hosted frontend Amsterdam | Выбрано направление; versions/domain topology подтвердить P01/P12 |
+| D03 | Смысл support/oppose и T1 formula | Исходный API + проверяемый кандидат §8; коэффициент ещё не принят |
+| D04 | Автор редактирует свои точки и ссылки | Новое требование отменяет общий create-only запрет; чужие пары/источники недоступны |
+| D05 | Social coordinates | Self anchors vs emergent layout, требуется prototype/owner review |
+| D06 | Users as mapped points | Отдельная безопасная projection, no double mass; details deferred |
+| D07 | F–S | Исследование после reliable graph, не обязательная скрытая миграция MVP |
+| D08 | Recovery/retention/moderation | Определить публичные правила до open signup |
+| D09 | Host/DNS/cost budget | Amsterdam выбран; endpoints пока placeholders, live inventory требуется |
+| D10 | Баннер/публичные lore fragments | Выбор конкретных assets/text до публикации; no full hidden explanation |
+| D11 | Site points/welcome/shared graph | Выбрано: `s_`, default entry, `all-sites`, owner configured welcome |
+| D12 | CSS | Local UI unrestricted owner CSS; full embed theme tokens + saved theme предложены; arbitrary CSS не MVP |
+| D13 | Fork Markdown roots | Включено по запросу; manifest/proof/preview/id namespace предложены в ROOT-IMPORT-V1 |
+| D14 | Open lore | Решено: свой entry в shared space, не отдельный world; editing ACL independent |
+| D15 | Donation/tariffs | Позже wallet link; quotas сейчас как architecture, цены и billing отдельно |
+| D16 | Правки и уведомление поддержавших | Требование принято; version endorsement/pending/held бюджет — предложение для утверждения до P05/P06 |
+| D17 | Ссылка на слово-смысл | Поиск/ручной выбор нужны; separate support action предложен, автоматический голос не утверждён |
+| D18 | Географическая модерация | Идея владельца на потом; MVP авторство/явные роли, без proximity ACL |
 
-Не задавать владельцу все эти вопросы одновременно. Для следующей задачи P01
-достаточно уточнить/принять архитектурную запись; геометрию обсуждать с готовыми
-примерами. Нерешённый D05 не мешает root/auth/graph. Неоплаченный D01 не даёт
-основания переносить фронт или покупать подписку самостоятельно.
+Следующему исполнителю достаточно P00 и transport/auth/theme contract. Не
+спрашивать заново, нужен ли Supporter или изолированный lore world: ответы
+получены. Спорную формулу обсуждать на fixtures, а не назначать во время CRUD.
 
-## 16. Передача другому агенту
+## 16. Передача и состояние
 
-### Вход в следующую сессию
+### Начало следующей сессии
 
-1. Прочитать этот план, API-V1 и ближайшие AGENTS; проверить origin/status,
-   remote branches и свежую общую документацию/очереди. Не запускать FIRST-PUSH.
-2. Сопоставить таблицу Progress с кодом: future paths/CLI здесь не реализация.
-3. Выбрать первый невыполненный пакет, его dependencies и D-решения. Для
-   обычного исполнителя дать один законченный пакет с fixtures и критериями.
-4. Не переносить schema/behavior из Cringewiki или старого engine ТЗ без
-   сравнительного решения. Hexrelatum остаётся самостоятельной статической wiki.
-5. Работать feature branch `f-YYYYMMDDHHMMSS-two-words`; не коммитить чужие
-   изменения; при worktree — `.worktrees/<repo>/` или `/tmp`.
-6. До push: поддерживаемые checks, compile/build, git diff --check. Нужен PR в
-   actual integration branch (пока main); protected merge/deploy отдельны.
-7. Обновить Progress, API/decision docs и центральную project card. Handoff
-   содержит exact commit, что проверено/не проверено, команды и следующий пакет.
+1. Прочитать этот план редакции2, API-V1, EMBED-V1, ROOT-IMPORT-V1 и общую
+   project card. Проверить AGENTS, origin/status, remote branches, очереди.
+2. Сверить Progress с кодом: все будущие routes/tables/CLI в документах — target,
+   а не уже существующий сервис. Статический navigation fix отдельный commit.
+3. Взять один packet с dependent decisions/tests; future code references не
+   команды для копирования в production. Не исполнять FIRST-PUSH/publish helper.
+4. Не разделять граф по site_id и не создавать отдельную lore DB/world. Site
+   ownership/provenance/квоты нужны, но scope редактора не граница смысла.
+5. Feature branch `f-YYYYMMDDHHMMSS-two-words`; exact staging; preserve user work.
+   Registered worktrees только `.worktrees/<repo>/` или `/tmp`, clean removal
+   после опубликованного handoff. Ни protected merge, ни deployment без запроса.
+6. Validate supported checks/diff; обновить Progress и contract docs. Handoff:
+   exact commit, commands, tests actually run, open decisions, next packet.
 
-### Готовая постановка для продолжения
+### Готовая постановка следующему агенту
 
-> Продолжи NODE06 как переосмысленный движок концептов. Прочитай
-> docs/IMPLEMENTATION-PLAN.md и docs/API-V1.md, общую карточку NODE06 и инструкции.
-> Сверь origin, ветки и состояние работы. Реализуй только согласованный пакет
-> P01 (backend scaffold/config/DB/migrations/CI), сохрани независимую сборку
-> Neocities. Не добавляй геометрию, обязательные теги, кошелёк или legacy F–S.
-> Сначала проверь статус D02 и архитектурное разрешение. Добавь реальную
-> PostgreSQL проверку и оставь точные команды в README. Не публикуй на сервер,
-> не покупай тариф, не сливай protected branches. После проверки обнови
-> Progress и оставь конкретное задание на P02.
+> Продолжи NODE06 по docs/IMPLEMENTATION-PLAN.md редакции2. Это общий сервис
+> вики для сайтов Neocities Free: `s_` entry points в одном shared graph,
+> bridge и full iframe, hosted frontend Amsterdam, fork Markdown roots и
+> будущая lore wiki в том же графе. Прочитай EMBED-V1/API-V1/ROOT-IMPORT-V1,
+> общий контекст и инструкции. Выполни только P00: локальный прототип двух
+> origins с точным CSP, bridge/full embed и theme tokens, проверка auth handoff
+> без выдачи global credential parent. Используй synthetic API и данные,
+> проверь поддельные сообщения, reload/timeout и блокировку storage. Не
+> внедряй geometry/платежи, не публикуй на сервер и не покупай Supporter.
+> Запиши фактические результаты и ограничения, подготовь P01.
 
 ### Progress
 
-| Пакет | Статус на 12.09.2026 | Доказательство/следующее действие |
-|---|---|---|
-| Исследование | Выполнено | Код, 23 roots/35 edges, browser UI, live CSP, API и общий лор изучены |
-| План | Подготовлен | Этот документ; предложения не выдаются за принятые формулы |
-| Header/H1 → `/` | Исправлено и проверено | Build, 8 header links, 4 field headings, browser click → `/`; публикация после merge/release |
-| Остальная P00 | Не начата | Согласовать transport; language routing/metadata/publish cleanup |
-| P01–P12 | Не начаты | Backend/DB/server/баннерные assets в этой сессии не создавались |
+| Область | Статус на 13.09.2026 |
+|---|---|
+| Исследование исходника | 23 root points/35 edges, browser UI, API и общий лор проверены 12.09 |
+| CSP | Direct external fetch запрещён, external frame разрешён; HEAD повторён 13.09 |
+| Header/H1 → `/` | Source fix и browser/build verification выполнены, feature branch; main не изменён |
+| План редакции2 | Сервис/sites/bridge/full/hosted/fork/styles/quota/lore, edits/inbox/search handoff подготовлен |
+| Проверки редакции2 | 5 Markdown files / 20 local links / 4 JSON examples; diff check; общий context validator 136 Markdown и 17 queue records. Runtime в этой правке не менялся |
+| P00–P14 | Не реализованы: protocol/backend/site registry/import/auth/tariffs пока документы |
 
-## 17. Идеи, которые усиливают проект
+Предыдущий план single-site/API-only сохранён историей Git, не является
+действующим target. Текущая сессия меняет документацию, не runtime/production.
 
-- **Объяснимое влияние:** показать «куда ушла моя единица» и почему изменился вес.
-  Это отличает эксперимент от непрозрачного рейтинга и выявляет ошибки формулы.
-- **Атлас эпох:** сохранять законченные snapshots и позволить позже сравнить
-  поле между двумя датами; история изменений становится частью повествования.
-- **Маршрут находки:** отдельная точка «я пришёл отсюда»/ручные соседские ссылки,
-  без обязательного трекинга каждого посетителя и без искусственного engagement.
-- **Личный переносимый архив:** экспорт своих текстов/рёбер в Markdown+JSON;
-  чужие записи и operational secrets туда не входят. Это усиливает инди-веб.
-- **Опыт несогласия:** объяснить отличие oppose, mute и report; не давать
-  коалиции противников автоматически стирать чужую мысль или объявлять её ложной.
-- **Тишина — допустимое состояние:** маленькое поле без активности остаётся
-  ценным; старение — визуальное, не автоматическое удаление или наказание.
+## 17. Предложения по развитию
 
-Приоритет: сначала честный работающий маленький мир, затем доказанная геометрия,
-затем новые формы рекурсии. Ни один этап не требует забыть замысел движка.
+- **Веб-кольцо с памятью:** «Все сайты» — общий каталог живых входов. Кнопка
+  «соседний сайт» ведёт по явной связи и сохраняет внешний адрес владельца.
+- **Один вклад — много окон:** одинаковая мысль видна на нескольких сайтах под
+  разным оформлением, сохраняя ID/автора/историю, без копирования сообщений.
+- **Проверяемое происхождение:** карточка root с ссылкой на Git commit и source
+  owner; official lore source узнаваем, не превращая соседние мысли в канон.
+- **Переносимость:** site owner может выгрузить settings/welcome/свои roots;
+  пользователь — свои тексты/действия. Чужая общая база и credentials не export.
+- **История эпох и объяснение влияния:** snapshots и «куда ушла моя единица»
+  делают смысл эксперимента наблюдаемым; без hidden votes и fake participants.
+- **Локальный блокнот посетителя:** opt-in device drafts; owner сайта не получает
+  доступ к чужой общей сессии. Сохранённый draft не равно опубликованная point.
+- **Честная экономия:** quota dashboard и ограничения дорогих imports раньше
+  платёжной системы. Тариф оплачивает серверные ресурсы, не место в истории лора.
+
+Полноценная hosted-вики одновременно служит демонстрацией, fallback для
+ограниченных браузеров и основой full embed. Это уменьшает число отдельных
+клиентов, которые команде пришлось бы поддерживать.

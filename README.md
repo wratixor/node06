@@ -63,14 +63,21 @@ The baseline backend/API design is recorded in [docs/API-V1.md](docs/API-V1.md).
 The detailed implementation sequence, open decisions and agent handoff are in
 [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) (Russian).
 
-The target backend lives under `backend/` in this repository and deploys as an
-independent API service on the Amsterdam host, separately from the Neocities
-frontend and the `geno-dice.com` application. It has not been implemented or
-deployed. The current Neocities Free site's CSP blocks direct external API
-requests; transport must be resolved before the social launch. Planned
-capabilities include user points, creation of new points attached to existing
-points, support/opposition, delegated trust, chronological feeds, and derived
-social geometry. Root Markdown points remain repository-backed.
+The planned service uses one shared database, graph and user identity across
+independent sites. Each site has its own welcome point and can import additional
+Markdown roots from a registered GitHub fork. Public lore joins the same graph.
+Authors can edit their points; revision-aware support and change notifications
+are proposed to prevent silent changes to endorsed meaning. Optional word links
+let authors choose precise definitions through search.
+
+Amsterdam is intended to serve the backend and the common hosted frontend.
+Neocities Free integration uses a small iframe bridge for a local interface or
+a full embedded wiki. See [embedding contract](docs/EMBED-V1.md) and
+[Git root import contract](docs/ROOT-IMPORT-V1.md). Direct external API requests
+are blocked by the current Neocities CSP; external frames are allowed, but the
+chosen transport still needs a browser prototype and real-origin validation.
+None of this service has been implemented or deployed. The static builder and
+existing root format described above remain the implemented baseline.
 
 ## Navigation model
 
