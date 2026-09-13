@@ -221,7 +221,7 @@ def build() -> None:
         field_body = f'''<section class="field-shell">
 <div class="field-head"><div><div class="eyebrow">FIELD / DEPTH 2</div><h1><a href="/">NODE06</a></h1><div class="field-center">center: <span id="field-center-id"></span></div></div>
 <div id="field-controls" class="field-controls"><div class="control-group">{mode_buttons}</div><div class="control-group">{layout_buttons}</div><div class="control-group">{view_buttons}</div></div></div>
-<div class="field-workspace" data-layout="side"><div class="field-stage"><div id="field-map" class="field-map" aria-label="Point field"></div><aside id="hover-card" class="hover-card" hidden></aside><div class="field-help">{field_hint}</div></div>
+<div class="field-workspace" data-layout="side"><div class="field-stage"><div id="field-map" class="field-map" aria-label="Point field" tabindex="0"></div><aside id="hover-card" class="hover-card" hidden></aside><div class="field-help">{field_hint}</div></div>
 <aside id="point-panel" class="point-panel"><button id="point-panel-close" class="point-panel-close" type="button">×</button><div id="point-panel-body"></div></aside></div></section>'''
         write(DIST / lang / "index.html", shell("FIELD", field_body, lang, "field"))
         write(DIST / lang / "field" / "index.html", shell("FIELD", field_body, lang, "field"))
