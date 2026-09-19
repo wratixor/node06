@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import html
-import hashlib
 import json
+import math
 import re
 import shutil
 from dataclasses import dataclass
@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent
 CONTENT = ROOT / "content"
 STATIC = ROOT / "static"
 DIST = ROOT / "dist"
+COORDINATE_MODEL = CONTENT / "root-coordinates-v1.json"
 
 MD_LINK_RE = re.compile(r"\[([^\]]+)\]\((md://([a-z0-9-]+))\)")
 EXT_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
@@ -36,15 +37,69 @@ def iso_mtime(path: Path) -> str:
 
 
 
-def synthetic_coordinates(point_id: str) -> list[float]:
-    """Deterministic six positive coordinates for the static root era.
+def load_coordinate_model(point_ids: set[str]) -> dict[str, object]:
+    """Load the deliberately hidden, versioned root-era coordinate seed.
 
-    They are only a navigation scaffold. The social backend will replace them
-    with coordinates derived from user reactions while preserving the same
-    six-component contract.
+    The public field shows no semantic axis labels. The source model still
+    needs a named and validated coordinate order so the initial map is a
+    reproducible interpretation rather than an accidental hash layout.
     """
-    digest = hashlib.sha256(point_id.encode("utf-8")).digest()
-    return [1.0 + digest[i] / 255.0 * 5.0 for i in range(6)]
+    try:
+        model = json.loads(COORDINATE_MODEL.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise SystemExit(f"Missing root coordinate model: {COORDINATE_MODEL.relative_to(ROOT)}") from exc
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Invalid root coordinate model JSON: {exc}") from exc
+
+    if not isinstance(model, dict):
+        raise SystemExit("Root coordinate model must be a JSON object")
+    if model.get("coordinate_order") != [
+        "body", "spirit", "onslaught", "composure", "reaction", "technique"
+    ]:
+        raise SystemExit("Root coordinate model uses an unsupported coordinate order")
+    version = model.get("version")
+    if not isinstance(version, str) or not version:
+        raise SystemExit("Root coordinate model requires a non-empty version")
+    coordinates = model.get("points")
+    if not isinstance(coordinates, dict):
+        raise SystemExit("Root coordinate model requires a points object")
+
+    model_ids = set(coordinates)
+    missing = sorted(point_ids - model_ids)
+    unexpected = sorted(model_ids - point_ids)
+    if missing or unexpected:
+        fragments = []
+        if missing:
+            fragments.append("missing: " + ", ".join(missing))
+        if unexpected:
+            fragments.append("unknown: " + ", ".join(unexpected))
+        raise SystemExit("Root coordinate model point coverage mismatch (" + "; ".join(fragments) + ")")
+
+    for point_id, values in coordinates.items():
+        if not isinstance(values, list) or len(values) != 6:
+            raise SystemExit(f"{point_id}: root coordinates must contain exactly six numbers")
+        if any(
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or not math.isfinite(value)
+            or not 1 <= value <= 9
+            for value in values
+        ):
+            raise SystemExit(f"{point_id}: root coordinates must be finite numbers from 1 through 9")
+
+    language_pairs = model.get("language_pairs")
+    if not isinstance(language_pairs, list):
+        raise SystemExit("Root coordinate model requires language_pairs")
+    for pair in language_pairs:
+        if not isinstance(pair, list) or len(pair) != 2 or any(not isinstance(item, str) for item in pair):
+            raise SystemExit("Every language pair must contain exactly two point IDs")
+        first, second = pair
+        if first not in coordinates or second not in coordinates:
+            raise SystemExit(f"Language pair references a missing point: {first}, {second}")
+        distance = max(abs(a - b) for a, b in zip(coordinates[first], coordinates[second]))
+        if distance > 0.5:
+            raise SystemExit(f"{first} and {second}: initial language coordinates must stay within 0.5 per component")
+    return model
 
 def strip_markdown(text: str) -> str:
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
@@ -175,6 +230,9 @@ def write(path: Path, text: str) -> None:
 def build() -> None:
     points = load_points()
     validate(points)
+    coordinate_model = load_coordinate_model(set(points))
+    coordinates = coordinate_model["points"]
+    coordinate_source = coordinate_model["version"]
 
     if DIST.exists():
         shutil.rmtree(DIST)
@@ -195,8 +253,8 @@ def build() -> None:
             "preview": preview(p.text),
             "html": render_markdown(p.text, set(points), p.lang),
             "origin": "root",
-            "coordinates": synthetic_coordinates(p.id),
-            "coordinate_source": "synthetic-root",
+            "coordinates": coordinates[p.id],
+            "coordinate_source": coordinate_source,
         })
 
         # Keep stable point URLs as compatibility/deep-link entry points, but the map remains primary.
@@ -239,14 +297,14 @@ def build() -> None:
 <p>NODE06 сейчас является статическим полем корневых точек. Каждая точка — текстовый Markdown-файл. Точки соединяются взаимными ссылками и не имеют заранее заданного типа.</p>
 <p>Карта первична: выбор точки всегда переносит центр поля. В режиме чтения текст выбранной точки открывается автоматически; в режиме исследования остаётся только карта; лента показывает последние изменения.</p>
 <p>Позже появится социальный слой: регистрация, пользовательские точки, поддержка и несогласие, передача части влияния другим людям и вычисляемая карта общественного отношения.</p>
-<p>Сейчас здесь нет пользователей, веса или социального цвета. Для навигации корневые точки временно получают воспроизводимые синтетические шесть координат; будущий backend заменит их координатами, возникающими из пользовательских реакций.</p>
+<p>Сейчас здесь нет пользователей, веса или социального цвета. Корневые точки получают версионированную начальную раскладку в шести компонентах; названия шкал не показываются на карте. Будущий backend добавит к ней координаты, возникающие из пользовательских реакций, не подменяя происхождение начальной модели.</p>
 <p>NODE06 основан на <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. Исходники NODE06 и карта лицензий опубликованы в <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">репозитории</a>.</p></section>'''
         else:
             about_text = '''<section class="prose"><div class="eyebrow">PROTOCOL / 0</div><h1>What this is</h1>
 <p>NODE06 is currently a static field of root points. Every point is a Markdown text file. Points are connected by reciprocal links and have no predefined content type.</p>
 <p>The map is primary: selecting a point always recenters the field. Reading mode opens the selected text automatically; Explore keeps only the map; Feed shows the latest changes.</p>
 <p>A social layer is planned: registration, user-created points, support and opposition, delegation of influence to other people, and an emergent map of collective perception.</p>
-<p>There are no users, weight or social color yet. For navigation, root points temporarily receive reproducible synthetic six-component coordinates; the future backend will replace them with coordinates emerging from user reactions.</p>
+<p>There are no users, weight or social color yet. Root points receive a versioned six-component seed layout; axis names are not shown on the map. The future backend will add coordinates emerging from user reactions without hiding the origin of this initial model.</p>
 <p>NODE06 is based on <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. NODE06 source code and its licensing map are published in the <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">repository</a>.</p></section>'''
         write(DIST / lang / "about" / "index.html", shell("ABOUT", about_text, lang, "about"))
 
