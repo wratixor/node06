@@ -1,0 +1,31 @@
+{
+  "version": "root-polarity-v1",
+  "coordinate_order": ["body", "spirit", "onslaught", "composure", "reaction", "technique"],
+  "visibility": "Internal root-era seed. The public map renders colour rays without semantic axis labels.",
+  "points": {
+    "charter-en": [4, 6, 3, 7, 4, 6], "charter-ru": [4, 6, 3, 7, 4, 6],
+    "curiosity-en": [3, 7, 4, 6, 7, 3], "curiosity-ru": [3, 7, 4, 6, 7, 3],
+    "field-en": [5, 5, 5, 5, 5, 5], "field-ru": [5, 5, 5, 5, 5, 5],
+    "inward-en": [2, 8, 2, 8, 3, 7], "inward-ru": [2, 8, 2, 8, 3, 7],
+    "leave-better-en": [4, 6, 3, 7, 3, 7], "leave-better-ru": [4, 6, 3, 7, 3, 7],
+    "links-en": [4, 6, 3, 7, 4, 6], "links-ru": [4, 6, 3, 7, 4, 6],
+    "node06-en": [5, 5, 5, 5, 5, 5], "node06-ru": [5, 5, 5, 5, 5, 5],
+    "observation-en": [3, 7, 3, 7, 4, 6], "observation-ru": [3, 7, 3, 7, 4, 6],
+    "outer-en": [3, 7, 3, 7, 4, 6], "outer-ru": [3, 7, 3, 7, 4, 6],
+    "outward-en": [8, 2, 8, 2, 7, 3], "outward-ru": [8, 2, 8, 2, 7, 3],
+    "point-en": [5, 5, 5, 5, 5, 5], "point-ru": [5, 5, 5, 5, 5, 5],
+    "polarity-en": [5, 5, 5, 5, 5, 5], "polarity-ru": [5, 5, 5, 5, 5, 5],
+    "root-era-en": [5, 5, 5, 5, 5, 5], "root-era-ru": [5, 5, 5, 5, 5, 5],
+    "shared-knowledge-en": [4, 6, 4, 6, 5, 5], "shared-knowledge-ru": [4, 6, 4, 6, 5, 5],
+    "welcome": [5, 5, 5, 5, 5, 5]
+  },
+  "language_pairs": [
+    ["charter-ru", "charter-en"], ["curiosity-ru", "curiosity-en"],
+    ["field-ru", "field-en"], ["inward-ru", "inward-en"],
+    ["leave-better-ru", "leave-better-en"], ["links-ru", "links-en"],
+    ["node06-ru", "node06-en"], ["observation-ru", "observation-en"],
+    ["outer-ru", "outer-en"], ["outward-ru", "outward-en"],
+    ["point-ru", "point-en"], ["polarity-ru", "polarity-en"],
+    ["root-era-ru", "root-era-en"], ["shared-knowledge-ru", "shared-knowledge-en"]
+  ]
+}
