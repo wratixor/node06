@@ -963,7 +963,8 @@ import queue fairness/memory и диск. Это цели исследовани
 | Проверки редакции2 | 5 Markdown files / 20 local links / 4 JSON examples; diff check; общий context validator 136 Markdown и 17 queue records. Runtime в этой правке не менялся |
 | P00 bridge/full transport | Локальный synthetic prototype готов в `prototypes/embed-p00/`: два origin, CSP, handshake, typed read/theme, reload и write boundary. Не deployment и не real-Neocities proof |
 | P01 backend bootstrap | `pyproject.toml`, FastAPI service, Alembic bootstrap migration, `/api/v1/{health,ready,meta}` и local tests готовы. Нет domain tables/API, hosted renderer или deployment |
-| P02–P14 | Не реализованы: site registry/import/auth/tariffs пока документы |
+| P02 site registry | Частично: schema + internal claim/verify + `all-sites` directory edge + public active-site GET. HTTP mutations/settings ждут P03 auth; real PostgreSQL race/SSRF integration ещё не доказаны |
+| P03–P14 | Не реализованы: auth/import/social math/tariffs пока документы |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
 в Chromium parent CSP заблокировал direct external fetch, bridge вернул точку,
@@ -980,8 +981,18 @@ P01 evidence 13.09: exact pinned dependencies поставлены в isolated `
 это не production. Контрактная таблица users/sites/points начинается
 только с P02/P05, не подменяется bootstrap marker.
 
+P02 partial evidence 15.09: добавлена `0002_site_registry` с users/points/revisions,
+sites/members/claims, undirected edges+claims и events; `all-sites` bootstrap projection;
+internal `SiteRegistry` создаёт pending site, проверяет fixed-file HTTPS proof в две
+транзакции и атомарно активирует site↔all-sites; public `GET /sites/{id}` читает только
+active site. Claim mutations не опубликованы без P03 auth. Unit tests (SQLite только
+для service logic, не как замена PostgreSQL), proof validation, Ruff, static build,
+P00 protocol tests и offline PostgreSQL Alembic SQL прошли. Реальный PostgreSQL для
+`0002`, concurrent verify/reclaim race и live DNS/TLS verifier остаются обязательной
+приёмкой P02 перед закрытием пакета.
+
 Предыдущий план single-site/API-only сохранён историей Git, не является
-действующим target. Текущая реализация ограничена P00–P01 и не меняет production.
+действующим target. Текущая реализация ограничена P00–P01 и частичным P02; production не менялся.
 
 ## 17. Предложения по развитию
 

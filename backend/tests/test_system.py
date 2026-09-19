@@ -34,3 +34,51 @@ def test_meta_marks_future_domains_as_unimplemented() -> None:
     assert response.status_code == 200
     assert response.json()["build_revision"] == "test"
     assert "points" in response.json()["not_implemented"]
+    assert "public_site_read" in response.json()["implemented"]
+
+
+def test_public_site_read_uses_shared_site_registry() -> None:
+    from node06_service.db import Database
+    from node06_service.models import metadata
+    from node06_service.site_registry import SiteRegistry
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.pool import StaticPool
+
+    database = Database("sqlite+pysqlite:///:memory:")
+    assert database._engine is not None
+    database._engine.dispose()
+    database._engine = create_engine(
+        "sqlite+pysqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(database._engine, "connect")
+    def enable_foreign_keys(dbapi_connection, _connection_record) -> None:
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
+    metadata.create_all(database._engine)
+    registry = SiteRegistry(database)
+    owner = registry.create_placeholder_user("site-reader-owner")
+    pending = registry.create_pending_site(
+        owner_user_id=owner,
+        origin="https://read.example",
+        welcome_body="Reader welcome",
+    )
+    registry.verify_site(
+        pending.site_id,
+        actor_user_id=owner,
+        proof_fetcher=lambda _origin: pending.proof_document.encode(),
+    )
+
+    async def request() -> httpx.Response:
+        app = create_app(Settings(database_url=None, build_revision="test"))
+        app.state.database = database
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get(f"/api/v1/sites/{pending.site_id}")
+
+    response = asyncio.run(request())
+    assert response.status_code == 200
+    assert response.json()["id"] == pending.site_id
+    assert response.json()["welcome_body"] == "Reader welcome"

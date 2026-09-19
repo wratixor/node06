@@ -1,4 +1,7 @@
-from sqlalchemy import Engine, create_engine, text
+from collections.abc import Iterator
+from contextlib import contextmanager
+
+from sqlalchemy import Connection, Engine, create_engine, text
 
 
 class Database:
@@ -8,6 +11,24 @@ class Database:
         self._engine: Engine | None = (
             create_engine(database_url, pool_pre_ping=True) if database_url else None
         )
+
+    @property
+    def configured(self) -> bool:
+        return self._engine is not None
+
+    @contextmanager
+    def connect(self) -> Iterator[Connection]:
+        if self._engine is None:
+            raise RuntimeError("Database is not configured.")
+        with self._engine.connect() as connection:
+            yield connection
+
+    @contextmanager
+    def begin(self) -> Iterator[Connection]:
+        if self._engine is None:
+            raise RuntimeError("Database is not configured.")
+        with self._engine.begin() as connection:
+            yield connection
 
     def ready(self) -> tuple[bool, str | None]:
         if self._engine is None:

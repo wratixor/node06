@@ -7,6 +7,8 @@ from fastapi.responses import JSONResponse, Response
 
 from .config import Settings, get_settings
 from .db import Database
+from .schemas import PublicSiteResponse
+from .site_registry import SiteNotFoundError, SiteRegistry
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -57,9 +59,40 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "service": "node06",
             "build_revision": current_settings.build_revision,
             "embed_protocol": "node06-embed/1",
-            "implemented": ["health", "ready", "meta"],
-            "not_implemented": ["auth", "sites", "points", "imports", "billing"],
+            "implemented": ["health", "ready", "meta", "public_site_read"],
+            "not_implemented": [
+                "auth",
+                "site_claim_http",
+                "site_settings_http",
+                "points",
+                "imports",
+                "billing",
+            ],
         }
+
+    @app.get("/api/v1/sites/{site_id}", response_model=PublicSiteResponse)
+    def public_site(site_id: str, request: Request):
+        if not app.state.database.configured:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "code": "DATABASE_NOT_CONFIGURED",
+                    "message": "Service dependencies are not ready.",
+                    "request_id": request.state.request_id,
+                },
+            )
+        try:
+            site = SiteRegistry(app.state.database).get_public_site(site_id)
+        except SiteNotFoundError:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "code": "SITE_NOT_FOUND",
+                    "message": "Active site does not exist.",
+                    "request_id": request.state.request_id,
+                },
+            )
+        return PublicSiteResponse(**site.__dict__)
 
     return app
 
