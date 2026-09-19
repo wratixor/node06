@@ -101,8 +101,8 @@ The field is the primary interface. Selecting a sphere always makes it the new c
 The site root is a bilingual welcome page. The NODE06 header link and field
 heading lead to `/`. Russian and English links lead to separate Russian and
 English root points; they are independent points rather than locale variants
-of one object. The implementation plan tracks remaining language-filter and
-cross-language navigation inconsistencies.
+of one object. The current field renders only the selected language family, so
+a reciprocal translation link never duplicates a sphere at the current centre.
 ## Field projection
 
 The root-era map keeps the Hexrelatum six-component contract: three opposed pairs are folded into a local 3D projection only for navigation. The six axis ends use the same complementary preview pairs as Hexrelatum: cyan/red, magenta/green, yellow/blue. A visible unit sphere separates direct links (inside) from depth-2 context (outside). Root-era coordinates come from a versioned, validated seed model rather than from ID hashes. The future social backend adds separately-derived social coordinates; it must not present the seed as community judgment.

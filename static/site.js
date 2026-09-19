@@ -255,11 +255,17 @@
   }
 
   function renderMap(){
-    const d1=center.links.map(id=>byId.get(id)).filter(Boolean);
+    // A language is a separate root-point family. Cross-language links remain
+    // part of the graph but do not duplicate a sphere in the current field.
+    const inCurrentLanguage=id=>{
+      const point=byId.get(id);
+      return point&&point.lang===lang?point:null;
+    };
+    const d1=center.links.map(inCurrentLanguage).filter(Boolean);
     const d1ids=new Set(d1.map(p=>p.id));
     const d2ids=new Set();
     d1.forEach(p=>p.links.forEach(id=>{if(id!==center.id&&!d1ids.has(id)) d2ids.add(id);}));
-    const d2=[...d2ids].map(id=>byId.get(id)).filter(Boolean);
+    const d2=[...d2ids].map(inCurrentLanguage).filter(Boolean);
 
     const w=1000,h=650;
     const basePos=new Map([[center.id,{x:0,y:0,z:0,depth:0}]]);
