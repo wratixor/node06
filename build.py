@@ -19,6 +19,9 @@ COORDINATE_MODEL = CONTENT / "root-coordinates-v1.json"
 MD_LINK_RE = re.compile(r"\[([^\]]+)\]\((md://([a-z0-9-]+))\)")
 EXT_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
 ID_RE = re.compile(r"^[a-z0-9-]+$")
+STAT_ORDER = ["body", "spirit", "onslaught", "composure", "reaction", "technique"]
+ROOT_COORDINATE_FLOOR = 1
+ROOT_ANCHOR_WEIGHT_LIMIT = 8
 
 @dataclass
 class Point:
@@ -53,18 +56,42 @@ def load_coordinate_model(point_ids: set[str]) -> dict[str, object]:
 
     if not isinstance(model, dict):
         raise SystemExit("Root coordinate model must be a JSON object")
-    if model.get("coordinate_order") != [
-        "body", "spirit", "onslaught", "composure", "reaction", "technique"
-    ]:
+    if model.get("coordinate_order") != STAT_ORDER:
         raise SystemExit("Root coordinate model uses an unsupported coordinate order")
     version = model.get("version")
     if not isinstance(version, str) or not version:
         raise SystemExit("Root coordinate model requires a non-empty version")
-    coordinates = model.get("points")
-    if not isinstance(coordinates, dict):
-        raise SystemExit("Root coordinate model requires a points object")
+    ancients = model.get("system_ancients")
+    if not isinstance(ancients, list) or len(ancients) != len(STAT_ORDER):
+        raise SystemExit("Root coordinate model requires exactly six system ancients")
+    ancient_stats: set[str] = set()
+    for ancient in ancients:
+        if not isinstance(ancient, dict):
+            raise SystemExit("Every system ancient must be an object")
+        stat = ancient.get("stat")
+        if stat not in STAT_ORDER or stat in ancient_stats:
+            raise SystemExit("System ancients must cover every stat exactly once")
+        ancient_stats.add(stat)
+        if ancient.get("visibility") != "internal" or ancient.get("base_weight") != 1:
+            raise SystemExit(f"{stat}: system ancient must be internal with base_weight 1")
+        name = ancient.get("name")
+        if not isinstance(name, dict) or not all(isinstance(name.get(lang), str) and name[lang] for lang in ("ru", "en")):
+            raise SystemExit(f"{stat}: system ancient requires non-empty Russian and English names")
+        values = ancient.get("coordinates")
+        own_index = STAT_ORDER.index(stat)
+        expected = [5] * len(STAT_ORDER)
+        expected[own_index] = 9
+        expected[own_index ^ 1] = 1
+        if values != expected:
+            raise SystemExit(f"{stat}: system ancient coordinates must match its single stat pole")
+    if ancient_stats != set(STAT_ORDER):
+        raise SystemExit("System ancients do not cover the complete stat order")
 
-    model_ids = set(coordinates)
+    anchor_weights = model.get("anchor_weights")
+    if not isinstance(anchor_weights, dict):
+        raise SystemExit("Root coordinate model requires an anchor_weights object")
+
+    model_ids = set(anchor_weights)
     missing = sorted(point_ids - model_ids)
     unexpected = sorted(model_ids - point_ids)
     if missing or unexpected:
@@ -75,17 +102,21 @@ def load_coordinate_model(point_ids: set[str]) -> dict[str, object]:
             fragments.append("unknown: " + ", ".join(unexpected))
         raise SystemExit("Root coordinate model point coverage mismatch (" + "; ".join(fragments) + ")")
 
-    for point_id, values in coordinates.items():
+    coordinates: dict[str, list[float]] = {}
+    for point_id, values in anchor_weights.items():
         if not isinstance(values, list) or len(values) != 6:
-            raise SystemExit(f"{point_id}: root coordinates must contain exactly six numbers")
+            raise SystemExit(f"{point_id}: root anchor weights must contain exactly six numbers")
         if any(
             not isinstance(value, (int, float))
             or isinstance(value, bool)
             or not math.isfinite(value)
-            or not 1 <= value <= 9
+            or not 0 <= value <= ROOT_ANCHOR_WEIGHT_LIMIT
             for value in values
         ):
-            raise SystemExit(f"{point_id}: root coordinates must be finite numbers from 1 through 9")
+            raise SystemExit(
+                f"{point_id}: root anchor weights must be finite numbers from 0 through {ROOT_ANCHOR_WEIGHT_LIMIT}"
+            )
+        coordinates[point_id] = [ROOT_COORDINATE_FLOOR + value for value in values]
 
     language_pairs = model.get("language_pairs")
     if not isinstance(language_pairs, list):
@@ -99,7 +130,7 @@ def load_coordinate_model(point_ids: set[str]) -> dict[str, object]:
         distance = max(abs(a - b) for a, b in zip(coordinates[first], coordinates[second]))
         if distance > 0.5:
             raise SystemExit(f"{first} and {second}: initial language coordinates must stay within 0.5 per component")
-    return model
+    return {"version": version, "coordinates": coordinates}
 
 def strip_markdown(text: str) -> str:
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
@@ -231,7 +262,7 @@ def build() -> None:
     points = load_points()
     validate(points)
     coordinate_model = load_coordinate_model(set(points))
-    coordinates = coordinate_model["points"]
+    coordinates = coordinate_model["coordinates"]
     coordinate_source = coordinate_model["version"]
 
     if DIST.exists():

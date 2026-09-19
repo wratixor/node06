@@ -6,16 +6,22 @@ while keeping the public field free of semantic axis labels.
 
 ## Contract
 
-- The six stored components are ordered as `body`, `spirit`, `onslaught`,
-  `composure`, `reaction`, `technique`.
+- Six hidden system **Ancients-anchors** are named after `body`, `spirit`,
+  `onslaught`, `composure`, `reaction`, `technique`. They are internal service
+  fixtures: no login, public profile, graph sphere or ordinary user weight.
+- Each root stores six `anchor_weights`, one contribution from each Ancient.
+  The emitted coordinate is `1 + anchor_weight` per component, so the ordinary
+  root range remains `1..9` while the provenance of every initial direction is
+  explicit and testable.
 - The renderer folds each opposed pair into its existing local 3D navigation
   projection. The public rays stay unlabelled; this file is not copied into
   `dist/`.
 - The component order preserves the visible complementary colour directions:
   cyan/red, magenta/green and yellow/blue. It does not claim that a social
   concept literally is a combat stat.
-- Every root point must be represented exactly once. Values are finite and in
-  the closed interval `1..9`, so ordinary roots never occupy a pure pole.
+- Every root point must be represented exactly once. Anchor weights are finite
+  values in `0..8`, so emitted ordinary-root coordinates stay in `1..9` and
+  never occupy a pure pole.
 - Each listed Russian/English pair is an independent point pair with starting
   component distance at most `0.5`. In v1 their coordinates are equal on
   purpose: language does not create a social difference before a social layer
@@ -38,6 +44,11 @@ not a moral ranking. The public `polarity-*` roots make that boundary explicit.
 The familiar black/white taijitu is a design reference for interdependence: a
 polarity contains a trace of its opposite and can change by relation. It is not
 an instruction to render every point as black or white.
+
+The six anchors model only the **root-era test seed**. They do not receive
+community support, do not contribute reputation, and cannot stand in for real
+participants. Their weight is fixed at `1`; changing a root's six anchor
+weights is a reviewed content/model change, not a social vote.
 
 The future social coordinate is a separate, derived projection from explicit
 community behaviour. It may differ from this seed and must record its own
