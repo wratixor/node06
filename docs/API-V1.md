@@ -1,7 +1,10 @@
 # NODE06 service/API v1 contract
 
-Status: target, not implemented. Updated 13 September 2026 from the original
-single-site API draft. The owner's current direction is a common service for
+Status: target contract with P01 and a partial P02 implementation. Updated 15 September 2026.
+`GET /sites/{site_id}` is implemented for active sites; claim/verify/settings HTTP writes
+remain deferred until P03 authentication. The rest remains target behavior.
+
+Originally updated 13 September 2026 from the single-site API draft. The owner's current direction is a common service for
 Neocities Free/other independent sites, with a bridge, full iframe and hosted
 frontend. [Implementation plan](IMPLEMENTATION-PLAN.md),
 [embedding](EMBED-V1.md), [Git roots](ROOT-IMPORT-V1.md).

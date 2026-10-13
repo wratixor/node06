@@ -14,6 +14,7 @@
     "charter-en": [3, 5, 2, 6, 3, 5], "charter-ru": [3, 5, 2, 6, 3, 5],
     "curiosity-en": [2, 6, 3, 5, 6, 2], "curiosity-ru": [2, 6, 3, 5, 6, 2],
     "field-en": [3, 5, 2, 6, 6, 2], "field-ru": [3, 5, 2, 6, 6, 2],
+    "geno-dice-en": [5, 3, 5, 3, 4, 4], "geno-dice-ru": [5, 3, 5, 3, 4, 4],
     "inward-en": [1, 7, 1, 7, 2, 6], "inward-ru": [1, 7, 1, 7, 2, 6],
     "leave-better-en": [3, 5, 2, 6, 2, 6], "leave-better-ru": [3, 5, 2, 6, 2, 6],
     "links-en": [3, 5, 2, 6, 3, 5], "links-ru": [3, 5, 2, 6, 3, 5],
@@ -25,6 +26,16 @@
     "polarity-en": [5, 3, 3, 5, 5, 3], "polarity-ru": [5, 3, 3, 5, 5, 3],
     "root-era-en": [4, 4, 4, 4, 4, 4], "root-era-ru": [4, 4, 4, 4, 4, 4],
     "shared-knowledge-en": [3, 5, 3, 5, 4, 4], "shared-knowledge-ru": [3, 5, 3, 5, 4, 4],
+    "skills-en": [4, 4, 4, 4, 4, 4], "skills-ru": [4, 4, 4, 4, 4, 4],
+    "triple-body-onslaught-reaction-en": [5, 0, 5, 0, 5, 0], "triple-body-onslaught-reaction-ru": [5, 0, 5, 0, 5, 0],
+    "triple-body-self-control-reaction-en": [5, 0, 0, 5, 5, 0], "triple-body-self-control-reaction-ru": [5, 0, 0, 5, 5, 0],
+    "triple-body-technique-onslaught-en": [5, 0, 5, 0, 0, 5], "triple-body-technique-onslaught-ru": [5, 0, 5, 0, 0, 5],
+    "triple-body-technique-self-control-en": [5, 0, 0, 5, 0, 5], "triple-body-technique-self-control-ru": [5, 0, 0, 5, 0, 5],
+    "triple-spirit-onslaught-reaction-en": [0, 5, 5, 0, 5, 0], "triple-spirit-onslaught-reaction-ru": [0, 5, 5, 0, 5, 0],
+    "triple-spirit-reaction-self-control-en": [0, 5, 0, 5, 5, 0], "triple-spirit-reaction-self-control-ru": [0, 5, 0, 5, 5, 0],
+    "triple-spirit-technique-onslaught-en": [0, 5, 5, 0, 0, 5], "triple-spirit-technique-onslaught-ru": [0, 5, 5, 0, 0, 5],
+    "triple-spirit-technique-self-control-en": [0, 5, 0, 5, 0, 5], "triple-spirit-technique-self-control-ru": [0, 5, 0, 5, 0, 5],
+    "ultimate-en": [4, 4, 4, 4, 4, 4], "ultimate-ru": [4, 4, 4, 4, 4, 4],
     "welcome": [4, 4, 4, 4, 4, 4]
   },
   "language_pairs": [
@@ -34,6 +45,16 @@
     ["node06-ru", "node06-en"], ["observation-ru", "observation-en"],
     ["outer-ru", "outer-en"], ["outward-ru", "outward-en"],
     ["point-ru", "point-en"], ["polarity-ru", "polarity-en"],
-    ["root-era-ru", "root-era-en"], ["shared-knowledge-ru", "shared-knowledge-en"]
+    ["root-era-ru", "root-era-en"], ["shared-knowledge-ru", "shared-knowledge-en"],
+    ["geno-dice-ru", "geno-dice-en"], ["skills-ru", "skills-en"],
+    ["ultimate-ru", "ultimate-en"],
+    ["triple-body-onslaught-reaction-ru", "triple-body-onslaught-reaction-en"],
+    ["triple-body-self-control-reaction-ru", "triple-body-self-control-reaction-en"],
+    ["triple-body-technique-onslaught-ru", "triple-body-technique-onslaught-en"],
+    ["triple-body-technique-self-control-ru", "triple-body-technique-self-control-en"],
+    ["triple-spirit-onslaught-reaction-ru", "triple-spirit-onslaught-reaction-en"],
+    ["triple-spirit-reaction-self-control-ru", "triple-spirit-reaction-self-control-en"],
+    ["triple-spirit-technique-onslaught-ru", "triple-spirit-technique-onslaught-en"],
+    ["triple-spirit-technique-self-control-ru", "triple-spirit-technique-self-control-en"]
   ]
 }
