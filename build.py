@@ -132,6 +132,7 @@ def load_coordinate_model(point_ids: set[str]) -> dict[str, object]:
             raise SystemExit(f"{first} and {second}: initial language coordinates must stay within 0.5 per component")
     return {"version": version, "coordinates": coordinates}
 
+
 def strip_markdown(text: str) -> str:
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"[`*_>#]", "", text)
