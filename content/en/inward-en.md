@@ -2,4 +2,4 @@ Pause, reception, carrying a decision, conserving strength, recovery and the pre
 
 This is not a property of women and not a required human role. Every act of holding contains some outward movement: recovery prepares action, and form can change the world. The opposite but non-hostile reading is [outward movement](md://outward-en). The shared qualification is kept by [polarity](md://polarity-en).
 
-[Русская версия](md://inward-ru)
+[Точка на русском](md://inward-ru)

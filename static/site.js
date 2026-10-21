@@ -5,8 +5,8 @@
   const body=document.body;
   if(!body||body.dataset.page!=='field') return;
 
-  const lang=body.dataset.lang;
-  const local=all.filter(p=>p.lang===lang);
+  const params=new URLSearchParams(location.search);
+  const local=all;
   if(!local.length) return;
 
   const host=document.getElementById('field-map');
@@ -17,11 +17,16 @@
   const controls=document.getElementById('field-controls');
   const shell=document.querySelector('.field-workspace');
 
-  const params=new URLSearchParams(location.search);
   let center=byId.get(params.get('p'));
-  if(!center||center.lang!==lang) center=[...local].sort((a,b)=>b.degree-a.degree)[0];
+  if(!center) center=[...local].sort((a,b)=>b.degree-a.degree)[0];
   let openPoint=byId.get(params.get('open')) || null;
-
+  const startPage=document.getElementById('start-page');
+  const rootField=document.getElementById('root-field');
+  if(startPage){
+    const hasPoint=byId.has(params.get('p'));
+    startPage.hidden=hasPoint;rootField.hidden=!hasPoint;
+    if(!hasPoint) return;
+  }
   let mode=localStorage.getItem('node06-mode')||'read';
   let layout=localStorage.getItem('node06-layout')||'side';
   if(!['explore','read','feed'].includes(mode)) mode='read';
@@ -38,7 +43,7 @@
     const q=new URLSearchParams();
     if(center) q.set('p',center.id);
     if(openPoint&&mode==='read') q.set('open',openPoint.id);
-    const url=`/${lang}/?${q.toString()}`;
+    const url=`/?${q.toString()}`;
     history[replace?'replaceState':'pushState']({},'',url);
   }
 
@@ -69,7 +74,7 @@
 
   function showEmptyPanel(){
     panel.hidden=false;
-    panelBody.innerHTML=`<div class="panel-empty"><div class="eyebrow">${lang==='ru'?'ТОЧКА':'POINT'}</div><p>${lang==='ru'?'Выберите сферу. В режиме чтения текст появится здесь; в исследовании карта останется без текста.':'Select a sphere. Reading mode opens its text here; Explore keeps the field text-free.'}</p></div>`;
+    panelBody.innerHTML='<div class="panel-empty"><div class="eyebrow">POINT</div><p>Select a sphere. Reading mode opens its text here; Explore keeps the field text-free.</p></div>';
   }
 
   function showPoint(point,push=true){
@@ -78,12 +83,12 @@
     panel.hidden=false;
     panelBody.innerHTML=`
       <div class="eyebrow">ROOT POINT · ${escapeHtml(point.id)}</div>
-      <div class="point-text">${point.html}</div>
+      <div class="point-text" lang="${escapeHtml(point.lang||'und')}">${point.html}</div>
       <section>
         <h2>LINKS</h2>
         <ul class="links-list">${point.links.map(id=>{
           const target=byId.get(id);
-          return target?`<li><a class="point-link" href="/${target.lang}/?p=${encodeURIComponent(target.id)}&open=${encodeURIComponent(target.id)}" data-point-id="${escapeHtml(target.id)}">${escapeHtml(target.preview)}</a></li>`:'';
+          return target?`<li><a class="point-link" href="/?p=${encodeURIComponent(target.id)}&open=${encodeURIComponent(target.id)}" data-point-id="${escapeHtml(target.id)}">${escapeHtml(target.preview)}</a></li>`:'';
         }).join('')}</ul>
       </section>
       <p class="meta">created ${point.created_at.slice(0,10)} · last interaction ${point.last_interaction_at.slice(0,10)} · ${point.degree} links</p>`;
@@ -93,8 +98,8 @@
   function showFeed(){
     const sorted=[...local].sort((a,b)=>b.last_interaction_at.localeCompare(a.last_interaction_at));
     panel.hidden=false;
-    panelBody.innerHTML=`<div class="eyebrow">${lang==='ru'?'ЛЕНТА / ПОСЛЕДНИЕ ИЗМЕНЕНИЯ':'FEED / LATEST CHANGES'}</div>
-      <ul class="feed-list">${sorted.map(p=>`<li><time>${p.last_interaction_at.slice(0,10)}</time><a href="/${lang}/?p=${encodeURIComponent(p.id)}" data-feed-id="${escapeHtml(p.id)}">${escapeHtml(p.preview)}</a><span>${p.degree} links</span></li>`).join('')}</ul>`;
+    panelBody.innerHTML=`<div class="eyebrow">FEED / LATEST CHANGES</div>
+      <ul class="feed-list">${sorted.map(p=>`<li><time>${p.last_interaction_at.slice(0,10)}</time><a href="/?p=${encodeURIComponent(p.id)}" data-feed-id="${escapeHtml(p.id)}">${escapeHtml(p.preview)}</a><span>${p.degree} links</span></li>`).join('')}</ul>`;
   }
 
   function closePanel(){
@@ -173,14 +178,24 @@
   }
 
   function normalize(v){
-    const n=Math.hypot(v.x,v.y,v.z)||1;
-    return {x:v.x/n,y:v.y/n,z:v.z/n,length:n};
+    const length=Math.hypot(v.x,v.y,v.z),n=length||1;
+    return {x:v.x/n,y:v.y/n,z:v.z/n,length};
   }
 
   function displayPosition(point,depth){
     if(depth===0) return {x:0,y:0,z:0,depth};
     const local=sixToLocal(point,center);
-    const unit=normalize(local);
+    let unit=normalize(local);
+    if(unit.length<1e-9){
+      // Equal semantic coordinates still describe different points. Give only
+      // their display direction a stable fallback, without changing the seed.
+      let hash=2166136261;
+      for(const char of point.id) hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+      const angle=(hash/4294967296)*Math.PI*2;
+      unit={x:Math.cos(angle),y:.35,z:Math.sin(angle),length:0};
+      const length=Math.hypot(unit.x,unit.y,unit.z);
+      unit.x/=length;unit.y/=length;unit.z/=length;
+    }
     // Unit sphere separates directly linked points from depth-2 points.
     // Local six-dimensional magnitude only modulates distance within each band.
     const magnitude=clamp(unit.length/1.45,0,1);
@@ -255,22 +270,35 @@
   }
 
   function renderMap(){
-    // A language is a separate root-point family. Cross-language links remain
-    // part of the graph but do not duplicate a sphere in the current field.
-    const inCurrentLanguage=id=>{
-      const point=byId.get(id);
-      return point&&point.lang===lang?point:null;
-    };
-    const d1=center.links.map(inCurrentLanguage).filter(Boolean);
+    // Language is point metadata, never a partition of the shared graph.
+    const d1=center.links.filter(id=>id!==center.id).map(id=>byId.get(id)).filter(Boolean);
     const d1ids=new Set(d1.map(p=>p.id));
     const d2ids=new Set();
     d1.forEach(p=>p.links.forEach(id=>{if(id!==center.id&&!d1ids.has(id)) d2ids.add(id);}));
-    const d2=[...d2ids].map(inCurrentLanguage).filter(Boolean);
+    const d2=[...d2ids].map(id=>byId.get(id)).filter(Boolean);
 
     const w=1000,h=650;
     const basePos=new Map([[center.id,{x:0,y:0,z:0,depth:0}]]);
     d1.forEach(p=>basePos.set(p.id,displayPosition(p,1)));
     d2.forEach(p=>basePos.set(p.id,displayPosition(p,2)));
+    const coincident=new Map();
+    for(const [id,v] of basePos){
+      if(v.depth===0) continue;
+      const key=[v.depth,v.x.toFixed(6),v.y.toFixed(6),v.z.toFixed(6)].join('|');
+      if(!coincident.has(key)) coincident.set(key,[]);
+      coincident.get(key).push(id);
+    }
+    for(const ids of coincident.values()){
+      if(ids.length<2) continue;
+      ids.sort().forEach((id,index)=>{
+        const v=basePos.get(id),radius=Math.hypot(v.x,v.y,v.z),u=normalize(v);
+        const tangent=normalize(Math.abs(u.y)<.9?{x:-u.z,y:0,z:u.x}:{x:0,y:-u.z,z:u.y});
+        const angle=(index-(ids.length-1)/2)*.16;
+        basePos.set(id,{x:radius*(u.x*Math.cos(angle)+tangent.x*Math.sin(angle)),
+          y:radius*(u.y*Math.cos(angle)+tangent.y*Math.sin(angle)),
+          z:radius*(u.z*Math.cos(angle)+tangent.z*Math.sin(angle)),depth:v.depth});
+      });
+    }
 
     const visible=[center,...d1,...d2];
     const visibleIds=new Set(visible.map(p=>p.id));
@@ -385,6 +413,7 @@
     if(changed){e.preventDefault();renderMap();}
   });
 
+  updateUrl({replace:true});
   setLayout(layout,{persist:false});
   controls.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
   renderMap();
@@ -396,7 +425,9 @@
   addEventListener('popstate',()=>{
     const q=new URLSearchParams(location.search);
     const nextCenter=byId.get(q.get('p'));
-    if(nextCenter&&nextCenter.lang===lang) center=nextCenter;
+    if(startPage){startPage.hidden=Boolean(nextCenter);rootField.hidden=!nextCenter;}
+    if(!nextCenter) return;
+    center=nextCenter;
     openPoint=byId.get(q.get('open'))||null;
     renderMap();
     if(mode==='feed') showFeed(); else if(mode==='read'&&openPoint) showPoint(openPoint,false); else showEmptyPanel();
