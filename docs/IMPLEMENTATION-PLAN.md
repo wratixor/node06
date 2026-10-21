@@ -1,6 +1,7 @@
 # NODE06 — сервис общей вики для независимых сайтов
 
-Статус: исследование выполнено; реализация бэкенда не начата.
+Статус: P00/P01 и внутренний реестр P02 реализованы; публичные изменения сайтов,
+вход и социальный слой ещё не реализованы. Текущие проверки — в Progress ниже.
 Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
 Редакция 2: общая сеть сайтов, bridge + full embed + hosted frontend + GitHub roots.
 Владелец продуктовых решений: Wratixor.
@@ -963,7 +964,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | Проверки редакции2 | 5 Markdown files / 20 local links / 4 JSON examples; diff check; общий context validator 136 Markdown и 17 queue records. Runtime в этой правке не менялся |
 | P00 bridge/full transport | Локальный synthetic prototype готов в `prototypes/embed-p00/`: два origin, CSP, handshake, typed read/theme, reload и write boundary. Не deployment и не real-Neocities proof |
 | P01 backend bootstrap | `pyproject.toml`, FastAPI service, Alembic bootstrap migration, `/api/v1/{health,ready,meta}` и local tests готовы. Нет domain tables/API, hosted renderer или deployment |
-| P02 site registry | Частично: schema + internal claim/verify + `all-sites` directory edge + public active-site GET. HTTP mutations/settings ждут P03 auth; real PostgreSQL race/SSRF integration ещё не доказаны |
+| P02 site registry | Внутренний lifecycle + PostgreSQL/TLS acceptance; HTTP mutations/settings, renew/release и лимиты verifier ждут P03. Результаты 21.10 ниже |
 | P03–P14 | Не реализованы: auth/import/social math/tariffs пока документы |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -993,6 +994,31 @@ P00 protocol tests и offline PostgreSQL Alembic SQL прошли. Реальн�
 
 Предыдущий план single-site/API-only сохранён историей Git, не является
 действующим target. Текущая реализация ограничена P00–P01 и частичным P02; production не менялся.
+
+P02 hardening 21.10.2026: expiry проверяется заново после I/O; блокировка сайта,
+отключение/смена владельца, смена origin/challenge во время fetch не допускают
+активацию. Повторная verify активного сайта идемпотентна, inactive не оживляется.
+Нормализация origin отвергает control characters, плохие DNS labels, multicast и
+scoped IPv6; TLS socket закрывается, IPv6 Host корректно заключён в скобки.
+Исправлен Alembic ConfigParser для percent-encoded URL. ORM index приведён к
+существующему unique partial index миграции; новая миграция не нужна.
+
+Добавлены изолированные PostgreSQL tests (real psycopg/Alembic 0001→0002,
+downgrade/re-upgrade, duplicate origin, simultaneous verify/replay, две site points,
+конкурентные изменения состояния, expiry, failed attempt и запрет takeover) и
+локальные HTTP/TLS tests с временным сертификатом. DNS и destination управляются
+fixture, проверка TLS и HTTP настоящая; это не live-Neocities E2E. CI получает
+одноразовый PostgreSQL 18; инструкция запуска — `backend/README.md`.
+Локально: 47 pytest passed (включая 11 PostgreSQL cases), Ruff check/format,
+offline Alembic SQL, static build 51 roots и P00 protocol tests passed.
+Python 3.14.4 / PostgreSQL 18.6, dialect `postgresql+psycopg`; asyncpg здесь не
+используется. GitHub Actions с Python 3.12 проверяется отдельно после отправки.
+
+Следующий пакет: P03 auth + authenticated site management. До публикации claim
+HTTP нужны общий deadline DNS/TLS/body, bounded verifier и attempt/rate limits;
+также renew/release и настройки сайта с preconditions. Пользовательский вход,
+восстановление и scoped embed grants ещё не реализованы. Готовность всего P02/P03,
+social layer или Amsterdam deployment этим пакетом не заявляется.
 
 ## 17. Предложения по развитию
 

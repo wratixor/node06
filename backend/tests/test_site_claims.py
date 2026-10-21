@@ -23,6 +23,14 @@ def test_normalize_origin_accepts_https_root_and_lowercases_idna_ascii() -> None
         "https://127.0.0.1",
         "https://[::1]",
         "https://node06.neocities.org:8443",
+        "https://[invalid",
+        "https://node06.neo\ncities.org",
+        "https://bad host.example",
+        "https://-bad.example",
+        "https://bad..example",
+        "https://224.0.0.1",
+        "https://[ff02::1]",
+        "https://[2001:4860:4860::8888%25eth0]",
     ],
 )
 def test_normalize_origin_rejects_non_origin_or_private_targets(origin: str) -> None:

@@ -109,8 +109,9 @@ class SiteRegistry:
     while performing the outbound proof fetch.
     """
 
-    def __init__(self, database: Database):
+    def __init__(self, database: Database, *, clock: Callable[[], datetime] | None = None):
         self.database = database
+        self.clock = clock or (lambda: datetime.now(UTC))
 
     def create_placeholder_user(self, handle: str) -> str:
         """P02 test/bootstrap helper. P03 replaces this with authenticated account creation."""
@@ -133,16 +134,18 @@ class SiteRegistry:
         revision_id = new_revision_id()
         claim_id = new_claim_id()
         operation_id = new_operation_id()
-        created_at = now or datetime.now(UTC)
+        created_at = now or self.clock()
         material: ClaimMaterial = issue_claim(site_id, created_at)
 
         try:
             with self.database.begin() as connection:
                 owner = connection.execute(
-                    select(users.c.id).where(users.c.id == owner_user_id)
+                    select(users.c.id)
+                    .where(users.c.id == owner_user_id, users.c.state == "active")
+                    .with_for_update()
                 ).scalar_one_or_none()
                 if owner is None:
-                    raise SiteRegistryError("Owner user does not exist.")
+                    raise SiteRegistryError("Active owner user does not exist.")
                 occupied = connection.execute(
                     select(sites.c.id).where(
                         (sites.c.claimed_origin == normalized)
@@ -243,13 +246,11 @@ class SiteRegistry:
         proof_fetcher: Callable[[str], bytes] = fetch_proof,
         now: datetime | None = None,
     ) -> PublicSite:
-        checked_at = now or datetime.now(UTC)
-
-        # Phase 1 commits the attempt counter before the network request. A failed proof
-        # therefore cannot be retried forever by rolling back the same transaction.
+        # Phase 1 commits the attempt counter before the network request. A failed
+        # proof cannot erase its attempt by rolling back the activation transaction.
         with self.database.begin() as connection:
             site = (
-                connection.execute(select(sites).where(sites.c.id == site_id))
+                connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
                 .mappings()
                 .one_or_none()
             )
@@ -257,8 +258,11 @@ class SiteRegistry:
                 raise SiteNotFoundError("Site does not exist.")
             if site["owner_user_id"] != actor_user_id:
                 raise SiteRegistryError("Only the site owner may verify the claim.")
+            self._require_active_owner(connection, actor_user_id)
             if site["state"] == "active":
                 return self._get_public_site(connection, site_id)
+            if site["state"] != "pending":
+                raise SiteConflictError("Only pending sites may be activated by a claim.")
             claim = (
                 connection.execute(
                     select(site_claims)
@@ -272,8 +276,10 @@ class SiteRegistry:
             )
             if claim is None:
                 raise SiteRegistryError("No active verification claim exists.")
-            if _as_utc(claim["expires_at"]) <= checked_at:
+            if _as_utc(claim["expires_at"]) <= (now or self.clock()):
                 raise SiteClaimExpiredError("Site verification claim has expired.")
+            if claim["origin"] != site["claimed_origin"]:
+                raise SiteConflictError("Claim does not match the site's origin.")
             connection.execute(
                 update(site_claims)
                 .where(site_claims.c.id == claim["id"])
@@ -305,13 +311,21 @@ class SiteRegistry:
                     raise SiteNotFoundError("Site verification state no longer exists.")
                 if site["owner_user_id"] != actor_user_id:
                     raise SiteRegistryError("Only the site owner may verify the claim.")
+                self._require_active_owner(connection, actor_user_id)
                 if site["state"] == "active":
                     return self._get_public_site(connection, site_id)
+                if site["state"] != "pending":
+                    raise SiteConflictError("Site was disabled while proof was being checked.")
                 if claim["verified_at"] is not None:
                     raise SiteConflictError("Verification claim was already consumed.")
+                checked_at = now or self.clock()
                 if _as_utc(claim["expires_at"]) <= checked_at:
                     raise SiteClaimExpiredError("Site verification claim has expired.")
-                if claim["origin"] != claim_origin or claim["challenge_digest"] != challenge_digest:
+                if (
+                    claim["origin"] != claim_origin
+                    or site["claimed_origin"] != claim_origin
+                    or claim["challenge_digest"] != challenge_digest
+                ):
                     raise SiteConflictError(
                         "Verification claim changed while proof was being checked."
                     )
@@ -391,6 +405,16 @@ class SiteRegistry:
     def get_public_site(self, site_id: str) -> PublicSite:
         with self.database.connect() as connection:
             return self._get_public_site(connection, site_id)
+
+    @staticmethod
+    def _require_active_owner(connection: Connection, user_id: str) -> None:
+        owner = connection.execute(
+            select(users.c.id)
+            .where(users.c.id == user_id, users.c.state == "active")
+            .with_for_update()
+        ).scalar_one_or_none()
+        if owner is None:
+            raise SiteRegistryError("Active owner user does not exist.")
 
     @staticmethod
     def _get_public_site(connection: Connection, site_id: str) -> PublicSite:
