@@ -613,8 +613,11 @@ loader читает допустимые значения и посылает th
   существующих языковых ссылок и deep links.
 - В embed «Главная этого сайта» возвращает к `s_id`. «Все сайты» ведёт к
   `all-sites`. Эти две команды не зависят от языка UI.
-- `/en/`, `/ru/` сохраняются как совместимые shell входы; любой `p` открывает
-  любую общую public point. Нет translation_group и языковой изоляции графа.
+- Единственный адрес поля — `/?p=<id>&open=<id>`. `/en/`, `/ru/` остаются
+  только redirect для старых ссылок с сохранением явного `p`; без него — `/`.
+  Нет языковых shell, локализации приложения по языку точки, translation_group
+  и фильтра графа/ленты по языку. Любая точка может содержать любой язык;
+  начальные RU/EN точки — самостоятельные объекты с обычными связями.
 - Welcome редактируется отдельно каждым owner, source UI/Git объявлен явно;
   можно добавить ссылки на свои root MD, кнопку сайта и короткое вступление.
 - При недоступности API: static roots demo readable; full iframe fallback —
@@ -968,6 +971,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | P02 site registry | Внутренний lifecycle + PostgreSQL/TLS acceptance; HTTP mutations/settings, renew/release и лимиты verifier ждут P03. Результаты 21.10 ниже |
 | P03a | Регистрация/вход/logout/me, аварийный код, first-party `/account/`, secure cookie/CSRF и PostgreSQL limits; остальной P03 ниже |
 | P03 remainder–P14 | Site management/verify budgets, embed grants/consent, imports/social math/tariffs ещё впереди |
+| Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
 в Chromium parent CSP заблокировал direct external fetch, bridge вернул точку,
@@ -1038,6 +1042,18 @@ Chromium HTTPS smoke (390px) прошёл для регистрации/вход
 конфликтов регистрации и симуляции отсутствующей cookie; физический mobile и
 Neocities embed этим не проверены. Argon2id: 137–140ms/hash локально, 64MiB,
 два одновременных hash slots на процесс; host budget перед deploy измерить отдельно.
+
+Исправление общего поля, 21.10.2026: обнаруженное поведение «только текущий язык»
+противоречило решению владельца и удалено вместе с переключением UI по языку
+точки. Все связи до depth 2 отображаются независимо от `lang`; совпадающие seed
+координаты получают только display separation без слияния ID и изменения seed.
+Канонический адрес — `/?p=<id>&open=<id>`, общие `/recent/` и `/about/`, старые
+языковые адреса — только redirect. `lang` описывает текст для accessibility.
+Chromium regression `scripts/check-static-navigation.cjs` проверяет все 51 roots,
+точный состав depth-2 соседей, переходы RU↔EN/back/forward, третью язык-точку
+без пары, общие ленты, старые ссылки, NODE06→welcome, overlay close, WASD и
+390px viewport. Сборка, JS syntax и P00 protocol прошли. Это локальная проверка;
+публикация на Neocities требует отдельного merge владельцем.
 
 Следующий пакет: закончить bounded verifier/total deadline и renew/settings API
 с транзакционной проверкой сессии/владельца. Затем scoped embed auth/PKCE и trusted

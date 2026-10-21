@@ -99,10 +99,20 @@ The field is the primary interface. Selecting a sphere always makes it the new c
 - Six coloured axis rays are orientation aids in the static era. Their labels are intentionally absent from the public field. The root-era seed is stored in `content/root-coordinates-v1.json`; future social coordinates remain separately derived and attributable.
 
 The site root is a bilingual welcome page. The NODE06 header link and field
-heading lead to `/`. Russian and English links lead to separate Russian and
-English root points; they are independent points rather than locale variants
-of one object. The current field renders only the selected language family, so
-a reciprocal translation link never duplicates a sphere at the current centre.
+heading lead to `/`. All point URLs use `/?p=<id>&open=<id>`; the field, feed and
+recent activity are shared. Language describes a point's text only. There are no
+RU/EN application versions, locale routes, translation identities or language
+filters. Any point can be in any language; authored Russian and English points
+are separate objects connected by ordinary links. Old `/ru/` and `/en/` URLs
+only redirect to the common entrance, preserving an explicit point query.
+Coincident seed coordinates never merge identities: display-only separation
+keeps both spheres present without changing their stored coordinates.
+
+Browser regression checks: build, serve `dist`, then run
+`NODE06_PREVIEW_URL=http://127.0.0.1:8766 node scripts/check-static-navigation.cjs`
+in an environment providing Playwright. Set `NODE06_BROWSER_EXECUTABLE` to use
+an installed Chromium/Chrome. The check covers every root's depth-2 neighborhood,
+mixed-language navigation, legacy redirects, shared feeds and the welcome page.
 ## Field projection
 
 The root-era map keeps the Hexrelatum six-component contract: three opposed pairs are folded into a local 3D projection only for navigation. The six axis ends use the same complementary preview pairs as Hexrelatum: cyan/red, magenta/green, yellow/blue. A visible unit sphere separates direct links (inside) from depth-2 context (outside). Root-era coordinates come from a versioned, validated seed model rather than from ID hashes. The future social backend adds separately-derived social coordinates; it must not present the seed as community judgment.
