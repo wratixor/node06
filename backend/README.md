@@ -44,4 +44,34 @@ its own attempt.
 `GET /api/v1/sites/{site_id}` is public for active sites. Claim creation/verification
 remain service methods until authenticated P03 management routes are available.
 
+Verification locks and checks the owner/site/claim before and after network I/O;
+expiry is checked again after the fetch. Inactive sites and disabled owners cannot
+be reactivated by replaying a proof. An existing origin is never automatically
+transferred to a new claimant, even after expiry or deactivation. Claim renewal,
+release/transfer, HTTP settings and their authorization belong to the next slice.
+
+### Validation
+
+Run `.venv/bin/pytest`, `.venv/bin/ruff check backend` and
+`.venv/bin/ruff format --check backend` from the repository root. Transport tests
+require the `openssl` executable; they generate temporary certificates and use a
+local HTTPS server with controlled DNS/dialing. They cover certificate hostname
+validation, redirects, body limits and rejection of mixed public/private DNS.
+They are not a real-Neocities deployment check.
+
+For full integration coverage, provision an empty, disposable **UTF-8** PostgreSQL
+database whose name starts with `node06_test_`, then set `NODE06_TEST_DATABASE_URL`
+to its SQLAlchemy `postgresql+psycopg://...` URL before running pytest. Do not point
+this variable at an application database. Each test creates its own random schema,
+runs the actual Alembic upgrades through psycopg, and drops only that schema in
+cleanup. Tests cover the upgrade from `0001` to `0002`, downgrade/re-upgrade,
+duplicate-origin races, concurrent verification/replay, shared directory edges,
+failed-proof attempts and owner/state/origin/challenge/expiry changes during fetch.
+Without this variable PostgreSQL tests are explicitly skipped. GitHub Actions now
+supplies its own disposable PostgreSQL 18 service so those tests are mandatory there.
+
+Socket timeouts remain per operation, not a total DNS/TLS/body deadline. Before
+exposing P03 claim routes, add bounded verification scheduling, an overall deadline
+and attempt/rate limits. Passing this internal slice does not enable public writes.
+
 See `docs/DEPLOYMENT-HANDOFF.md` before wiring this service into an operator pipeline.

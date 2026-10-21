@@ -94,6 +94,13 @@ sites = Table(
 )
 Index("ix_sites_owner", sites.c.owner_user_id)
 Index(
+    "uq_sites_claimed_origin_live",
+    sites.c.claimed_origin,
+    unique=True,
+    postgresql_where=sites.c.state.in_(("pending", "active")),
+    sqlite_where=sites.c.state.in_(("pending", "active")),
+)
+Index(
     "ix_sites_primary_origin",
     sites.c.primary_origin,
     unique=True,

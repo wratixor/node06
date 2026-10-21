@@ -46,6 +46,22 @@ jobs:
 
   backend-bootstrap:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: node06_test_ci
+          POSTGRES_USER: node06_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U node06_test -d node06_test_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE06_TEST_DATABASE_URL: postgresql+psycopg://node06_test@127.0.0.1:5432/node06_test_ci
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
