@@ -1012,7 +1012,9 @@ fixture, проверка TLS и HTTP настоящая; это не live-Neoci
 Локально: 47 pytest passed (включая 11 PostgreSQL cases), Ruff check/format,
 offline Alembic SQL, static build 51 roots и P00 protocol tests passed.
 Python 3.14.4 / PostgreSQL 18.6, dialect `postgresql+psycopg`; asyncpg здесь не
-используется. GitHub Actions с Python 3.12 проверяется отдельно после отправки.
+используется. GitHub Actions с Python 3.12/PostgreSQL 18 прошёл для кода `df3f0bd`:
+[run 39587505852](https://github.com/wratixor/node06/actions/runs/39587505852).
+Static build и backend checks успешны; Neocities deploy пропущен на feature ref.
 
 Следующий пакет: P03 auth + authenticated site management. До публикации claim
 HTTP нужны общий deadline DNS/TLS/body, bounded verifier и attempt/rate limits;
