@@ -7,10 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Barrier
-from uuid import uuid4
 
 import pytest
-from node06_service.db import Database
 from node06_service.models import (
     edge_claims,
     events,
@@ -29,48 +27,9 @@ from node06_service.site_registry import (
     SiteRegistry,
     SiteRegistryError,
 )
-from sqlalchemy import create_engine, func, select, text, update
-from sqlalchemy.engine import make_url
+from sqlalchemy import func, select, update
 
 ROOT = Path(__file__).resolve().parents[2]
-
-
-@pytest.fixture
-def pg_database():
-    configured_url = os.environ.get("NODE06_TEST_DATABASE_URL")
-    if not configured_url:
-        pytest.skip("Set NODE06_TEST_DATABASE_URL to a disposable node06_test_* PostgreSQL DB")
-    url = make_url(configured_url)
-    if url.drivername != "postgresql+psycopg" or not (url.database or "").startswith(
-        "node06_test_"
-    ):
-        pytest.fail("PostgreSQL tests require psycopg and a dedicated node06_test_* database")
-    schema = f"registry_test_{uuid4().hex}"
-    admin = create_engine(url)
-    with admin.begin() as connection:
-        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    isolated_url = url.update_query_dict({"options": f"-csearch_path={schema}"})
-    database = Database(isolated_url.render_as_string(hide_password=False))
-    env = {**os.environ, "NODE06_DATABASE_URL": isolated_url.render_as_string(hide_password=False)}
-    try:
-        # Exercise both the previously released head and its upgrade using the real
-        # service dialect, never metadata.create_all or offline SQL as a substitute.
-        for revision in ("0001_bootstrap_schema", "head"):
-            result = subprocess.run(
-                [sys.executable, "-m", "alembic", "upgrade", revision],
-                cwd=ROOT,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            assert result.returncode == 0, result.stderr
-        yield database
-    finally:
-        database.dispose()
-        with admin.begin() as connection:
-            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        admin.dispose()
 
 
 def pending_site(registry, owner, origin="https://registry.example", **kwargs):

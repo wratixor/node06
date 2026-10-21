@@ -1,0 +1,45 @@
+from starlette.responses import JSONResponse
+
+
+class AuthBodyLimit:
+    """Bound actual bytes before JSON/Pydantic parsing, including chunked bodies."""
+
+    def __init__(self, app, maximum=16384):
+        self.app = app
+        self.maximum = maximum
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or not scope["path"].startswith("/api/v1/auth/"):
+            return await self.app(scope, receive, send)
+        chunks = bytearray()
+        total = 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            body = message.get("body", b"")
+            total += len(body)
+            if total > self.maximum:
+                response = JSONResponse(
+                    {
+                        "code": "REQUEST_TOO_LARGE",
+                        "message": "Request exceeds the auth body limit.",
+                    },
+                    status_code=413,
+                    headers={"Cache-Control": "no-store"},
+                )
+                return await response(scope, receive, send)
+            chunks.extend(body)
+            if not message.get("more_body", False):
+                break
+
+        consumed = False
+
+        async def buffered_receive():
+            nonlocal consumed
+            if consumed:
+                return await receive()
+            consumed = True
+            return {"type": "http.request", "body": bytes(chunks), "more_body": False}
+
+        return await self.app(scope, buffered_receive, send)

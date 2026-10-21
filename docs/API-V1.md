@@ -126,7 +126,9 @@ Historical mass is available only labelled for the old revision.
 
 ## 5. HTTP routes
 
-All below are planned. Prefix `/api/v1`; authenticated calls require authorized
+Account register/login/me/logout/logout-all/recovery and the original system/public
+site-read routes are implemented; exact account contract: [AUTH-V1.md](AUTH-V1.md).
+Other routes below are planned. Prefix `/api/v1`; authenticated calls require authorized
 service or scoped embed identity. Bridge has a narrower allowlist than HTTP.
 
 ### Public and authentication

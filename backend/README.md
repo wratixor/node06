@@ -1,11 +1,14 @@
 # NODE06 backend bootstrap
 
-This directory contains P01 plus the first P02 site-registry slice: configuration,
-PostgreSQL migrations, liveness/readiness metadata, public active-site read, and an
-internal verified-origin lifecycle for site points. Public mutation routes are
-intentionally deferred until P03 authentication rather than exposing a temporary
-unauthenticated management API. Imports, reactions, trust and production deployment
-configuration are not implemented yet.
+This directory contains P01, the P02 internal site-registry slice and P03a shared
+account sessions/recovery. It exposes account routes and the first-party
+`/account/` page plus health/meta and public active-site read. Site mutation routes
+remain deferred until authenticated management and verifier budgets are complete.
+Imports, reactions, trust and production deployment are not implemented yet.
+
+Account setup, HTTPS/cookie/CSRF boundary, recovery and configurable limits:
+[docs/AUTH-V1.md](../docs/AUTH-V1.md). Set `NODE06_MANAGEMENT_ORIGIN` to the exact
+HTTPS origin before using account writes. No email or SMS service is needed.
 
 Create an isolated environment and install the backend from the repository root:
 
@@ -64,7 +67,7 @@ database whose name starts with `node06_test_`, then set `NODE06_TEST_DATABASE_U
 to its SQLAlchemy `postgresql+psycopg://...` URL before running pytest. Do not point
 this variable at an application database. Each test creates its own random schema,
 runs the actual Alembic upgrades through psycopg, and drops only that schema in
-cleanup. Tests cover the upgrade from `0001` to `0002`, downgrade/re-upgrade,
+cleanup. Tests cover upgrades through `0003`, downgrade/re-upgrade,
 duplicate-origin races, concurrent verification/replay, shared directory edges,
 failed-proof attempts and owner/state/origin/challenge/expiry changes during fetch.
 Without this variable PostgreSQL tests are explicitly skipped. GitHub Actions now
