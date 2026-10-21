@@ -11,6 +11,7 @@ NODE06 is based on [Hexrelatum](https://github.com/wratixor/hexrelatum). See [LI
 ```text
 content/              root Markdown points
 static/               browser CSS/JS
+static/icons/         owner-supplied favicon and app icons/manifest
 build.py               validator + static builder
 scripts/build.sh       local build shortcut
 scripts/publish.sh     build + commit + push shortcut
@@ -44,6 +45,10 @@ or:
 ```bash
 python3 build.py
 ```
+
+The builder publishes `static/icons/` at the site root and includes favicon,
+Apple touch icon and manifest links in every generated HTML page. Keep the
+manifest icon paths rooted at `/`; the same files serve all point languages.
 
 ## Publish changes
 

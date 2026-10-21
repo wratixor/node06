@@ -22,6 +22,15 @@ ID_RE = re.compile(r"^[a-z0-9-]+$")
 STAT_ORDER = ["body", "spirit", "onslaught", "composure", "reaction", "technique"]
 ROOT_COORDINATE_FLOOR = 1
 ROOT_ANCHOR_WEIGHT_LIMIT = 8
+ICON_FILES = (
+    "favicon.svg", "favicon-96x96.png", "favicon.ico", "apple-touch-icon.png",
+    "web-app-manifest-192x192.png", "web-app-manifest-512x512.png", "site.webmanifest",
+)
+ICON_LINKS = '''<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">'''
 
 @dataclass
 class Point:
@@ -243,6 +252,7 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>{html.escape(title)} · node06</title>
+{ICON_LINKS}
 <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body data-page="{page_kind}" data-point-id="{html.escape(point_id, quote=True)}">
@@ -262,6 +272,7 @@ def write(path: Path, text: str) -> None:
 def legacy_redirect(destination: str) -> str:
     fallback = destination
     return f'''<!doctype html><html><head><meta charset="utf-8"><title>NODE06</title>
+{ICON_LINKS}
 <link rel="canonical" href="{html.escape(fallback, quote=True)}"></head><body>
 <p><a href="{html.escape(fallback, quote=True)}">Open NODE06</a></p><script>
 const q=new URLSearchParams(location.search);
@@ -279,7 +290,9 @@ def build() -> None:
     if DIST.exists():
         shutil.rmtree(DIST)
     DIST.mkdir(parents=True)
-    shutil.copytree(STATIC, DIST / "assets")
+    shutil.copytree(STATIC, DIST / "assets", ignore=shutil.ignore_patterns("icons"))
+    for name in ICON_FILES:
+        shutil.copyfile(STATIC / "icons" / name, DIST / name)
 
     index = []
     for p in points.values():
@@ -301,7 +314,7 @@ def build() -> None:
 
         # Keep stable point URLs as compatibility/deep-link entry points, but the map remains primary.
         target = f"/?p={p.id}&open={p.id}"
-        redirect = f'''<!doctype html><html lang="{p.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url={target}"><link rel="canonical" href="{target}"><title>node06 · {html.escape(p.id)}</title></head><body><p><a href="{target}">Open in field</a></p></body></html>'''
+        redirect = f'''<!doctype html><html lang="{p.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url={target}"><link rel="canonical" href="{target}"><title>node06 · {html.escape(p.id)}</title>{ICON_LINKS}</head><body><p><a href="{target}">Open in field</a></p></body></html>'''
         write(DIST / p.lang / "p" / p.id / "index.html", redirect)
         write(DIST / "p" / p.id / "index.html", redirect)
 
