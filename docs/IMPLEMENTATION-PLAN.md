@@ -1,7 +1,8 @@
 # NODE06 — сервис общей вики для независимых сайтов
 
-Статус: P00/P01 и внутренний реестр P02 реализованы; публичные изменения сайтов,
-вход и социальный слой ещё не реализованы. Текущие проверки — в Progress ниже.
+Статус: P00/P01, внутренний реестр P02 и P03a аккаунты/сессии/восстановление
+реализованы; публичные изменения сайтов, embed auth и социальный слой ещё впереди.
+Текущие проверки — в Progress ниже; account contract — [AUTH-V1.md](AUTH-V1.md).
 Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
 Редакция 2: общая сеть сайтов, bridge + full embed + hosted frontend + GitHub roots.
 Владелец продуктовых решений: Wratixor.
@@ -965,7 +966,8 @@ import queue fairness/memory и диск. Это цели исследовани
 | P00 bridge/full transport | Локальный synthetic prototype готов в `prototypes/embed-p00/`: два origin, CSP, handshake, typed read/theme, reload и write boundary. Не deployment и не real-Neocities proof |
 | P01 backend bootstrap | `pyproject.toml`, FastAPI service, Alembic bootstrap migration, `/api/v1/{health,ready,meta}` и local tests готовы. Нет domain tables/API, hosted renderer или deployment |
 | P02 site registry | Внутренний lifecycle + PostgreSQL/TLS acceptance; HTTP mutations/settings, renew/release и лимиты verifier ждут P03. Результаты 21.10 ниже |
-| P03–P14 | Не реализованы: auth/import/social math/tariffs пока документы |
+| P03a | Регистрация/вход/logout/me, аварийный код, first-party `/account/`, secure cookie/CSRF и PostgreSQL limits; остальной P03 ниже |
+| P03 remainder–P14 | Site management/verify budgets, embed grants/consent, imports/social math/tariffs ещё впереди |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
 в Chromium parent CSP заблокировал direct external fetch, bridge вернул точку,
@@ -1021,6 +1023,25 @@ HTTP нужны общий deadline DNS/TLS/body, bounded verifier и attempt/ra
 также renew/release и настройки сайта с preconditions. Пользовательский вход,
 восстановление и scoped embed grants ещё не реализованы. Готовность всего P02/P03,
 social layer или Amsterdam deployment этим пакетом не заявляется.
+
+P03a, 21.10.2026: владелец согласовал аварийный код вместо email/SMS. Код
+показывается один раз при регистрации; восстановление атомарно меняет пароль,
+перевыпускает код и отзывает все сессии. Добавлена migration `0003_account_sessions`
+(Argon2id password hash, random session/recovery digests, durable auth counters).
+Первичный интерфейс `/account/` использует HTTPS, no-store/frame denial, HttpOnly
+cookie, exact Origin и CSRF. Регистрация — 201 только при успехе, 409 не успех;
+поля сохраняются при ошибке, после регистрации имя остаётся для входа.
+Подробности и ограничения — в AUTH-V1; это first-party, не выдача bearer родителю.
+Локально 63 tests passed, Ruff/format, offline SQL и online psycopg migrations
+0001→0002→0003/downgrade/re-upgrade, static 51 roots и P00 protocol passed.
+Chromium HTTPS smoke (390px) прошёл для регистрации/входа/восстановления/logout,
+конфликтов регистрации и симуляции отсутствующей cookie; физический mobile и
+Neocities embed этим не проверены. Argon2id: 137–140ms/hash локально, 64MiB,
+два одновременных hash slots на процесс; host budget перед deploy измерить отдельно.
+
+Следующий пакет: закончить bounded verifier/total deadline и renew/settings API
+с транзакционной проверкой сессии/владельца. Затем scoped embed auth/PKCE и trusted
+consent. Полный P03 и production ещё не готовы; P04/P05 пока не начинать.
 
 ## 17. Предложения по развитию
 

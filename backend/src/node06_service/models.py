@@ -177,3 +177,33 @@ events = Table(
     UniqueConstraint("operation_id", "kind", "point_id", name="uq_event_operation_kind_point"),
 )
 Index("ix_events_created", events.c.created_at, events.c.seq)
+
+account_credentials = Table(
+    "account_credentials",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("password_hash", Text, nullable=False),
+    Column("recovery_digest", String(64), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+sessions = Table(
+    "sessions",
+    metadata,
+    Column("digest", String(64), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("revoked_at", DateTime(timezone=True), nullable=True),
+)
+Index("ix_sessions_user", sessions.c.user_id)
+Index("ix_sessions_expiry", sessions.c.expires_at)
+
+auth_limits = Table(
+    "auth_limits",
+    metadata,
+    Column("key", String(64), primary_key=True),
+    Column("count", Integer, nullable=False),
+    Column("resets_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_auth_limits_reset", auth_limits.c.resets_at)

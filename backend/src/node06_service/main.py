@@ -3,10 +3,15 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
+from .account_ui import router as account_router
+from .auth import AuthError
+from .auth_api import router as auth_router
 from .config import Settings, get_settings
 from .db import Database
+from .request_limits import AuthBodyLimit
 from .schemas import PublicSiteResponse
 from .site_registry import SiteNotFoundError, SiteRegistry
 
@@ -24,6 +29,34 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = current_settings
     app.state.database = Database(current_settings.database_url)
+    app.add_middleware(AuthBodyLimit)
+    app.include_router(auth_router)
+    app.include_router(account_router)
+
+    @app.exception_handler(AuthError)
+    async def auth_error(request: Request, exc: AuthError):
+        headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after else {}
+        return JSONResponse(
+            {
+                "code": exc.code,
+                "message": "Account request could not be completed.",
+                "request_id": request.state.request_id,
+            },
+            status_code=exc.status,
+            headers=headers,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_input(request: Request, _exc: RequestValidationError):
+        # FastAPI's default error body includes submitted values, including secrets.
+        return JSONResponse(
+            {
+                "code": "INVALID_INPUT",
+                "message": "Check the submitted fields.",
+                "request_id": request.state.request_id,
+            },
+            status_code=422,
+        )
 
     @app.middleware("http")
     async def request_id(
@@ -32,6 +65,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request.state.request_id = request.headers.get("X-Request-ID", uuid4().hex)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
+        if request.url.path.startswith("/api/v1/auth/") or request.url.path == "/api/v1/me":
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+            response.headers["X-Frame-Options"] = "DENY"
         return response
 
     @app.get("/api/v1/health")
@@ -59,9 +96,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "service": "node06",
             "build_revision": current_settings.build_revision,
             "embed_protocol": "node06-embed/1",
-            "implemented": ["health", "ready", "meta", "public_site_read"],
+            "implemented": ["health", "ready", "meta", "public_site_read", "account_sessions"],
             "not_implemented": [
-                "auth",
+                "embed_auth",
                 "site_claim_http",
                 "site_settings_http",
                 "points",

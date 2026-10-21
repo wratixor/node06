@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,11 @@ class Settings(BaseSettings):
     port: int = 8086
     database_url: str | None = None
     build_revision: str = "dev"
+    management_origin: str | None = None
+    registration_per_hour: int = Field(default=3, ge=1)
+    login_per_minute: int = Field(default=10, ge=1)
+    account_login_per_minute: int = Field(default=10, ge=1)
+    session_hours: int = Field(default=24, ge=1, le=720)
 
 
 @lru_cache
