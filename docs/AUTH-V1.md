@@ -104,3 +104,7 @@ Local full suite: 63 passed, including real PostgreSQL migrations/races. Ruff,
 offline migration SQL, static build (51 roots), JS syntax and P00 protocol passed.
 Existing test-client dependencies emit two
 deprecation warnings; functional tests pass and dependency migration is deferred.
+
+Remote acceptance for code `aff4ba5`: Python 3.12/PostgreSQL 18 backend checks and
+static build passed in [run 39597979356](https://github.com/wratixor/node06/actions/runs/39597979356).
+The Neocities deployment step was skipped on the feature branch.
