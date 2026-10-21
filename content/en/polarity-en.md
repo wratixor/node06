@@ -4,4 +4,4 @@ The symbolic words “masculine” and “feminine” here describe only a volun
 
 The present root coordinates are a reviewable semantic seed version, not a community vote. For examples, see [outward movement](md://outward-en) and [inward holding](md://inward-en); the visible map remains a [field](md://field-en) without scale labels. This layout belongs to [NODE06](md://node06-en).
 
-[Русская версия](md://polarity-ru)
+[Точка на русском](md://polarity-ru)

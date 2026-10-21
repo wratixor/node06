@@ -1,3 +1,3 @@
 Внешнее не обязано быть наблюдаемым изнутри. [Наблюдение](md://observation-ru) описывает только доступную границу.
 
-[English version](md://outer-en)
+[Point in English](md://outer-en)

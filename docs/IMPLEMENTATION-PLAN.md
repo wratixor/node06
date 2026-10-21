@@ -1054,6 +1054,10 @@ Chromium regression `scripts/check-static-navigation.cjs` проверяет в�
 без пары, общие ленты, старые ссылки, NODE06→welcome, overlay close, WASD и
 390px viewport. Сборка, JS syntax и P00 protocol прошли. Это локальная проверка;
 публикация на Neocities требует отдельного merge владельцем.
+Remote CI для кода `b35ecd0` прошёл: [run 39609565534](https://github.com/wratixor/node06/actions/runs/39609565534),
+static build/backend tests/lint/migrations; deploy пропущен. Последующее изменение
+28 подписей «version / версия» на «Point in English / Точка на русском» проверено
+повторной сборкой и тем же полным browser regression, ID/связи сохранены.
 
 Следующий пакет: закончить bounded verifier/total deadline и renew/settings API
 с транзакционной проверкой сессии/владельца. Затем scoped embed auth/PKCE и trusted
