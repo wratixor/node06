@@ -264,3 +264,28 @@ def test_bridge_revoked_site_and_oversize_reads_fail_closed(hosted, pg_database,
         )
     assert client.get(api, params={"method": "capabilities.get"}).status_code == 404
     assert client.get(EMBED + f"/bridge/v1/{active.site_id}/").status_code == 404
+
+
+def test_operator_roots_visible_through_hosted_and_embed_graph(hosted, pg_database):
+    from node06_service.root_publish import publish
+    from test_root_publish import REPO, candidate
+
+    _app, client, active, _pending = hosted
+    publish(pg_database, candidate(active), REPO, "https://garden.example")
+    response = client.get("/data/points.json")
+    assert response.status_code == 200
+    graph = {p["id"]: p for p in response.json()}
+    root_id = f"r_{active.site_id[2:]}_idea"
+    assert graph[root_id]["lang"] == "ru"
+    assert root_id in graph[active.site_id]["links"]
+    assert "all-sites" in graph[active.site_id]["links"]
+    assert "data-point-id=" in graph[active.site_id]["html"]
+    assert graph[root_id]["source"]["commit_sha"] == "a" * 40
+    assert client.get(EMBED + "/data/points.json").json() == response.json()
+    # Revoking the entry hides its roots as well as its welcome.
+    with pg_database.begin() as connection:
+        connection.execute(
+            update(sites).where(sites.c.id == active.site_id).values(state="inactive")
+        )
+    graph = {p["id"]: p for p in client.get("/data/points.json").json()}
+    assert active.site_id not in graph and root_id not in graph

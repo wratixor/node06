@@ -1,6 +1,8 @@
 # NODE06 — сервис общей вики для независимых сайтов
 
-Статус: P00/P01, реестр P02, P03a аккаунты/сессии/восстановление и P03b HTTP
+Статус: операторская публикация Git-контента через деплой описана в
+[OPERATOR-CONTENT-DEPLOY](OPERATOR-CONTENT-DEPLOY.md); self-service importer ещё
+не реализован. P00/P01, реестр P02, P03a аккаунты/сессии/восстановление и P03b HTTP
 управления сайтами реализованы. P03c добавляет UI, hosted-вики и read-only full
 iframe; P03d добавляет публичный маленький API bridge и SDK. Scoped embed auth
 и социальный слой ещё впереди. Текущие проверки — в Progress ниже; implemented

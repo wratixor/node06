@@ -2,7 +2,11 @@
 
 Status: overall target contract. P04a read-only manifest/snapshot preflight is
 implemented in [ROOT-PREFLIGHT-V1](ROOT-PREFLIGHT-V1.md); source registration,
-GitHub transport, DB preview/accept and public imports remain unimplemented.
+GitHub service transport, authenticated DB preview/accept and self-service imports
+remain unimplemented.
+A separate operator-selected release path now exists:
+[OPERATOR-CONTENT-DEPLOY](OPERATOR-CONTENT-DEPLOY.md). It publishes reviewed
+content through deployment and does not implement the self-service protocol below.
 Requested 13 September 2026.
 See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) and [API-V1.md](API-V1.md).
 
