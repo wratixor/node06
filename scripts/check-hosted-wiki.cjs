@@ -49,6 +49,29 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#password').fill(password);
     await page.locator('#submit').click();
     await page.waitForFunction(() => document.querySelector('#status').textContent.startsWith('Вход выполнен:'));
+    assert.equal(await page.locator('#account-form').isVisible(), false);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#status').textContent.startsWith('Вы вошли:'));
+    assert.equal(await page.locator('#account-form').isVisible(), false);
+    for (const logout of ['#logout', '#logout-all']) {
+      await page.locator(logout).click();
+      await page.locator('#account-form').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#session-actions').isVisible(), false);
+      await page.locator('#handle').fill(handle);
+      await page.locator('#password').fill(password);
+      await page.locator('#submit').click();
+      await page.waitForFunction(() => document.querySelector('#account-form').hidden);
+    }
+    // A session revoked elsewhere must restore the form on returning to this tab.
+    const session = await (await page.request.get(base + '/api/v1/me')).json();
+    assert.equal((await page.request.delete(base + '/api/v1/auth/session', {
+      headers: { Origin: base, 'X-CSRF-Token': session.csrf_token }
+    })).status(), 204);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await page.locator('#account-form').waitFor({ state: 'visible' });
+    await page.locator('#password').fill(password);
+    await page.locator('#submit').click();
+    await page.waitForFunction(() => document.querySelector('#account-form').hidden);
     await page.locator('nav a[href="/sites/"]').click();
     await page.waitForFunction(() => !document.querySelector('#new-origin').disabled);
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Management must fit 390px');

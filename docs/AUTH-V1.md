@@ -60,7 +60,12 @@ used as the session cookie or as a global bearer credential.
 
 `/account/` is a small first-party RU management entry with separate self-hosted
 JS/CSS, strict CSP, register/login/recover forms and logout controls. Errors retain
-form values. Registration prefills the login name. Recovery displays a fresh code
+form values. The form stays hidden during initial session detection and after
+confirmed login/reload; identity and logout controls remain visible. Logout or
+an expired/revoked session detected when returning to the tab restores the form.
+In-flight checks from an earlier auth state cannot restore stale account state.
+Recovery-code display is independent and is not silently hidden on login.
+Registration prefills the login name. Recovery displays a fresh code
 and switches back to login. If login returns success but `/me` fails, the UI reports
 that the browser did not establish a session. No credentials go into localStorage,
 query strings or bridge messages. Browser code never reads the HttpOnly cookie.
