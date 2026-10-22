@@ -5,10 +5,16 @@ See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) and [API-V1.md](API-V1.md).
 
 ## 1. Why forks are useful
 
-A site owner may fork NODE06 for its static client and author extra Markdown
+A site owner may fork NODE06 for its static client and author its own Markdown
 roots in Git. The shared service imports selected data into the same graph.
 Forking is optional: the full iframe and welcome editor need no Git knowledge.
-No database fork, independent user system or separate meaning-space is created.
+This content-source connection itself creates no database fork, independent
+user system or separate meaning-space. An independently deployed backend copy
+is a different operation. Entrance-specific root sets/home layouts, site-less
+users and future inter-server links are clarified in
+[ENTRANCES-ROOTS-NETWORK](ENTRANCES-ROOTS-NETWORK.md); this importer remains
+unimplemented. Each entrance may start from its own root set rather than the
+same mandatory index, without replacing another source's canonical IDs.
 
 A fork is not automatically a registered site. First establish service account,
 verified site origin and site ID; then attach the public GitHub source through
