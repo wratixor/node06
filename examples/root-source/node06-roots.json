@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "site_id": "s_00000000000000000000000000000001",
+  "content_directory": "site-content",
+  "welcome": {"file": "welcome.md", "mode": "git", "lang": "und"},
+  "points": [
+    {"id": "observation", "file": "observation.md", "lang": "ru"},
+    {"id": "action", "file": "action.md", "lang": "en"}
+  ]
+}
