@@ -33,6 +33,9 @@ node06-service = "node06_service.__main__:main"
 [tool.setuptools.packages.find]
 where = ["backend/src"]
 
+[tool.setuptools.package-data]
+node06_service = ["ui/*.html", "ui/*.js"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["backend/tests"]

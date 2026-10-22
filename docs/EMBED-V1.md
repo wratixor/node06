@@ -1,6 +1,8 @@
 # NODE06 embedding protocol v1 — target contract
 
-Status: proposed implementation contract, not deployed. Owner selected bridge
+Status: target contract, not deployed. A public read-only full iframe is now
+implemented as documented in [HOSTED-WIKI-V1](HOSTED-WIKI-V1.md); scoped writes,
+grants/PKCE and the live bridge remain future work. Owner selected bridge
 and full iframe on 13 September 2026. Architecture and work packets:
 [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md). HTTP: [API-V1.md](API-V1.md).
 
@@ -15,7 +17,9 @@ All three address the same points/users/revisions/votes. Sites are registrations
 and entry points, not accounts, extra voters or isolated content databases.
 One user can own several sites; owning a site does not own its visitors' points.
 
-Routes are planned, not currently available:
+Current public read routes: `/embed/v1/{site_id}/` on the configured embed
+origin and `/sites/{site_id}/` on the hosted origin, for active sites only.
+The bridge/authenticated capabilities and other routes below remain target design:
 
 ```text
 <embed-origin>/bridge/v1/<site_id>/

@@ -1,0 +1,197 @@
+"""Disposable local HTTPS browser acceptance, including the installed wheel.
+
+Run with .venv/bin/python and NODE06_TEST_DATABASE_URL pointing to node06_test_*.
+Needs openssl, Node, Playwright (NODE_PATH if bundled) and Chromium. No production use.
+"""
+
+import os
+import shutil
+import ssl
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+from urllib.request import urlopen
+from uuid import uuid4
+
+from node06_service.auth import AuthService
+from node06_service.config import Settings
+from node06_service.db import Database
+from node06_service.models import sites
+from node06_service.site_registry import SiteRegistry
+from sqlalchemy import create_engine, text, update
+from sqlalchemy.engine import make_url
+
+ROOT = Path(__file__).resolve().parents[1]
+url = make_url(os.environ["NODE06_TEST_DATABASE_URL"])
+if url.drivername != "postgresql+psycopg" or not (url.database or "").startswith("node06_test_"):
+    raise SystemExit("Use a dedicated node06_test_* database through psycopg")
+schema = "node06_test_" + uuid4().hex
+admin = create_engine(url)
+servers = []
+created = False
+temporary = Path(tempfile.mkdtemp(prefix="node06-hosted-browser."))
+try:
+    with admin.begin() as connection:
+        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+    created = True
+    isolated = url.update_query_dict({"options": f"-csearch_path={schema}"}).render_as_string(
+        hide_password=False
+    )
+    env = {key: value for key, value in os.environ.items() if not key.startswith("NODE06_")}
+    env.update(
+        {
+            "NODE06_DATABASE_URL": isolated,
+            "NODE06_MANAGEMENT_ORIGIN": "https://localhost:8846",
+            "NODE06_EMBED_ORIGIN": "https://embed.localhost:8847",
+            "NODE06_HOSTED_DIST": str(ROOT / "dist"),
+            "NODE06_REGISTRATION_PER_HOUR": "100",
+            "NODE06_SITE_CREATIONS_PER_HOUR": "100",
+        }
+    )
+
+    def run(command, **kwargs):
+        return subprocess.run(command, cwd=ROOT, env=env, check=True, **kwargs)
+
+    run([sys.executable, "build.py"])
+    run([sys.executable, "-m", "alembic", "upgrade", "head"], capture_output=True)
+    db = Database(isolated)
+    owner = (
+        AuthService(db, Settings(registration_per_hour=100))
+        .register("fixture-owner", "fixture-test-password", "fixture")
+        .identity.user_id
+    )
+    registry = SiteRegistry(db)
+    site = registry.create_pending_site(
+        owner_user_id=owner,
+        origin="https://garden.localhost",
+        display_name="Fixture garden",
+        welcome_body="<script>window.stolen=1</script>Тест / Test",
+    )
+    registry.verify_site(
+        site.site_id, actor_user_id=owner, proof_fetcher=lambda _: site.proof_document.encode()
+    )
+    with db.begin() as connection:
+        connection.execute(
+            update(sites).where(sites.c.id == site.site_id).values(theme={"bg": "#123"})
+        )
+    db.dispose()
+    env["NODE06_DEFAULT_SITE_ID"] = site.site_id
+    run(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-nodes",
+            "-keyout",
+            str(temporary / "key.pem"),
+            "-out",
+            str(temporary / "cert.pem"),
+            "-days",
+            "1",
+            "-subj",
+            "/CN=localhost",
+            "-addext",
+            "subjectAltName=DNS:localhost,DNS:embed.localhost",
+        ],
+        capture_output=True,
+    )
+    run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            "--no-deps",
+            "--wheel-dir",
+            str(temporary / "wheels"),
+            ".",
+        ],
+        capture_output=True,
+    )
+    wheel = next((temporary / "wheels").glob("*.whl"))
+    run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(temporary / "runtime"),
+            str(wheel),
+        ],
+        capture_output=True,
+    )
+    env["PYTHONPATH"] = str(temporary / "runtime")
+    for port in (8846, 8847):
+        servers.append(
+            subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "uvicorn",
+                    "node06_service.main:app",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(port),
+                    "--ssl-keyfile",
+                    str(temporary / "key.pem"),
+                    "--ssl-certfile",
+                    str(temporary / "cert.pem"),
+                    "--no-access-log",
+                ],
+                cwd=ROOT,
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        )
+    # Only this generated, loopback certificate bypasses validation in the fixture.
+    tls = ssl._create_unverified_context()
+    for port, server in zip((8846, 8847), servers, strict=True):
+        deadline = time.monotonic() + 15
+        while True:
+            if server.poll() is not None:
+                raise RuntimeError(
+                    "Fixture failed to bind/start; check that ports 8846/8847 are free"
+                )
+            try:
+                with urlopen(
+                    f"https://localhost:{port}/api/v1/health", context=tls, timeout=1
+                ) as response:
+                    if response.status == 200:
+                        break
+            except OSError:
+                pass
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Fixture HTTPS startup timed out")
+            time.sleep(0.1)
+    env.update(
+        {
+            "NODE06_TEST_ACTIVE_SITE": site.site_id,
+            "NODE06_PREVIEW_URL": "https://localhost:8846",
+            "NODE06_EMBED_URL": "https://embed.localhost:8847",
+        }
+    )
+    if os.environ.get("NODE06_BROWSER_EXECUTABLE"):
+        env["NODE06_BROWSER_EXECUTABLE"] = os.environ["NODE06_BROWSER_EXECUTABLE"]
+    run(["node", "scripts/check-hosted-wiki.cjs"])
+finally:
+    for server in servers:
+        server.terminate()
+    for server in servers:
+        try:
+            server.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            server.kill()
+            server.wait()
+    if created:
+        with admin.begin() as connection:
+            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+    admin.dispose()
+    shutil.rmtree(temporary)

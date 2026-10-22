@@ -2,8 +2,9 @@
 
 Implemented locally on 22 October 2026. No backend production deployment or
 production migration is implied. All paths below start with `/api/v1`.
-Account/session setup is in [AUTH-V1.md](AUTH-V1.md). There is no management UI
-for these site operations yet; `/account/` manages the shared service account.
+Account/session setup is in [AUTH-V1.md](AUTH-V1.md). `/sites/` now provides the
+first-party site UI; `/account/` manages the shared service account. Hosted/read-only
+frame setup is in [HOSTED-WIKI-V1](HOSTED-WIKI-V1.md).
 These are service-wide accounts, not Geno-Dice Wallet or Arena identities.
 
 ## Authorization
@@ -45,8 +46,8 @@ returns 409, including an expired pending claim. No automatic takeover occurs.
 Private settings include `id`, `origin`, `state`, `display_name`, `theme`,
 `welcome_source`, `settings_revision`, `welcome_revision_id`, `welcome_body`,
 `claim_id`, `claim_expires_at`, `attempt_count`. They omit nonce/digest and
-credentials. Public active-site read retains its previous fields; theme delivery
-to the hosted/embed renderer is still future work.
+credentials. Public active-site REST read retains its previous fields; the
+hosted/site and read-only frame shells now receive the saved theme separately.
 
 ```json
 {
@@ -128,8 +129,8 @@ ceases to work. A pending claim expires after 30 minutes.
 
 ## Remaining work and rollout
 
-This packet does not finish P03: site management UI, scoped embed grants, PKCE and
-trusted consent remain. Release/transfer/aliases/co-owners/Git welcome mode are
+This packet does not finish P03: scoped embed grants, PKCE and trusted consent
+remain after the site UI/read-only hosted slice. Release/transfer/aliases/co-owners/Git welcome mode are
 not exposed. Supporter notifications and revision-bound endorsements must be in
 place before introducing support/votes; this packet cannot silently carry votes
 to a rewritten meaning because voting does not exist yet. Git importer and the

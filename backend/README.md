@@ -3,7 +3,7 @@
 This directory contains P01, the P02 site registry, P03a shared account sessions
 and P03b authenticated site management. It exposes account routes and the
 first-party `/account/` page, health/meta, public active-site read and owner-only
-create/list/manage/renew/verify/settings routes. Site management UI is still pending.
+create/list/manage/renew/verify/settings routes. `/sites/` is the first-party owner UI.
 Imports, reactions, trust and production deployment are not implemented yet.
 
 Account setup, HTTPS/cookie/CSRF boundary, recovery and configurable limits:
@@ -11,6 +11,9 @@ Account setup, HTTPS/cookie/CSRF boundary, recovery and configurable limits:
 HTTPS origin before using account writes. No email or SMS service is needed.
 Implemented site payloads, limits, security and remaining work:
 [docs/SITE-MANAGEMENT-V1.md](../docs/SITE-MANAGEMENT-V1.md).
+Hosted game/lore entrance, shared public projection, read-only iframe, two-origin
+setup and packaging: [HOSTED-WIKI-V1.md](../docs/HOSTED-WIKI-V1.md). The generated
+frontend must be built before starting with `NODE06_HOSTED_DIST` configured.
 
 Create an isolated environment and install the backend from the repository root:
 

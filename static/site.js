@@ -1,11 +1,29 @@
 (async()=>{
-  const res=await fetch('/data/points.json');
-  const all=await res.json();
-  const byId=new Map(all.map(p=>[p.id,p]));
   const body=document.body;
   if(!body||body.dataset.page!=='field') return;
+  const res=await fetch('/data/points.json');
+  if(!res.ok) throw new Error('Field unavailable ('+res.status+'). Reload to retry. / Поле недоступно. Обновите страницу.');
+  const all=await res.json();
+  const byId=new Map(all.map(p=>[p.id,p]));
 
   const params=new URLSearchParams(location.search);
+  const fieldPath=body.dataset.fieldPath||'/';
+  const requested=params.get('p')||body.dataset.homePoint;
+  function preference(key,fallback){try{return localStorage.getItem(key)||fallback;}catch{return fallback;}}
+  function remember(key,value){try{localStorage.setItem(key,value);}catch{/* Storage may be unavailable inside an iframe. */}}
+  if(body.dataset.tenant){
+    const theme=JSON.parse(body.dataset.theme||'{}');
+    const colors={bg:'--bg',text:'--ink',accent:'--accent',panel:'--panel',border:'--line'};
+    for(const [key,variable] of Object.entries(colors)){
+      if(typeof theme[key]==='string'&&/^#([\da-f]{3}|[\da-f]{6})$/i.test(theme[key]))
+        body.style.setProperty(variable,theme[key]);
+    }
+    if(Number.isInteger(theme.radius)&&theme.radius>=0&&theme.radius<=16)
+      body.style.setProperty('--radius',theme.radius+'px');
+    const fonts={system:'system-ui, sans-serif',serif:'Georgia, serif',mono:'ui-monospace, monospace'};
+    if(Object.hasOwn(fonts,theme.font))body.style.fontFamily=fonts[theme.font];
+    body.dataset.density=theme.density==='compact'?'compact':'normal';
+  }
   const local=all;
   if(!local.length) return;
 
@@ -17,18 +35,21 @@
   const controls=document.getElementById('field-controls');
   const shell=document.querySelector('.field-workspace');
 
-  let center=byId.get(params.get('p'));
+  let center=byId.get(requested);
   if(!center) center=[...local].sort((a,b)=>b.degree-a.degree)[0];
-  let openPoint=byId.get(params.get('open')) || null;
+  let openPoint=byId.get(params.get('open')||(!params.has('p')?body.dataset.homePoint:'')) || null;
   const startPage=document.getElementById('start-page');
   const rootField=document.getElementById('root-field');
   if(startPage){
-    const hasPoint=byId.has(params.get('p'));
+    const hasPoint=byId.has(requested);
     startPage.hidden=hasPoint;rootField.hidden=!hasPoint;
-    if(!hasPoint) return;
+    if(!hasPoint){
+      if(requested){const error=document.createElement('p');error.textContent='Point unavailable / Точка недоступна: '+requested;startPage.prepend(error);}
+      return;
+    }
   }
-  let mode=localStorage.getItem('node06-mode')||'read';
-  let layout=localStorage.getItem('node06-layout')||'side';
+  let mode=params.get('mode')||preference('node06-mode','read');
+  let layout=preference('node06-layout','side');
   if(!['explore','read','feed'].includes(mode)) mode='read';
   if(!['side','below','overlay'].includes(layout)) layout='side';
 
@@ -43,13 +64,14 @@
     const q=new URLSearchParams();
     if(center) q.set('p',center.id);
     if(openPoint&&mode==='read') q.set('open',openPoint.id);
-    const url=`/?${q.toString()}`;
+    if(mode==='feed') q.set('mode','feed');
+    const url=`${fieldPath}?${q.toString()}`;
     history[replace?'replaceState':'pushState']({},'',url);
   }
 
   function setMode(next,{persist=true}={}){
     mode=next;
-    if(persist) localStorage.setItem('node06-mode',mode);
+    if(persist) remember('node06-mode',mode);
     controls.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
     if(mode==='explore'){
       openPoint=null;
@@ -67,7 +89,7 @@
 
   function setLayout(next,{persist=true}={}){
     layout=next;
-    if(persist) localStorage.setItem('node06-layout',layout);
+    if(persist) remember('node06-layout',layout);
     shell.dataset.layout=layout;
     controls.querySelectorAll('[data-layout]').forEach(b=>b.classList.toggle('active',b.dataset.layout===layout));
   }
@@ -82,13 +104,13 @@
     openPoint=point;
     panel.hidden=false;
     panelBody.innerHTML=`
-      <div class="eyebrow">ROOT POINT · ${escapeHtml(point.id)}</div>
+      <div class="eyebrow">${escapeHtml((point.origin||'root').toUpperCase())} POINT · ${escapeHtml(point.id)}${point.coordinate_source==='display-only'?' · DISPLAY LAYOUT ONLY':''}</div>
       <div class="point-text" lang="${escapeHtml(point.lang||'und')}">${point.html}</div>
       <section>
         <h2>LINKS</h2>
         <ul class="links-list">${point.links.map(id=>{
           const target=byId.get(id);
-          return target?`<li><a class="point-link" href="/?p=${encodeURIComponent(target.id)}&open=${encodeURIComponent(target.id)}" data-point-id="${escapeHtml(target.id)}">${escapeHtml(target.preview)}</a></li>`:'';
+          return target?`<li><a class="point-link" href="${fieldPath}?p=${encodeURIComponent(target.id)}&open=${encodeURIComponent(target.id)}" data-point-id="${escapeHtml(target.id)}">${escapeHtml(target.preview)}</a></li>`:'';
         }).join('')}</ul>
       </section>
       <p class="meta">created ${point.created_at.slice(0,10)} · last interaction ${point.last_interaction_at.slice(0,10)} · ${point.degree} links</p>`;
@@ -99,7 +121,7 @@
     const sorted=[...local].sort((a,b)=>b.last_interaction_at.localeCompare(a.last_interaction_at));
     panel.hidden=false;
     panelBody.innerHTML=`<div class="eyebrow">FEED / LATEST CHANGES</div>
-      <ul class="feed-list">${sorted.map(p=>`<li><time>${p.last_interaction_at.slice(0,10)}</time><a href="/?p=${encodeURIComponent(p.id)}" data-feed-id="${escapeHtml(p.id)}">${escapeHtml(p.preview)}</a><span>${p.degree} links</span></li>`).join('')}</ul>`;
+      <ul class="feed-list">${sorted.map(p=>`<li><time>${p.last_interaction_at.slice(0,10)}</time><a href="${fieldPath}?p=${encodeURIComponent(p.id)}" data-feed-id="${escapeHtml(p.id)}">${escapeHtml(p.preview)}</a><span>${p.degree} links</span></li>`).join('')}</ul>`;
   }
 
   function closePanel(){
@@ -168,8 +190,9 @@
 
   function sixToLocal(point,centre){
     if(point.id===centre.id) return {x:0,y:0,z:0};
-    const t=point.coordinates||[1,1,1,1,1,1];
-    const c=centre.coordinates||[1,1,1,1,1,1];
+    if(!point.coordinates||!centre.coordinates) return {x:0,y:0,z:0};
+    const t=point.coordinates;
+    const c=centre.coordinates;
     return {
       x:relativeAxis(t[0],t[1],c[0],c[1]),
       y:relativeAxis(t[2],t[3],c[2],c[3]),
@@ -432,4 +455,8 @@
     renderMap();
     if(mode==='feed') showFeed(); else if(mode==='read'&&openPoint) showPoint(openPoint,false); else showEmptyPanel();
   });
-})();
+})().catch(error=>{
+  const message=document.createElement('p');message.setAttribute('role','alert');
+  message.textContent=error.message||'Field unavailable / Поле недоступно';
+  (document.querySelector('main')||document.body).prepend(message);
+});

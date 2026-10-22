@@ -64,6 +64,12 @@ class VerifyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+@router.get("/ui-config")
+def ui_config(request: Request):
+    manager(request, mutation=False)
+    return {"embed_origin": request.app.state.settings.embed_origin}
+
+
 def manager(request: Request, *, mutation: bool = True):
     if mutation:
         auth, token = authenticated_mutation(request)
