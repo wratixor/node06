@@ -73,3 +73,8 @@ Use the full PostgreSQL pytest suite and Ruff as documented in `backend/README.m
 New fixtures cover dry-run, no-op, revisions, retirement/reintroduction, source and
 owner binding, collisions, rollback, safe rendering, hosted/embed projection and
 online migration downgrade/upgrade on disposable PostgreSQL using psycopg.
+
+
+Git-owned home blocks and per-site priority extend this release path through
+migration 0007. See [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md) for manifest data, source
+selection, migration preservation and application-before-content merge order.

@@ -1,7 +1,7 @@
 """Owner-controlled entrance navigation. Blocks are not graph edges or votes."""
 
 import json
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
@@ -70,6 +70,18 @@ class HomePage(BaseModel):
         return self
 
 
+HomeSource = Literal["auto", "git", "ui", "welcome"]
+
+
+def resolve_home(ui_page: dict | None, git_page: dict | None, preference: HomeSource):
+    """Explicit modes never silently substitute the other source."""
+    if preference in ("auto", "git") and git_page is not None:
+        return git_page, "git"
+    if preference in ("auto", "ui") and ui_page is not None:
+        return ui_page, "ui"
+    return None, "welcome"
+
+
 def render_home(site, title: str, field_path: str) -> str:
     """All authored fields are text. Destinations stay inside the current entrance."""
     import html
@@ -85,7 +97,14 @@ def render_home(site, title: str, field_path: str) -> str:
     def text(value):
         return html.escape(value).replace("\n", "<br>")
 
-    page = HomePage.model_validate(site.home_page) if site and site.home_page is not None else None
+    config = None
+    if site:
+        config, _source = resolve_home(
+            site.home_page,
+            getattr(site, "git_home_page", None),
+            getattr(site, "home_page_source", "ui" if site.home_page is not None else "auto"),
+        )
+    page = HomePage.model_validate(config) if config is not None else None
     heading = page.title if page else title
     source = (
         '<section id="start-page" class="start-page home-blocks"><h1>' + text(heading) + "</h1>"

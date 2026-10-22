@@ -1,5 +1,107 @@
 {
   "$defs": {
+    "RootHomeBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 1500,
+          "title": "Description",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/RootHomeLink"
+          },
+          "maxItems": 8,
+          "title": "Links",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "RootHomeBlock",
+      "type": "object"
+    },
+    "RootHomeLink": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "point_id": {
+          "anyOf": [
+            {
+              "pattern": "^(?:[a-z0-9][a-z0-9_-]{0,95}|local/[a-z0-9][a-z0-9-]{0,60})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Point Id"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "RootHomeLink",
+      "type": "object"
+    },
+    "RootHomePage": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "introduction": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Introduction",
+          "type": "string"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/RootHomeBlock"
+          },
+          "maxItems": 12,
+          "title": "Blocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "RootHomePage",
+      "type": "object"
+    },
     "RootSpec": {
       "additionalProperties": false,
       "properties": {
@@ -94,6 +196,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/WelcomeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "home_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RootHomePage"
         },
         {
           "type": "null"

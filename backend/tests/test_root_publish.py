@@ -26,7 +26,7 @@ def registered(pg_database):
     return site, owner
 
 
-def candidate(site, *, body="# Привет", include=True, sha="a" * 40):
+def candidate(site, *, body="# Привет", include=True, sha="a" * 40, home_page=None):
     specs = [{"id": "idea", "file": "idea.md", "lang": "ru"}] if include else []
     manifest = {
         "schema_version": 1,
@@ -35,6 +35,8 @@ def candidate(site, *, body="# Привет", include=True, sha="a" * 40):
         "welcome": {"file": "welcome.md", "mode": "git"},
         "points": specs,
     }
+    if home_page is not None:
+        manifest["home_page"] = home_page
     welcome = "# Home\n\n[Идея](md://local/idea)" if include else "# Home"
     blobs = {
         "site-content/welcome.md": GitBlob(welcome.encode()),

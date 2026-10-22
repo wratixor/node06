@@ -124,3 +124,8 @@ preview/diff и атомарный accept с повторной проверко
 изолированный target; его CLI/schema проверены на committed bilingual примере
 из examples, с совпадением опубликованной JSON Schema и чистым Git status.
 Рабочая БД/сервер, регистрация источника и public imports не изменялись.
+
+
+Optional repository-owned `home_page`, `local/<id>` navigation aliases and source
+priority are implemented in [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md). Home data enters
+the candidate digest but does not change semantic point content digests.

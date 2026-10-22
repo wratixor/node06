@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-from .home_page import HomePage
+from .home_page import HomePage, HomeSource
 
 
 class PublicSiteResponse(BaseModel):
@@ -15,3 +15,7 @@ class PublicSiteResponse(BaseModel):
     welcome_revision_id: str
     welcome_body: str
     home_page: HomePage | None = None
+    git_home_page: HomePage | None = None
+    home_page_source: HomeSource = "auto"
+    effective_home_page: HomePage | None = None
+    effective_home_source: str = "welcome"
