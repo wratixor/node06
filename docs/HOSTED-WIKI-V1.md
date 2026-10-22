@@ -1,5 +1,7 @@
 # Hosted wiki and read-only iframe — first server test packet
 
+Настраиваемая главная с тематическими блоками: [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md).
+
 Owner direction, 22 October 2026: host the game/open-lore frontend at
 `wiki.geno-dice.com` and the common NODE06 backend on the Amsterdam server.
 These are one service, graph and account system; the Neocities demo keeps its

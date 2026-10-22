@@ -3,7 +3,7 @@
 <title>Мои сайты — Geno-Dice Wiki</title><link rel="stylesheet" href="/sites/style.css">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest">
-<script src="/sites/client.js" defer></script></head><body><main>
+<script src="/sites/home.js" defer></script><script src="/sites/client.js" defer></script></head><body><main>
 <nav><a href="/">Вики</a> · <a href="/account/" target="_blank" rel="noopener">Аккаунт / вход</a></nav>
 <h1>Мои сайты</h1><p>Общие пользователи и граф. Каждый сайт получает своё приветствие.</p>
 <p id="session" role="status">Проверяем сессию…</p>
@@ -33,6 +33,20 @@
 <button id="show-preview" type="button" hidden>Предпросмотр iframe</button>
 <iframe id="preview" title="Предпросмотр вики" width="100%" height="620" hidden
 sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe></section>
+<form id="home-form"><h3>Главная страница</h3>
+<p>Блоки могут описывать любые аспекты игры или мира. Порядок и язык выбираете вы.
+Эти ссылки служат навигацией и не создают связи или голоса в графе.</p>
+<label><input id="home-auto" type="checkbox" checked> Показывать приветствие вместо собственных блоков</label>
+<div id="home-fields"><label>Название страницы<input id="home-title" maxlength="160"></label>
+<label>Вступление<textarea id="home-introduction" maxlength="2000"></textarea></label>
+<p id="home-count"></p><div id="home-blocks"></div>
+<button id="home-add" type="button">Добавить блок</button></div>
+<p>До 12 блоков и до 8 ссылок в каждом. Изменения не затрагивают Git-тексты точек.</p>
+<button type="submit">Сохранить главную</button>
+<a id="home-preview" target="_blank" rel="noopener">Открыть сохранённую главную ↗</a>
+<section id="home-conflict" hidden><h4>Главная изменилась на сервере</h4><pre id="home-server"></pre>
+<button id="home-use-server" type="button">Загрузить серверный вариант</button>
+<button id="home-overwrite" type="button">Сверено — сохранить мои блоки</button></section></form>
 <form id="settings-form"><h3>Приветствие и оформление</h3>
 <p id="edit-note"></p>
 <label>Название<input id="name" maxlength="160"></label>

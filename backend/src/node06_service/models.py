@@ -83,6 +83,7 @@ sites = Table(
     Column("primary_origin", String(512), nullable=True),
     Column("state", String(16), nullable=False, server_default="pending"),
     Column("welcome_source", String(16), nullable=False, server_default="ui"),
+    Column("home_page", JSON, nullable=True),
     Column("settings_revision", Integer, nullable=False, server_default="1"),
     Column("display_name", String(160), nullable=True),
     Column("theme", JSON, nullable=False, server_default="{}"),

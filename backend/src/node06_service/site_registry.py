@@ -10,6 +10,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from .db import Database
+from .home_page import HomePage
 from .models import (
     edge_claims,
     events,
@@ -77,6 +78,7 @@ class PublicSite:
     settings_revision: int
     welcome_revision_id: str
     welcome_body: str
+    home_page: dict | None = None
 
 
 def new_user_id() -> str:
@@ -482,6 +484,7 @@ class SiteRegistry:
             "state": site["state"],
             "display_name": site["display_name"],
             "theme": site["theme"],
+            "home_page": site["home_page"],
             "welcome_source": site["welcome_source"],
             "settings_revision": site["settings_revision"],
             "welcome_revision_id": revision["current_revision_id"],
@@ -601,6 +604,48 @@ class SiteRegistry:
             )
             return self._managed_site(connection, site_id, actor_user_id)
 
+    def update_home_page(
+        self,
+        site_id: str,
+        actor_user_id: str,
+        *,
+        expected_settings_revision: int,
+        home_page: dict | None,
+    ) -> dict:
+        # Validate at the service boundary too, not only through the HTTP model.
+        value = HomePage.model_validate(home_page).model_dump() if home_page is not None else None
+        with self.database.begin() as connection:
+            self._authorize(connection, actor_user_id)
+            site = self._managed_site(connection, site_id, actor_user_id)
+            if site["settings_revision"] != expected_settings_revision:
+                raise SiteConflictError(
+                    "Site settings changed; compare the current home page first."
+                )
+            if site["state"] not in ("pending", "active"):
+                raise SiteConflictError("Inactive site cannot be edited.")
+            if site["home_page"] == value:
+                return site
+            now = self.clock()
+            connection.execute(
+                update(sites)
+                .where(sites.c.id == site_id)
+                .values(
+                    home_page=value, settings_revision=site["settings_revision"] + 1, updated_at=now
+                )
+            )
+            connection.execute(
+                insert(events).values(
+                    operation_id=new_operation_id(),
+                    kind="site_home_updated",
+                    actor_user_id=actor_user_id,
+                    site_id=site_id,
+                    point_id=site_id,
+                    payload={"block_count": len(value["blocks"]) if value else None},
+                    created_at=now,
+                )
+            )
+            return self._managed_site(connection, site_id, actor_user_id)
+
     @staticmethod
     def _require_active_owner(connection: Connection, user_id: str) -> None:
         owner = connection.execute(
@@ -621,6 +666,7 @@ class SiteRegistry:
                     sites.c.state,
                     sites.c.display_name,
                     sites.c.welcome_source,
+                    sites.c.home_page,
                     sites.c.settings_revision,
                     points.c.current_revision_id,
                     point_revisions.c.body,
@@ -643,6 +689,7 @@ class SiteRegistry:
             settings_revision=row["settings_revision"],
             welcome_revision_id=row["current_revision_id"],
             welcome_body=row["body"],
+            home_page=row["home_page"],
         )
 
     @staticmethod

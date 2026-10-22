@@ -8,7 +8,7 @@
 
   const params=new URLSearchParams(location.search);
   const fieldPath=body.dataset.fieldPath||'/';
-  const requested=params.get('p')||body.dataset.homePoint;
+  const requested=params.get('p')||params.get('open')||(body.dataset.homePage==='true'?'':body.dataset.homePoint);
   function preference(key,fallback){try{return localStorage.getItem(key)||fallback;}catch{return fallback;}}
   function remember(key,value){try{localStorage.setItem(key,value);}catch{/* Storage may be unavailable inside an iframe. */}}
   if(body.dataset.tenant){

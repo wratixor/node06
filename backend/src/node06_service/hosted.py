@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import Settings
+from .home_page import render_home
 from .models import point_revisions, points, root_entries, root_sources, sites
 from .root_render import render_root
 from .site_registry import ALL_SITES_ID, SiteNotFoundError, SiteRegistry
@@ -231,6 +232,7 @@ class HostedBundle:
         attributes = {
             "field-path": field_path,
             "home-point": home,
+            "home-page": "true",
             "hosted": "true",
             "tenant": "true" if site else "",
             "theme": json.dumps(theme or {}),
@@ -247,15 +249,12 @@ class HostedBundle:
         source = source.replace(">NODE06</a>", f">{title}</a>")
         start = source.index('<section id="start-page"')
         end = source.index('<section id="root-field"', start)
-        welcome = f"""<section id="start-page" class="start-page"><h1>{title}</h1>
-<p>Игры, открытый лор и связанные смыслы в общем графе.</p>
-<div class="welcome-links"><a href="/?p=geno-dice-ru&amp;open=geno-dice-ru">Точка Geno-Dice</a>
-<a href="/?p=geno-dice-en&amp;open=geno-dice-en">Geno-Dice point</a>
-<a href="/?p=all-sites&amp;open=all-sites">Все сайты / All sites</a></div></section>"""
+        welcome = render_home(
+            site, (site and site.display_name) or settings.hosted_title, field_path
+        )
         source = source[:start] + welcome + source[end:]
         if home:
-            home_url = field_path + "?" + urlencode({"p": home, "open": home})
-            source = source.replace('href="/"', f'href="{html.escape(home_url, quote=True)}"')
+            source = source.replace('href="/"', f'href="{html.escape(field_path, quote=True)}"')
         feed = field_path + "?" + urlencode({"p": ALL_SITES_ID, "mode": "feed"})
         source = source.replace('href="/recent/"', f'href="{html.escape(feed, quote=True)}"')
         navigation = f'<a href="{field_path}?p=all-sites&amp;open=all-sites">ALL SITES</a>'

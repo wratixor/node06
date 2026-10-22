@@ -1,5 +1,7 @@
 # First-party site management — P03b
 
+Настраиваемая главная с тематическими блоками: [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md).
+
 Implemented locally on 22 October 2026. No backend production deployment or
 production migration is implied. All paths below start with `/api/v1`.
 Account/session setup is in [AUTH-V1.md](AUTH-V1.md). `/sites/` now provides the

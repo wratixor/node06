@@ -2,3 +2,5 @@
 
 body[data-tenant="true"]{background:var(--bg);color:var(--ink)}body[data-tenant="true"] .point-panel{background:var(--panel);border-radius:var(--radius,0px)}body[data-tenant="true"] button{border-radius:var(--radius,0px);border-color:var(--line)}body[data-density="compact"] .point-text{font-size:16px;line-height:1.45}body[data-density="compact"] .point-panel{padding:12px}
 nav{flex-wrap:wrap}nav a{overflow-wrap:anywhere}.field-head>div:first-child{min-width:0;max-width:100%}.field-head h1{overflow-wrap:anywhere}
+
+.home-blocks .welcome-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr))}.home-blocks p{overflow-wrap:anywhere}.home-introduction{font:18px/1.65 system-ui,sans-serif;max-width:65ch}

@@ -97,3 +97,5 @@ commit and expected site ID. No GitHub fetch, source proof verification, databas
 writes, server import routes or migrations are added by this slice.
 
 Operator content publication and migration 0005: [deployment contract](../docs/OPERATOR-CONTENT-DEPLOY.md).
+
+Per-site home blocks, owner editor and migration 0006: [HOME-BLOCKS-V1](../docs/HOME-BLOCKS-V1.md).
