@@ -26,6 +26,32 @@ The authoritative unit/proxy/env/config examples live in that repository:
 `env/node06.env.example`. The application repository does not maintain a second
 copy or a second automatic SSH deployment path.
 
+## Deploying from a repository copy
+
+The application can be built and run from a reviewed Git fork or mirror; it has
+no runtime dependency on the original GitHub repository or its Actions. Clone
+the selected copy's `main`, build `dist` using `python3 build.py`, install the
+Python package from that checkout, configure its environment and apply Alembic
+migrations as described in [backend setup](../backend/README.md). A separate
+instance needs its own database, secrets, HTTPS origins, proxy and backups.
+It does not automatically share users or graph data with the Amsterdam service.
+
+For the Geno-Dice operator pipeline, use the copy-aware deploy target and set
+the required `REPO_URL` in root-owned `node06.conf` to this clone's exact
+`git remote get-url origin` output. Older config files need this added key.
+This supports HTTPS/SSH GitHub forks and Gitea mirrors; updates fetch the
+configured copy's `main`, never silently upstream. The deploy user needs read
+access to that origin; keep credentials outside the URL/config example. An
+unexpected origin stops deployment before fetch/backup/migration. The selected
+revision must contain the hosted application and pass normal readiness/version
+checks. These changes are delivered separately in deploy branch
+`f-20261022101901-repository-copy`, target `develop` then reviewed `main`.
+
+A source ZIP alone is not an updateable checkout for this Git-based operator
+pipeline. It can supply build source, but Git updates require a clone with
+`.git` and a configured `origin`. Copying a static frontend or embedding the
+common wiki remains distinct from running an independent backend.
+
 Paths/names are proposed layout, not observed Amsterdam state. MemoryMax 512 MiB,
 16 HTTP concurrency slots and 64 tasks are initial protective limits, not measured
 host capacity. Inspect live CPU/RAM/process/DB usage and adjust before opening
