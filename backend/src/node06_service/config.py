@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     login_per_minute: int = Field(default=10, ge=1)
     account_login_per_minute: int = Field(default=10, ge=1)
     session_hours: int = Field(default=24, ge=1, le=720)
+    site_creations_per_hour: int = Field(default=5, ge=1)
+    site_renewals_per_hour: int = Field(default=5, ge=1)
+    site_verifications_per_minute: int = Field(default=6, ge=1)
+    verifier_seconds: float = Field(default=10.0, ge=0.1, le=30)
+    verifier_slots: int = Field(default=2, ge=1, le=8)
+    claim_max_attempts: int = Field(default=10, ge=1, le=100)
 
 
 @lru_cache

@@ -45,6 +45,14 @@ class SiteConflictError(SiteRegistryError):
     code = "SITE_CONFLICT"
 
 
+class SitePermissionError(SiteRegistryError):
+    code = "SITE_FORBIDDEN"
+
+
+class SiteAttemptsError(SiteRegistryError):
+    code = "SITE_ATTEMPTS_EXCEEDED"
+
+
 class SiteClaimExpiredError(SiteRegistryError):
     code = "SITE_CLAIM_EXPIRED"
 
@@ -102,16 +110,29 @@ def _as_utc(value: datetime) -> datetime:
 
 
 class SiteRegistry:
-    """P02 site lifecycle.
+    """Site lifecycle with optional transaction-bound caller authorization.
 
-    Public mutation routes intentionally wait for P03 authentication. The service owns
+    HTTP management supplies a session checker; trusted bootstrap/tests may omit it.
+    The service owns
     its transaction boundaries so verification never holds a database transaction open
     while performing the outbound proof fetch.
     """
 
-    def __init__(self, database: Database, *, clock: Callable[[], datetime] | None = None):
+    def __init__(
+        self,
+        database: Database,
+        *,
+        clock: Callable[[], datetime] | None = None,
+        authorize_actor: Callable[[Connection, str], None] | None = None,
+    ):
         self.database = database
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.authorize_actor = authorize_actor
+
+    def _authorize(self, connection: Connection, user_id: str) -> None:
+        if self.authorize_actor is not None:
+            self.authorize_actor(connection, user_id)
+        self._require_active_owner(connection, user_id)
 
     def create_placeholder_user(self, handle: str) -> str:
         """P02 test/bootstrap helper. P03 replaces this with authenticated account creation."""
@@ -139,6 +160,7 @@ class SiteRegistry:
 
         try:
             with self.database.begin() as connection:
+                self._authorize(connection, owner_user_id)
                 owner = connection.execute(
                     select(users.c.id)
                     .where(users.c.id == owner_user_id, users.c.state == "active")
@@ -245,10 +267,12 @@ class SiteRegistry:
         actor_user_id: str,
         proof_fetcher: Callable[[str], bytes] = fetch_proof,
         now: datetime | None = None,
+        max_attempts: int | None = None,
     ) -> PublicSite:
         # Phase 1 commits the attempt counter before the network request. A failed
         # proof cannot erase its attempt by rolling back the activation transaction.
         with self.database.begin() as connection:
+            self._authorize(connection, actor_user_id)
             site = (
                 connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
                 .mappings()
@@ -257,8 +281,7 @@ class SiteRegistry:
             if site is None:
                 raise SiteNotFoundError("Site does not exist.")
             if site["owner_user_id"] != actor_user_id:
-                raise SiteRegistryError("Only the site owner may verify the claim.")
-            self._require_active_owner(connection, actor_user_id)
+                raise SitePermissionError("Only the site owner may verify the claim.")
             if site["state"] == "active":
                 return self._get_public_site(connection, site_id)
             if site["state"] != "pending":
@@ -280,6 +303,8 @@ class SiteRegistry:
                 raise SiteClaimExpiredError("Site verification claim has expired.")
             if claim["origin"] != site["claimed_origin"]:
                 raise SiteConflictError("Claim does not match the site's origin.")
+            if max_attempts is not None and claim["attempt_count"] >= max_attempts:
+                raise SiteAttemptsError("Renew the challenge before checking the proof again.")
             connection.execute(
                 update(site_claims)
                 .where(site_claims.c.id == claim["id"])
@@ -295,6 +320,7 @@ class SiteRegistry:
         # Phase 2 locks and rechecks the same claim, then publishes the site atomically.
         try:
             with self.database.begin() as connection:
+                self._authorize(connection, actor_user_id)
                 site = (
                     connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
                     .mappings()
@@ -310,8 +336,7 @@ class SiteRegistry:
                 if site is None or claim is None:
                     raise SiteNotFoundError("Site verification state no longer exists.")
                 if site["owner_user_id"] != actor_user_id:
-                    raise SiteRegistryError("Only the site owner may verify the claim.")
-                self._require_active_owner(connection, actor_user_id)
+                    raise SitePermissionError("Only the site owner may verify the claim.")
                 if site["state"] == "active":
                     return self._get_public_site(connection, site_id)
                 if site["state"] != "pending":
@@ -405,6 +430,176 @@ class SiteRegistry:
     def get_public_site(self, site_id: str) -> PublicSite:
         with self.database.connect() as connection:
             return self._get_public_site(connection, site_id)
+
+    def managed_site(self, site_id: str, actor_user_id: str) -> dict:
+        with self.database.begin() as connection:
+            self._authorize(connection, actor_user_id)
+            return self._managed_site(connection, site_id, actor_user_id)
+
+    def list_owned(self, actor_user_id: str, *, after: str = "", limit: int = 30) -> list[dict]:
+        with self.database.begin() as connection:
+            self._authorize(connection, actor_user_id)
+            ids = (
+                connection.execute(
+                    select(sites.c.id)
+                    .where(sites.c.owner_user_id == actor_user_id, sites.c.id > after)
+                    .order_by(sites.c.id)
+                    .limit(limit)
+                )
+                .scalars()
+                .all()
+            )
+            return [self._managed_site(connection, site_id, actor_user_id) for site_id in ids]
+
+    @staticmethod
+    def _managed_site(connection: Connection, site_id: str, actor_user_id: str) -> dict:
+        site = (
+            connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
+            .mappings()
+            .one_or_none()
+        )
+        if site is None:
+            raise SiteNotFoundError("Site does not exist.")
+        if site["owner_user_id"] != actor_user_id:
+            raise SitePermissionError("Only the owner may manage this site.")
+        revision = (
+            connection.execute(
+                select(points.c.current_revision_id, point_revisions.c.body)
+                .join(point_revisions, points.c.current_revision_id == point_revisions.c.id)
+                .where(points.c.id == site_id)
+            )
+            .mappings()
+            .one()
+        )
+        claim = (
+            connection.execute(select(site_claims).where(site_claims.c.site_id == site_id))
+            .mappings()
+            .one()
+        )
+        return {
+            "id": site["id"],
+            "origin": site["claimed_origin"],
+            "state": site["state"],
+            "display_name": site["display_name"],
+            "theme": site["theme"],
+            "welcome_source": site["welcome_source"],
+            "settings_revision": site["settings_revision"],
+            "welcome_revision_id": revision["current_revision_id"],
+            "welcome_body": revision["body"],
+            "claim_id": claim["id"],
+            "claim_expires_at": claim["expires_at"],
+            "attempt_count": claim["attempt_count"],
+        }
+
+    def renew_claim(self, site_id: str, actor_user_id: str, expected_claim_id: str) -> PendingSite:
+        now = self.clock()
+        material = issue_claim(site_id, now)
+        claim_id = new_claim_id()
+        with self.database.begin() as connection:
+            self._authorize(connection, actor_user_id)
+            site = self._managed_site(connection, site_id, actor_user_id)
+            if site["state"] != "pending" or site["claim_id"] != expected_claim_id:
+                raise SiteConflictError("Claim or site state has changed.")
+            connection.execute(
+                update(site_claims)
+                .where(site_claims.c.id == expected_claim_id)
+                .values(
+                    id=claim_id,
+                    challenge_digest=material.digest,
+                    expires_at=material.expires_at,
+                    created_at=now,
+                    attempt_count=0,
+                )
+            )
+            connection.execute(
+                insert(events).values(
+                    operation_id=new_operation_id(),
+                    kind="site_claim_renewed",
+                    actor_user_id=actor_user_id,
+                    site_id=site_id,
+                    point_id=site_id,
+                    payload={"claim_id": claim_id},
+                    created_at=now,
+                )
+            )
+        return PendingSite(
+            site_id,
+            claim_id,
+            site["origin"],
+            "/node06-verification.txt",
+            material.document,
+            material.expires_at,
+        )
+
+    def update_settings(
+        self,
+        site_id: str,
+        actor_user_id: str,
+        *,
+        expected_settings_revision: int,
+        expected_welcome_revision: str,
+        display_name: str | None,
+        theme: dict,
+        welcome_body: str,
+    ) -> dict:
+        with self.database.begin() as connection:
+            self._authorize(connection, actor_user_id)
+            site = self._managed_site(connection, site_id, actor_user_id)
+            if (
+                site["settings_revision"] != expected_settings_revision
+                or site["welcome_revision_id"] != expected_welcome_revision
+            ):
+                raise SiteConflictError("Site settings or welcome text changed; reload first.")
+            if site["state"] not in ("pending", "active") or site["welcome_source"] != "ui":
+                raise SiteConflictError("This site's welcome cannot be edited through this API.")
+            body_changed = site["welcome_body"] != welcome_body
+            if not body_changed and site["display_name"] == display_name and site["theme"] == theme:
+                return site
+            now = self.clock()
+            revision_id = site["welcome_revision_id"]
+            if body_changed:
+                revision_id = new_revision_id()
+                connection.execute(
+                    insert(point_revisions).values(
+                        id=revision_id,
+                        point_id=site_id,
+                        body=welcome_body,
+                        declared_links=[],
+                        editor_user_id=actor_user_id,
+                        created_at=now,
+                    )
+                )
+                connection.execute(
+                    update(points)
+                    .where(points.c.id == site_id)
+                    .values(
+                        current_revision_id=revision_id,
+                        content_updated_at=now,
+                        last_interaction_at=now,
+                    )
+                )
+            connection.execute(
+                update(sites)
+                .where(sites.c.id == site_id)
+                .values(
+                    display_name=display_name,
+                    theme=theme,
+                    settings_revision=site["settings_revision"] + 1,
+                    updated_at=now,
+                )
+            )
+            connection.execute(
+                insert(events).values(
+                    operation_id=new_operation_id(),
+                    kind="site_settings_updated",
+                    actor_user_id=actor_user_id,
+                    site_id=site_id,
+                    point_id=site_id,
+                    payload={"welcome_revision_id": revision_id, "body_changed": body_changed},
+                    created_at=now,
+                )
+            )
+            return self._managed_site(connection, site_id, actor_user_id)
 
     @staticmethod
     def _require_active_owner(connection: Connection, user_id: str) -> None:

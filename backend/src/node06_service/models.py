@@ -207,3 +207,11 @@ auth_limits = Table(
     Column("resets_at", DateTime(timezone=True), nullable=False),
 )
 Index("ix_auth_limits_reset", auth_limits.c.resets_at)
+
+verifier_leases = Table(
+    "verifier_leases",
+    metadata,
+    Column("slot", Integer, primary_key=True),
+    Column("lease_id", String(32), nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+)

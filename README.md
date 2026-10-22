@@ -81,8 +81,12 @@ a full embedded wiki. See [embedding contract](docs/EMBED-V1.md) and
 [Git root import contract](docs/ROOT-IMPORT-V1.md). Direct external API requests
 are blocked by the current Neocities CSP; external frames are allowed, but the
 chosen transport still needs a browser prototype and real-origin validation.
-None of this service has been implemented or deployed. The static builder and
-existing root format described above remain the implemented baseline.
+P01/P02 and first-party accounts/site management are implemented locally; backend
+deployment, hosted graph rendering and scoped embed auth remain unfinished.
+Current setup and validation are in [backend/README.md](backend/README.md), with
+implemented payloads in [AUTH-V1](docs/AUTH-V1.md) and
+[SITE-MANAGEMENT-V1](docs/SITE-MANAGEMENT-V1.md). The static root field remains
+the Neocities frontend.
 
 A local two-origin transport prototype is available in
 [`prototypes/embed-p00/`](prototypes/embed-p00/). It is a CSP and iframe protocol

@@ -9,8 +9,11 @@ class AuthBodyLimit:
         self.maximum = maximum
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or not scope["path"].startswith("/api/v1/auth/"):
+        if scope["type"] != "http" or not scope["path"].startswith(
+            ("/api/v1/auth/", "/api/v1/sites")
+        ):
             return await self.app(scope, receive, send)
+        maximum = self.maximum if scope["path"].startswith("/api/v1/auth/") else 65536
         chunks = bytearray()
         total = 0
         while True:
@@ -19,11 +22,11 @@ class AuthBodyLimit:
                 return
             body = message.get("body", b"")
             total += len(body)
-            if total > self.maximum:
+            if total > maximum:
                 response = JSONResponse(
                     {
                         "code": "REQUEST_TOO_LARGE",
-                        "message": "Request exceeds the auth body limit.",
+                        "message": "Request exceeds the management body limit.",
                     },
                     status_code=413,
                     headers={"Cache-Control": "no-store"},
