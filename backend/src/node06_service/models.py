@@ -215,3 +215,27 @@ verifier_leases = Table(
     Column("lease_id", String(32), nullable=False),
     Column("expires_at", DateTime(timezone=True), nullable=False),
 )
+
+
+root_sources = Table(
+    "root_sources",
+    metadata,
+    Column("site_id", ForeignKey("sites.id", ondelete="RESTRICT"), primary_key=True),
+    Column("owner_user_id", ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
+    Column("origin", String(512), nullable=False),
+    Column("repository_url", String(512), nullable=False),
+    Column("commit_sha", String(40), nullable=False),
+    Column("candidate_digest", String(64), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+root_entries = Table(
+    "root_entries",
+    metadata,
+    Column("point_id", ForeignKey("points.id", ondelete="RESTRICT"), primary_key=True),
+    Column("site_id", ForeignKey("root_sources.site_id", ondelete="RESTRICT"), nullable=False),
+    Column("revision_id", ForeignKey("point_revisions.id", ondelete="RESTRICT"), nullable=False),
+    Column("lang", String(80), nullable=False),
+    Column("content_digest", String(64), nullable=False),
+)
+Index("ix_root_entries_site", root_entries.c.site_id)

@@ -95,3 +95,5 @@ Read-only local Git snapshot validation: [ROOT-PREFLIGHT-V1](../docs/ROOT-PREFLI
 Run `python -m node06_service.root_preflight --schema` or supply repo, immutable
 commit and expected site ID. No GitHub fetch, source proof verification, database
 writes, server import routes or migrations are added by this slice.
+
+Operator content publication and migration 0005: [deployment contract](../docs/OPERATOR-CONTENT-DEPLOY.md).

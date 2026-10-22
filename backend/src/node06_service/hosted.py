@@ -1,4 +1,4 @@
-"""Hosted roots + public site projection; no importer, votes or synthetic social coordinates."""
+"""Hosted core, accepted operator roots and site projection; no votes or synthetic influence."""
 
 import html
 import json
@@ -12,7 +12,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import Settings
-from .models import point_revisions, points, sites
+from .models import point_revisions, points, root_entries, root_sources, sites
+from .root_render import render_root
 from .site_registry import ALL_SITES_ID, SiteNotFoundError, SiteRegistry
 
 CSP = (
@@ -122,8 +123,41 @@ class HostedBundle:
             )
         if len(rows) > request.app.state.settings.hosted_site_limit:
             raise GraphUnavailable("GRAPH_CAPACITY_EXCEEDED")
+        imported = []
+        with database.connect() as connection:
+            imported = (
+                connection.execute(
+                    select(
+                        root_entries.c.point_id,
+                        root_entries.c.site_id,
+                        root_entries.c.lang,
+                        root_sources.c.commit_sha,
+                        root_sources.c.repository_url,
+                        points.c.created_at,
+                        points.c.last_interaction_at,
+                        point_revisions.c.body,
+                        point_revisions.c.declared_links,
+                    )
+                    .join(root_sources, root_sources.c.site_id == root_entries.c.site_id)
+                    .join(sites, sites.c.id == root_sources.c.site_id)
+                    .join(points, points.c.id == root_entries.c.point_id)
+                    .join(point_revisions, point_revisions.c.id == points.c.current_revision_id)
+                    .where(
+                        sites.c.state == "active",
+                        sites.c.primary_origin == root_sources.c.origin,
+                        sites.c.owner_user_id == root_sources.c.owner_user_id,
+                        points.c.lifecycle == "active",
+                    )
+                    .order_by(root_entries.c.point_id)
+                    .limit(request.app.state.settings.hosted_site_limit * 101 + 1)
+                )
+                .mappings()
+                .all()
+            )
+        if len(imported) > request.app.state.settings.hosted_site_limit * 101:
+            raise GraphUnavailable("GRAPH_CAPACITY_EXCEEDED")
         result = list(self.roots)
-        # Bootstrap directory projection. Git ownership/import is still P04.
+        # Active site directory; self-service source claims are still P04.
         result.append(
             {
                 "id": ALL_SITES_ID,
@@ -155,7 +189,39 @@ class HostedBundle:
                     "coordinate_source": "display-only",
                 }
             )
-        return result
+        by_id = {point["id"]: point for point in result}
+        active_sites = {row["id"] for row in rows}
+        for row in imported:
+            if row["site_id"] not in active_sites:
+                continue
+            pid = row["point_id"]
+            links = list(row["declared_links"])
+            if pid == row["site_id"]:
+                links.append(ALL_SITES_ID)
+            by_id[pid] = {
+                "id": pid,
+                "origin": "site" if pid == row["site_id"] else "root",
+                "lang": row["lang"],
+                "html": render_root(row["body"], row["site_id"]),
+                "preview": row["body"][:180],
+                "links": sorted(set(links)),
+                "degree": len(set(links)),
+                "coordinates": None,
+                "coordinate_source": "display-only",
+                "created_at": row["created_at"].isoformat(),
+                "last_interaction_at": row["last_interaction_at"].isoformat(),
+                "source": {
+                    "kind": "operator-git",
+                    "site_id": row["site_id"],
+                    "repository_url": row["repository_url"],
+                    "commit_sha": row["commit_sha"],
+                },
+            }
+        # Retired/missing local roots do not leave visible dangling links.
+        for point in by_id.values():
+            point["links"] = [target for target in point["links"] if target in by_id]
+            point["degree"] = len(point["links"])
+        return list(by_id.values())
 
     def render(
         self, settings: Settings, *, field_path="/", site=None, theme=None, embedded=False

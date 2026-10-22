@@ -29,6 +29,7 @@ dev = [
 
 [project.scripts]
 node06-service = "node06_service.__main__:main"
+node06-root-publish = "node06_service.root_publish:main"
 node06-root-preflight = "node06_service.root_preflight:main"
 
 [tool.setuptools.packages.find]
