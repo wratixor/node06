@@ -1,0 +1,50 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Мои сайты — Geno-Dice Wiki</title><link rel="stylesheet" href="/sites/style.css">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest">
+<script src="/sites/client.js" defer></script></head><body><main>
+<nav><a href="/">Вики</a> · <a href="/account/" target="_blank" rel="noopener">Аккаунт / вход</a></nav>
+<h1>Мои сайты</h1><p>Общие пользователи и граф. Каждый сайт получает своё приветствие.</p>
+<p id="session" role="status">Проверяем сессию…</p>
+<button id="refresh" type="button">Проверить вход и обновить список</button>
+<p id="status" role="status" aria-live="polite"></p>
+<div class="columns"><section><h2>Подключённые сайты</h2><ul id="site-list"></ul>
+<button id="more" type="button" hidden>Ещё сайты</button>
+<h2>Подключить сайт</h2><form id="create-form">
+<label>Адрес сайта<input id="new-origin" type="url" placeholder="https://your-site.neocities.org" required maxlength="512"></label>
+<label>Название<input id="new-name" maxlength="160"></label>
+<label>Приветствие<textarea id="new-body" required maxlength="8192"></textarea></label>
+<button type="submit">Создать точку сайта</button></form></section>
+<section id="editor" hidden><h2 id="site-title"></h2><p id="site-state"></p>
+<section id="pending" hidden><h3>Подтверждение владения</h3>
+<p>Разместите файл <code>node06-verification.txt</code> в корне своего сайта.
+<a id="proof-url" target="_blank" rel="noopener noreferrer">Открыть адрес файла</a>.</p>
+<p id="proof-help"></p><textarea id="proof" readonly aria-label="Содержимое файла подтверждения" hidden></textarea>
+<button id="download" type="button" hidden>Скачать файл подтверждения</button>
+<p>Перевыпуск отменяет предыдущий файл. Срок действия — 30 минут.</p>
+<button id="renew" type="button">Перевыпустить подтверждение</button>
+<button id="verify" type="button">Файл загружен — проверить</button></section>
+<section id="active" hidden><p><a id="open-site" target="_blank" rel="noopener">Открыть приветствие в общем графе</a></p>
+<label id="embed-label" hidden>Iframe для вашего сайта (пока только чтение)
+<textarea id="embed-code" readonly></textarea></label>
+<button id="show-preview" type="button" hidden>Предпросмотр iframe</button>
+<iframe id="preview" title="Предпросмотр вики" width="100%" height="620" hidden
+sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe></section>
+<form id="settings-form"><h3>Приветствие и оформление</h3>
+<p id="edit-note"></p>
+<label>Название<input id="name" maxlength="160"></label>
+<label>Текст<textarea id="body" required maxlength="8192"></textarea></label>
+<p>Пока это обычный текст. Ссылки на смыслы добавим вместе с редактором точек.</p>
+<details><summary>Параметры оформления iframe</summary>
+<p>Только разрешённые параметры, без произвольного CSS. Пустой объект сбрасывает оформление.</p>
+<label>Тема (JSON)<textarea id="theme" spellcheck="false">{}</textarea></label>
+<p>Цвета: bg, text, accent, panel, border (#RGB / #RRGGBB). radius: 0–16.
+font: system / serif / mono. density: normal / compact.</p></details>
+<button type="submit">Сохранить</button></form>
+<section id="conflict" hidden><h3>На сервере уже есть изменения</h3>
+<p>Ваш ввод сохранён в форме. Сравните с текущей версией перед повторным сохранением.</p>
+<pre id="server-version"></pre>
+<button id="use-server" type="button">Загрузить серверный вариант в форму</button>
+<button id="save-draft" type="button">Сверено — сохранить мой вариант</button></section>
+</section></div><noscript>Для управления нужен JavaScript.</noscript></main></body></html>

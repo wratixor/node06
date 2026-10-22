@@ -1,7 +1,8 @@
 # NODE06 service/API v1 contract
 
 Status: target contract with P01/P02, P03a first-party accounts and P03b site
-management implemented locally. Updated 22 October 2026. Exact current payloads:
+management plus hosted/site UI and a read-only iframe implemented locally.
+Updated 22 October 2026. Exact current payloads:
 [AUTH-V1](AUTH-V1.md) and [SITE-MANAGEMENT-V1](SITE-MANAGEMENT-V1.md).
 The remaining routes/behavior below are target design unless marked implemented.
 

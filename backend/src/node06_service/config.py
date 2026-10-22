@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,6 +26,11 @@ class Settings(BaseSettings):
     verifier_seconds: float = Field(default=10.0, ge=0.1, le=30)
     verifier_slots: int = Field(default=2, ge=1, le=8)
     claim_max_attempts: int = Field(default=10, ge=1, le=100)
+    hosted_dist: Path | None = None
+    hosted_title: str = "Geno-Dice Wiki"
+    default_site_id: str | None = None
+    embed_origin: str | None = None
+    hosted_site_limit: int = Field(default=200, ge=1, le=1000)
 
 
 @lru_cache

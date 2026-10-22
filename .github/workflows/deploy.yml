@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: node06-neocities
+  group: node06-neocities-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -33,6 +33,13 @@ jobs:
 
       - name: Check generated files exist
         run: test -f dist/index.html && test -f dist/data/points.json
+
+      - name: Check browser JavaScript and iframe protocol
+        run: |
+          node --check static/site.js
+          node --check backend/src/node06_service/ui/sites.js
+          node --check scripts/check-hosted-wiki.cjs
+          node prototypes/embed-p00/tests/protocol.test.mjs
 
       - name: Deploy to Neocities
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -77,8 +84,22 @@ jobs:
       - name: Run backend tests and lint
         run: |
           pytest
-          ruff check backend
-          ruff format --check backend
+          ruff check backend scripts/check-hosted-browser.py
+          ruff format --check backend scripts/check-hosted-browser.py
+
+      - name: Check installable wheel includes UI resources
+        run: |
+          python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/node06-wheel" .
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+          wheel = next((Path(os.environ['RUNNER_TEMP']) / 'node06-wheel').glob('*.whl'))
+          with ZipFile(wheel) as archive:
+              for source in Path('backend/src/node06_service').rglob('*'):
+                  if source.is_file() and source.suffix in ('.py', '.html', '.js'):
+                      assert archive.read(str(source.relative_to('backend/src'))) == source.read_bytes()
+          PY
 
       - name: Render bootstrap migration SQL
         run: alembic upgrade head --sql > /dev/null

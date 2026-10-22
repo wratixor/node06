@@ -29,8 +29,11 @@ trust/timeouts before enabling writes. See [AUTH-V1](AUTH-V1.md) and
 Migration head is `0004_verifier_leases`. The proof verifier uses spawned child
 processes and PostgreSQL admission leases; allow child processes and use consistent
 slot/deadline configuration across instances sharing the database. Confirm actual
-host memory/process limits before opening registration/claims. Site management UI,
-embed authorization and production acceptance remain unfinished.
+host memory/process limits before opening registration/claims. Owner UI, hosted
+game/lore entry and a read-only iframe are now implemented; scoped embed
+authorization and production acceptance remain unfinished. See
+[HOSTED-WIKI-V1](HOSTED-WIKI-V1.md) and [first deployment](AMSTERDAM-FIRST-DEPLOY.md).
+The explicit operator target and unit/proxy examples live in `geno-dice-deploy`.
 
 ## Safe deployment order
 

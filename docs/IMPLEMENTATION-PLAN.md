@@ -1,8 +1,8 @@
 # NODE06 — сервис общей вики для независимых сайтов
 
 Статус: P00/P01, реестр P02, P03a аккаунты/сессии/восстановление и P03b HTTP
-управления сайтами реализованы локально. UI управления сайтами, embed auth и
-социальный слой ещё впереди. Текущие проверки — в Progress ниже; implemented
+управления сайтами реализованы. P03c добавляет UI, hosted-вики и read-only full
+iframe локально; scoped embed auth и социальный слой ещё впереди. Текущие проверки — в Progress ниже; implemented
 contracts — [AUTH-V1.md](AUTH-V1.md) и [SITE-MANAGEMENT-V1.md](SITE-MANAGEMENT-V1.md).
 Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
 Редакция 2: общая сеть сайтов, bridge + full embed + hosted frontend + GitHub roots.
@@ -971,8 +971,9 @@ import queue fairness/memory и диск. Это цели исследовани
 | P01 backend bootstrap | `pyproject.toml`, FastAPI service, Alembic bootstrap migration, `/api/v1/{health,ready,meta}` и local tests готовы. Нет domain tables/API, hosted renderer или deployment |
 | P02 site registry | Lifecycle + PostgreSQL/TLS acceptance; HTTP управление/renew/budgets добавлены P03b; release/transfer ещё не exposed |
 | P03a | Регистрация/вход/logout/me, аварийный код, first-party `/account/`, secure cookie/CSRF и PostgreSQL limits; остальной P03 ниже |
-| P03b | Owner-only create/list/manage/renew/verify/settings API, общие verifier slots/deadline, version preconditions и immutable welcome history; UI ещё нет |
-| P03 remainder–P14 | UI управления сайтами, embed grants/consent, imports/social math/tariffs ещё впереди |
+| P03b | Owner-only create/list/manage/renew/verify/settings API, общие verifier slots/deadline, version preconditions и immutable welcome history; UI добавлен P03c |
+| P03c | `/sites/` UI, hosted/game-lore вход, общая public projection, read-only iframe и theme; подготовлен отдельный manual deploy target |
+| P03 remainder–P14 | Scoped embed grants/consent/bridge, imports/social math/tariffs ещё впереди |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1084,11 +1085,46 @@ static build. Deploy на feature ref пропущен. Ветка достав�
 `f-20261022080056-site-management`, target `main`; последующий docs-only commit
 записывает evidence и уточняет код rate-limit ошибки `AUTH_RATE_LIMITED`.
 
-Следующий пакет: UI управления сайтами на доверенном hosted origin, с обработкой
-409 без потери ввода, скачиванием/перевыпуском proof и правдивым pending/active.
-Затем scoped embed auth/PKCE/consent, hosted renderer и theme delivery. До votes
-обязательны notifications/revision-bound support. Полный P03/production не готовы;
-P04/P05 пока не начинать. Origin release/transfer не делать автоматически.
+P03c, 22.10.2026: база `origin/main e90a41a` включает merged P03b. Добавлены
+`/sites/` owner UI с proof download/renew/verify, сохранением ввода при ошибке
+сессии/409 и явным сравнением серверной версии; UI умеет показать one-time proof
+даже при отказе follow-up GET после 201. Hosted/game-lore `/`, `/sites/{s_id}/`,
+public graph projection и отдельный read-only `/embed/v1/{s_id}/` используют
+тот же renderer и текущие активные сайты. Настройка темы остаётся внутри
+публичного shell; управление/аккаунт от неё изолированы. Языковых версий нет.
+
+`wiki.geno-dice.com` + `embed.geno-dice.com` используют один backend/DB. Private
+API/UI закрыты на embed host, cookie host-only; frame-ancestors — exact verified
+parent + trusted management preview. Storage denial не ломает чтение. Это не
+PKCE/grants/bridge и не authenticated iframe: записывать через iframe пока нельзя.
+Static roots пока читаются из build projection; P04 importer не реализован.
+Site/directory координаты null/display-only, social math не подменяется seed.
+Public graph имеет explicit cap 200 active sites с 503 вместо silent truncation.
+
+В `geno-dice-deploy` подготовлен отдельный explicit Amsterdam target `node06`
+без таймера, проверка psycopg env/двух origins, резервная копия до изменений,
+видимые migrations, runtime permissions только venv/dist и HTTPS/state gates.
+Первый deploy и оставшиеся operator gates — [AMSTERDAM-FIRST-DEPLOY.md](AMSTERDAM-FIRST-DEPLOY.md);
+полный runtime/read-only контракт — [HOSTED-WIKI-V1.md](HOSTED-WIKI-V1.md).
+Локальный полный suite: 90 passed; после добавления config/error cases — focused
+13 hosted checks. Wheel собран/установлен во временный runtime; Chromium HTTPS
+390px проверил реальные формы, 409/session drafts, proof download, post-create GET
+failure, public graph, реальный iframe preview, theme, blocked storage и отсутствие
+cookie в фактических embed requests. Static browser regression прошёл для 51 roots.
+Deploy tests прошли; Nginx/systemd templates проверены с локальными substitute
+paths/certificates/high ports, не на production. Сервисы/DNS/сертификаты/БД production
+не менялись. Код `ac14f27` опубликован в `f-20261022083906-hosted-wiki` (target `main`).
+Remote CI: [run 39737812411](https://github.com/wratixor/node06/actions/runs/39737812411)
+— success, PostgreSQL suite **93 passed**, Ruff, static/protocol и wheel packaging
+прошли. Neocities deploy job на feature branch пропущен по условию workflow;
+серверное развёртывание не выполнялось.
+
+Следующий практический этап: review/merge двух исходных веток, свежая inventory
+Амстердама и первый явный тестовый deploy по operator runbook. Затем real
+Neocities/browser acceptance и scoped embed auth/PKCE/consent/bridge. До votes
+обязательны notifications/revision-bound support; P03 целиком ещё не завершён.
+Public onboarding широкой сети, origin release/transfer и автоматическое занятие
+чужого origin не включать как побочный эффект тестового запуска.
 
 ## 17. Предложения по развитию
 

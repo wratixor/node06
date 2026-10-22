@@ -11,6 +11,7 @@ from .auth import AuthError
 from .auth_api import router as auth_router
 from .config import Settings, get_settings
 from .db import Database
+from .hosted import management_path, register_hosted, request_origin
 from .request_limits import AuthBodyLimit
 from .schemas import PublicSiteResponse
 from .site_api import router as site_router
@@ -24,6 +25,7 @@ from .site_registry import (
     SiteRegistry,
     SiteRegistryError,
 )
+from .site_ui import router as site_ui_router
 from .verifier import VerifierBusyError, VerifierTimeoutError
 
 
@@ -44,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(account_router)
     app.include_router(site_router)
+    app.include_router(site_ui_router)
 
     @app.exception_handler(SiteRegistryError)
     @app.exception_handler(SiteClaimError)
@@ -100,11 +103,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         request.state.request_id = request.headers.get("X-Request-ID", uuid4().hex)
+        if (
+            current_settings.embed_origin
+            and management_path(request.url.path, request.method)
+            and request_origin(request) != current_settings.management_origin
+        ):
+            return JSONResponse(
+                {"code": "MANAGEMENT_ORIGIN_REQUIRED"},
+                status_code=404,
+                headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"},
+            )
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         if (
             request.url.path.startswith(("/api/v1/auth/", "/api/v1/me"))
             or request.url.path.endswith("/manage")
+            or request.url.path == "/api/v1/ui-config"
             or (request.url.path.startswith("/api/v1/sites") and request.method != "GET")
         ):
             response.headers["Cache-Control"] = "no-store"
@@ -144,7 +158,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "public_site_read",
                 "account_sessions",
                 "site_management",
-            ],
+                "site_management_ui",
+            ]
+            + (["hosted_wiki"] if current_settings.hosted_dist else [])
+            + (
+                ["read_only_embed"]
+                if current_settings.hosted_dist and current_settings.embed_origin
+                else []
+            ),
             "not_implemented": [
                 "embed_auth",
                 "points",
@@ -177,6 +198,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         return PublicSiteResponse(**site.__dict__)
 
+    register_hosted(app, current_settings)
     return app
 
 
