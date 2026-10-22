@@ -14,6 +14,9 @@ Implemented site payloads, limits, security and remaining work:
 Hosted game/lore entrance, shared public projection, read-only iframe, two-origin
 setup and packaging: [HOSTED-WIKI-V1.md](../docs/HOSTED-WIKI-V1.md). The generated
 frontend must be built before starting with `NODE06_HOSTED_DIST` configured.
+Small iframe API bridge and copy-to-your-site SDK:
+[PUBLIC-BRIDGE-V1.md](../docs/PUBLIC-BRIDGE-V1.md). Public reads only; no global
+credentials or authenticated writes are passed to a third-party parent.
 
 Create an isolated environment and install the backend from the repository root:
 

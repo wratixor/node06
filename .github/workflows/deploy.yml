@@ -38,6 +38,8 @@ jobs:
         run: |
           node --check static/site.js
           node --check backend/src/node06_service/ui/sites.js
+          node --check backend/src/node06_service/ui/bridge.js
+          node --check backend/src/node06_service/ui/bridge-client.js
           node --check scripts/check-hosted-wiki.cjs
           node prototypes/embed-p00/tests/protocol.test.mjs
 

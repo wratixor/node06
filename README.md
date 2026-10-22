@@ -130,3 +130,6 @@ The root-era map keeps the Hexrelatum six-component contract: three opposed pair
 The internal root-coordinate contract is documented in
 [docs/ROOT-COORDINATES-V1.md](docs/ROOT-COORDINATES-V1.md). It deliberately
 keeps semantic axis labels out of the public field.
+
+Small public iframe API bridge for Neocities/local UI: [connection guide](docs/PUBLIC-BRIDGE-V1.md).
+Copy the SDK onto your own site; anonymous shared reads only, no authenticated writes yet.

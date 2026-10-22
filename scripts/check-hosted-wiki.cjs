@@ -148,9 +148,51 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await frame.locator('[data-layout="overlay"]').click();
     await frame.locator('#point-panel-close').click();
     assert.equal(await frame.locator('#point-panel').isVisible(), false);
+    // Neocities-style parent: only local scripts/connect, external frames allowed.
+    // Serve the copied SDK as a local file, just as the site owner will do.
+    await page.route(base + '/fixture-client.js', route => route.fulfill({
+      path: require('node:path').join(__dirname, '../backend/src/node06_service/ui/bridge-client.js'),
+      contentType: 'text/javascript',
+    }));
+    await page.addScriptTag({ url: base + '/fixture-client.js' });
+    const bridged = await page.evaluate(async ({ embed, active }) => {
+      const bridge = await connectNode06({ embedOrigin: embed, siteId: active });
+      window.fixtureBridge = bridge;
+      const site = await bridge.request('site.get');
+      const ru = await bridge.request('point.get', { point_id: 'field-ru' });
+      const en = await bridge.request('point.get', { point_id: 'field-en' });
+      const search = await bridge.request('points.search', { query: 'skill' });
+      let write;
+      try { await bridge.request('point.createIntent', {}); } catch (error) { write = error.message; }
+      let arbitrary;
+      try { await bridge.request('site.get', { url: 'https://evil.example' }); } catch (error) { arbitrary = error.message; }
+      return { site: site.id, ru: ru.id, en: en.id, found: search.items.length, write, arbitrary };
+    }, { embed, active });
+    assert.equal(bridged.site, active);
+    assert.equal(bridged.ru, 'field-ru'); assert.equal(bridged.en, 'field-en');
+    assert(bridged.found > 0);
+    assert.equal(bridged.write, 'METHOD_NOT_ALLOWED');
+    assert.equal(bridged.arbitrary, 'INVALID_PARAMS');
+    const bridgeChild = page.frames().find(f => f.url().startsWith(embed + '/bridge/v1/'));
+    const spoofed = await bridgeChild.evaluate(() => new Promise(resolve => {
+      let reads = 0;
+      const original = window.fetch;
+      window.fetch = (...args) => { reads++; return original(...args); };
+      const hello = { protocol: 'node06-embed/1', channel: 'x'.repeat(32), kind: 'hello' };
+      dispatchEvent(new MessageEvent('message', { origin: 'https://evil.example', source: parent, data: hello }));
+      dispatchEvent(new MessageEvent('message', { origin: 'https://localhost:8846', source: parent,
+        data: { ...hello, kind: 'request', id: 'spoof', method: 'site.get', params: {} } }));
+      setTimeout(() => { window.fetch = original; resolve(reads); }, 50);
+    }));
+    assert.equal(spoofed, 0, 'Wrong parent origin or channel must not invoke API');
+    await bridgeChild.goto(embed + '/bridge/v1/' + active + '/');
+    await page.waitForFunction(() => !document.contains(window.fixtureBridge.frame));
+    assert.equal(await page.evaluate(async () => {
+      try { await fixtureBridge.request('site.get'); return 'unexpected'; } catch (e) { return e.message; }
+    }), 'BRIDGE_CLOSED');
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);
-    console.log('PASS: hosted UI/create/proof download/renew, conflict and session drafts, shared graph, real read-only iframe under same-origin-connect CSP, blocked storage and cookie isolation');
+    console.log('PASS: hosted UI, public API bridge/SDK, shared bilingual graph/search, rejected writes/spoofs, reload cleanup, real read-only iframe under same-origin-connect CSP, blocked storage and cookie isolation');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error.message); process.exitCode = 1; });
