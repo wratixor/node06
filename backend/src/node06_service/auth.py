@@ -12,6 +12,7 @@ from argon2 import PasswordHasher, Type
 from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import case, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from .config import Settings
@@ -244,6 +245,31 @@ class AuthService:
         if row is None:
             raise AuthError("AUTH_REQUIRED")
         return Identity(row["id"], row["handle"])
+
+    def authorize_session(self, connection: Connection, token: str, user_id: str) -> Identity:
+        """Authorize within a mutation transaction; lock user before session/site rows."""
+        user = (
+            connection.execute(
+                select(users.c.id, users.c.handle)
+                .where(users.c.id == user_id, users.c.state == "active")
+                .with_for_update()
+            )
+            .mappings()
+            .one_or_none()
+        )
+        session = connection.execute(
+            select(sessions.c.digest)
+            .where(
+                sessions.c.digest == digest(token),
+                sessions.c.user_id == user_id,
+                sessions.c.revoked_at.is_(None),
+                sessions.c.expires_at > self.clock(),
+            )
+            .with_for_update()
+        ).scalar_one_or_none()
+        if user is None or session is None:
+            raise AuthError("AUTH_REQUIRED")
+        return Identity(user["id"], user["handle"])
 
     def logout(self, token: str, *, all_sessions: bool = False) -> None:
         identity = self.authenticate(token)

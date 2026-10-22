@@ -32,7 +32,12 @@ def pg_database():
     database = Database(isolated_url.render_as_string(hide_password=False))
     env = {**os.environ, "NODE06_DATABASE_URL": isolated_url.render_as_string(hide_password=False)}
     try:
-        for revision in ("0001_bootstrap_schema", "0002_site_registry", "head"):
+        for revision in (
+            "0001_bootstrap_schema",
+            "0002_site_registry",
+            "0003_account_sessions",
+            "head",
+        ):
             result = subprocess.run(
                 [sys.executable, "-m", "alembic", "upgrade", revision],
                 cwd=ROOT,

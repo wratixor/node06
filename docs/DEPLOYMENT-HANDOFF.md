@@ -22,9 +22,15 @@ Health endpoints:
 - `GET /api/v1/health` is liveness and deliberately does not touch PostgreSQL;
 - `GET /api/v1/ready` is readiness and returns `503` until PostgreSQL is configured/reachable.
 
-The service currently has no public authentication/write API. P02 site-claim lifecycle code exists as
-an internal service boundary; mutation routes wait for P03 authentication rather than exposing an
-unauthenticated temporary API.
+The service implements first-party account/session/recovery routes and owner site
+management. Set the exact HTTPS `NODE06_MANAGEMENT_ORIGIN` and reviewed proxy
+trust/timeouts before enabling writes. See [AUTH-V1](AUTH-V1.md) and
+[SITE-MANAGEMENT-V1](SITE-MANAGEMENT-V1.md) for cookies, CSRF, budgets and bodies.
+Migration head is `0004_verifier_leases`. The proof verifier uses spawned child
+processes and PostgreSQL admission leases; allow child processes and use consistent
+slot/deadline configuration across instances sharing the database. Confirm actual
+host memory/process limits before opening registration/claims. Site management UI,
+embed authorization and production acceptance remain unfinished.
 
 ## Safe deployment order
 

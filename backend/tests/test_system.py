@@ -35,6 +35,8 @@ def test_meta_marks_future_domains_as_unimplemented() -> None:
     assert response.json()["build_revision"] == "test"
     assert "points" in response.json()["not_implemented"]
     assert "public_site_read" in response.json()["implemented"]
+    assert "site_management" in response.json()["implemented"]
+    assert "embed_auth" in response.json()["not_implemented"]
 
 
 def test_public_site_read_uses_shared_site_registry() -> None:

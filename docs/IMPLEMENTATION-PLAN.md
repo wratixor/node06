@@ -1,8 +1,9 @@
 # NODE06 — сервис общей вики для независимых сайтов
 
-Статус: P00/P01, внутренний реестр P02 и P03a аккаунты/сессии/восстановление
-реализованы; публичные изменения сайтов, embed auth и социальный слой ещё впереди.
-Текущие проверки — в Progress ниже; account contract — [AUTH-V1.md](AUTH-V1.md).
+Статус: P00/P01, реестр P02, P03a аккаунты/сессии/восстановление и P03b HTTP
+управления сайтами реализованы локально. UI управления сайтами, embed auth и
+социальный слой ещё впереди. Текущие проверки — в Progress ниже; implemented
+contracts — [AUTH-V1.md](AUTH-V1.md) и [SITE-MANAGEMENT-V1.md](SITE-MANAGEMENT-V1.md).
 Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
 Редакция 2: общая сеть сайтов, bridge + full embed + hosted frontend + GitHub roots.
 Владелец продуктовых решений: Wratixor.
@@ -959,18 +960,19 @@ import queue fairness/memory и диск. Это цели исследовани
 
 ### Progress
 
-| Область | Статус на 13.09.2026 |
+| Область | История и текущий статус |
 |---|---|
 | Исследование исходника | 23 root points/35 edges, browser UI, API и общий лор проверены 12.09 |
 | CSP | Direct external fetch запрещён, external frame разрешён; HEAD повторён 13.09 |
-| Header/H1 → `/` | Source fix и browser/build verification выполнены, feature branch; main не изменён |
+| Header/H1 → `/` | В main: общий вход, канонические адреса без языкового shell; browser regression |
 | План редакции2 | Сервис/sites/bridge/full/hosted/fork/styles/quota/lore, edits/inbox/search handoff подготовлен |
 | Проверки редакции2 | 5 Markdown files / 20 local links / 4 JSON examples; diff check; общий context validator 136 Markdown и 17 queue records. Runtime в этой правке не менялся |
 | P00 bridge/full transport | Локальный synthetic prototype готов в `prototypes/embed-p00/`: два origin, CSP, handshake, typed read/theme, reload и write boundary. Не deployment и не real-Neocities proof |
 | P01 backend bootstrap | `pyproject.toml`, FastAPI service, Alembic bootstrap migration, `/api/v1/{health,ready,meta}` и local tests готовы. Нет domain tables/API, hosted renderer или deployment |
-| P02 site registry | Внутренний lifecycle + PostgreSQL/TLS acceptance; HTTP mutations/settings, renew/release и лимиты verifier ждут P03. Результаты 21.10 ниже |
+| P02 site registry | Lifecycle + PostgreSQL/TLS acceptance; HTTP управление/renew/budgets добавлены P03b; release/transfer ещё не exposed |
 | P03a | Регистрация/вход/logout/me, аварийный код, first-party `/account/`, secure cookie/CSRF и PostgreSQL limits; остальной P03 ниже |
-| P03 remainder–P14 | Site management/verify budgets, embed grants/consent, imports/social math/tariffs ещё впереди |
+| P03b | Owner-only create/list/manage/renew/verify/settings API, общие verifier slots/deadline, version preconditions и immutable welcome history; UI ещё нет |
+| P03 remainder–P14 | UI управления сайтами, embed grants/consent, imports/social math/tariffs ещё впереди |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1022,11 +1024,10 @@ Python 3.14.4 / PostgreSQL 18.6, dialect `postgresql+psycopg`; asyncpg здес�
 [run 39587505852](https://github.com/wratixor/node06/actions/runs/39587505852).
 Static build и backend checks успешны; Neocities deploy пропущен на feature ref.
 
-Следующий пакет: P03 auth + authenticated site management. До публикации claim
-HTTP нужны общий deadline DNS/TLS/body, bounded verifier и attempt/rate limits;
-также renew/release и настройки сайта с preconditions. Пользовательский вход,
-восстановление и scoped embed grants ещё не реализованы. Готовность всего P02/P03,
-social layer или Amsterdam deployment этим пакетом не заявляется.
+На завершении P02 HTTP управление было отложено до auth и verifier budgets.
+Вход/восстановление добавлены P03a, управление и budgets — P03b ниже.
+Release/transfer и scoped embed grants по-прежнему не реализованы; готовность
+всего P03/social layer/Amsterdam deployment не заявляется.
 
 P03a, 21.10.2026: владелец согласовал аварийный код вместо email/SMS. Код
 показывается один раз при регистрации; восстановление атомарно меняет пароль,
@@ -1059,9 +1060,35 @@ static build/backend tests/lint/migrations; deploy пропущен. После�
 28 подписей «version / версия» на «Point in English / Точка на русском» проверено
 повторной сборкой и тем же полным browser regression, ID/связи сохранены.
 
-Следующий пакет: закончить bounded verifier/total deadline и renew/settings API
-с транзакционной проверкой сессии/владельца. Затем scoped embed auth/PKCE и trusted
-consent. Полный P03 и production ещё не готовы; P04/P05 пока не начинать.
+P03b, 22.10.2026: сохранённая заготовка восстановлена поверх `origin/main`
+`852e6f7` (merged fixes навигации и favicon). Добавлены authenticated owner-only
+create/list/manage/renew/verify/settings HTTP routes; точный контракт и лимиты —
+SITE-MANAGEMENT-V1. Сессия/owner проверяются внутри транзакций до и после fetch;
+renew заменяет ID/digest challenge, settings требуют версии настроек и welcome.
+Изменение текста создаёт immutable revision, no-op ничего не дописывает.
+Theme — только allowlisted tokens. Языковых версий/пространств не вводится.
+
+Migration `0004_verifier_leases` ограничивает общий admission нескольких workers.
+Spawned child с deadline оборачивает DNS/TLS/body, родитель останавливает и
+reaps зависший процесс. Account/IP limits и attempt budget хранятся в PostgreSQL;
+global overload не расходует попытку. Local full suite: 79 passed; дополнительный
+тест inactive/Git-owned welcome и изменённые случаи прошли focused run (6 tests).
+Ruff/format, offline SQL, online 0003→0004 и downgrade/re-upgrade, static 51 roots,
+JS syntax/P00 protocol прошли. Chromium HTTPS 390px проверил реальную cookie,
+register/login, create/read/edit/409 stale/renew/list и CSRF rejection. Proof
+activation проверена HTTP/PG fixtures + local TLS transport; real Neocities и
+Amsterdam не проверялись, production migration не применялась.
+Remote CI для кода `1756524`: [run 39726519414](https://github.com/wratixor/node06/actions/runs/39726519414)
+успешен — Python 3.12/PostgreSQL 18, **80 passed**, Ruff/format, migration SQL и
+static build. Deploy на feature ref пропущен. Ветка доставки:
+`f-20261022080056-site-management`, target `main`; последующий docs-only commit
+записывает evidence и уточняет код rate-limit ошибки `AUTH_RATE_LIMITED`.
+
+Следующий пакет: UI управления сайтами на доверенном hosted origin, с обработкой
+409 без потери ввода, скачиванием/перевыпуском proof и правдивым pending/active.
+Затем scoped embed auth/PKCE/consent, hosted renderer и theme delivery. До votes
+обязательны notifications/revision-bound support. Полный P03/production не готовы;
+P04/P05 пока не начинать. Origin release/transfer не делать автоматически.
 
 ## 17. Предложения по развитию
 

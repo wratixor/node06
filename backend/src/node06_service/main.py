@@ -13,7 +13,18 @@ from .config import Settings, get_settings
 from .db import Database
 from .request_limits import AuthBodyLimit
 from .schemas import PublicSiteResponse
-from .site_registry import SiteNotFoundError, SiteRegistry
+from .site_api import router as site_router
+from .site_claims import ProofFetchError, SiteClaimError
+from .site_registry import (
+    SiteAttemptsError,
+    SiteClaimExpiredError,
+    SiteConflictError,
+    SiteNotFoundError,
+    SitePermissionError,
+    SiteRegistry,
+    SiteRegistryError,
+)
+from .verifier import VerifierBusyError, VerifierTimeoutError
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -32,6 +43,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(AuthBodyLimit)
     app.include_router(auth_router)
     app.include_router(account_router)
+    app.include_router(site_router)
+
+    @app.exception_handler(SiteRegistryError)
+    @app.exception_handler(SiteClaimError)
+    async def site_error(request: Request, exc):
+        status = 400
+        headers = {}
+        if isinstance(exc, SiteNotFoundError):
+            status = 404
+        elif isinstance(exc, SitePermissionError):
+            status = 403
+        elif isinstance(exc, (SiteConflictError, SiteClaimExpiredError)):
+            status = 409
+        elif isinstance(exc, SiteAttemptsError):
+            status = 429
+        elif isinstance(exc, VerifierBusyError):
+            status, headers = 503, {"Retry-After": "2"}
+        elif isinstance(exc, VerifierTimeoutError):
+            status = 504
+        elif isinstance(exc, ProofFetchError):
+            status = 502
+        return JSONResponse(
+            {"code": exc.code, "message": str(exc), "request_id": request.state.request_id},
+            status_code=status,
+            headers=headers,
+        )
 
     @app.exception_handler(AuthError)
     async def auth_error(request: Request, exc: AuthError):
@@ -65,7 +102,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request.state.request_id = request.headers.get("X-Request-ID", uuid4().hex)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
-        if request.url.path.startswith("/api/v1/auth/") or request.url.path == "/api/v1/me":
+        if (
+            request.url.path.startswith(("/api/v1/auth/", "/api/v1/me"))
+            or request.url.path.endswith("/manage")
+            or (request.url.path.startswith("/api/v1/sites") and request.method != "GET")
+        ):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
             response.headers["X-Frame-Options"] = "DENY"
@@ -96,11 +137,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "service": "node06",
             "build_revision": current_settings.build_revision,
             "embed_protocol": "node06-embed/1",
-            "implemented": ["health", "ready", "meta", "public_site_read", "account_sessions"],
+            "implemented": [
+                "health",
+                "ready",
+                "meta",
+                "public_site_read",
+                "account_sessions",
+                "site_management",
+            ],
             "not_implemented": [
                 "embed_auth",
-                "site_claim_http",
-                "site_settings_http",
                 "points",
                 "imports",
                 "billing",

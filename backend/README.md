@@ -1,14 +1,16 @@
 # NODE06 backend bootstrap
 
-This directory contains P01, the P02 internal site-registry slice and P03a shared
-account sessions/recovery. It exposes account routes and the first-party
-`/account/` page plus health/meta and public active-site read. Site mutation routes
-remain deferred until authenticated management and verifier budgets are complete.
+This directory contains P01, the P02 site registry, P03a shared account sessions
+and P03b authenticated site management. It exposes account routes and the
+first-party `/account/` page, health/meta, public active-site read and owner-only
+create/list/manage/renew/verify/settings routes. Site management UI is still pending.
 Imports, reactions, trust and production deployment are not implemented yet.
 
 Account setup, HTTPS/cookie/CSRF boundary, recovery and configurable limits:
 [docs/AUTH-V1.md](../docs/AUTH-V1.md). Set `NODE06_MANAGEMENT_ORIGIN` to the exact
 HTTPS origin before using account writes. No email or SMS service is needed.
+Implemented site payloads, limits, security and remaining work:
+[docs/SITE-MANAGEMENT-V1.md](../docs/SITE-MANAGEMENT-V1.md).
 
 Create an isolated environment and install the backend from the repository root:
 
@@ -44,14 +46,14 @@ verification. Redirects and private/reserved/link-local/loopback targets are rej
 The attempt counter commits before the outbound fetch so a bad proof cannot roll back
 its own attempt.
 
-`GET /api/v1/sites/{site_id}` is public for active sites. Claim creation/verification
-remain service methods until authenticated P03 management routes are available.
+`GET /api/v1/sites/{site_id}` is public for active sites. Authenticated owner
+management is now exposed over HTTP as documented in SITE-MANAGEMENT-V1.
 
 Verification locks and checks the owner/site/claim before and after network I/O;
 expiry is checked again after the fetch. Inactive sites and disabled owners cannot
 be reactivated by replaying a proof. An existing origin is never automatically
-transferred to a new claimant, even after expiry or deactivation. Claim renewal,
-release/transfer, HTTP settings and their authorization belong to the next slice.
+transferred to a new claimant, even after expiry or deactivation. Pending claim
+renewal and settings are implemented; release/transfer are not exposed.
 
 ### Validation
 
@@ -67,14 +69,16 @@ database whose name starts with `node06_test_`, then set `NODE06_TEST_DATABASE_U
 to its SQLAlchemy `postgresql+psycopg://...` URL before running pytest. Do not point
 this variable at an application database. Each test creates its own random schema,
 runs the actual Alembic upgrades through psycopg, and drops only that schema in
-cleanup. Tests cover upgrades through `0003`, downgrade/re-upgrade,
+cleanup. Tests cover upgrades through `0004`, downgrade/re-upgrade,
 duplicate-origin races, concurrent verification/replay, shared directory edges,
 failed-proof attempts and owner/state/origin/challenge/expiry changes during fetch.
 Without this variable PostgreSQL tests are explicitly skipped. GitHub Actions now
 supplies its own disposable PostgreSQL 18 service so those tests are mandatory there.
 
-Socket timeouts remain per operation, not a total DNS/TLS/body deadline. Before
-exposing P03 claim routes, add bounded verification scheduling, an overall deadline
-and attempt/rate limits. Passing this internal slice does not enable public writes.
+A spawned proof worker adds a total DNS/TLS/body deadline, shared PostgreSQL
+admission slots, durable account/IP rate limits and per-challenge attempt limits.
+Tests also cover real child-process timeout/cleanup, slot races/expiry, owner/CSRF
+boundaries, session revocation/challenge renewal during I/O, immutable welcome
+history and concurrent settings edits. No migration has been applied in production.
 
 See `docs/DEPLOYMENT-HANDOFF.md` before wiring this service into an operator pipeline.

@@ -1,8 +1,9 @@
 # NODE06 service/API v1 contract
 
-Status: target contract with P01 and a partial P02 implementation. Updated 15 September 2026.
-`GET /sites/{site_id}` is implemented for active sites; claim/verify/settings HTTP writes
-remain deferred until P03 authentication. The rest remains target behavior.
+Status: target contract with P01/P02, P03a first-party accounts and P03b site
+management implemented locally. Updated 22 October 2026. Exact current payloads:
+[AUTH-V1](AUTH-V1.md) and [SITE-MANAGEMENT-V1](SITE-MANAGEMENT-V1.md).
+The remaining routes/behavior below are target design unless marked implemented.
 
 Originally updated 13 September 2026 from the single-site API draft. The owner's current direction is a common service for
 Neocities Free/other independent sites, with a bridge, full iframe and hosted
@@ -153,6 +154,9 @@ registration creates one account, not an account per site.
 
 ```text
 POST  /sites                         # pending claim
+GET   /me/sites                      # owner list
+GET   /sites/{site_id}/manage         # private owner state
+POST  /sites/{site_id}/claim/renew    # expected_claim_id required
 POST  /sites/{site_id}/verify
 GET   /sites/{site_id}               # public config + welcome point ID
 PATCH /sites/{site_id}               # owner config, revision precondition
@@ -163,9 +167,11 @@ GET   /sites/{site_id}/imports/{id}
 POST  /sites/{site_id}/imports/{id}/accept
 ```
 
-Activation atomically creates site point and directory edge. Claim proof/source
-verification is a bounded executor, never arbitrary URL-fetch API. Welcome text
-editing uses the point revision endpoint, or registered Git source if Git mode.
+Creation allocates an inactive welcome point; activation publishes it and adds
+the shared directory edge atomically. Claim proof verification is bounded, never
+an arbitrary URL-fetch API. Current UI-source welcome editing uses owner settings
+with both settings/text revision preconditions and immutable history. The general
+point editor and registered Git-source mode remain planned.
 Source settings and privileged management are absent from bridge commands.
 
 ### Graph, editor and signals
