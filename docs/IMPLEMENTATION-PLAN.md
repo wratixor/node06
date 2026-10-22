@@ -1113,7 +1113,11 @@ failure, public graph, реальный iframe preview, theme, blocked storage �
 cookie в фактических embed requests. Static browser regression прошёл для 51 roots.
 Deploy tests прошли; Nginx/systemd templates проверены с локальными substitute
 paths/certificates/high ports, не на production. Сервисы/DNS/сертификаты/БД production
-не менялись. Source/CI delivery evidence дополняется после публикации.
+не менялись. Код `ac14f27` опубликован в `f-20261022083906-hosted-wiki` (target `main`).
+Remote CI: [run 39737812411](https://github.com/wratixor/node06/actions/runs/39737812411)
+— success, PostgreSQL suite **93 passed**, Ruff, static/protocol и wheel packaging
+прошли. Neocities deploy job на feature branch пропущен по условию workflow;
+серверное развёртывание не выполнялось.
 
 Следующий практический этап: review/merge двух исходных веток, свежая inventory
 Амстердама и первый явный тестовый deploy по operator runbook. Затем real

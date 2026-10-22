@@ -129,3 +129,9 @@ loopback certificate; production proof verification always validates public TLS.
 
 First deployment procedure and remaining operator checks:
 [AMSTERDAM-FIRST-DEPLOY.md](AMSTERDAM-FIRST-DEPLOY.md).
+
+Verified source: `ac14f27`, branch `f-20261022083906-hosted-wiki`, target `main`.
+[Remote CI](https://github.com/wratixor/node06/actions/runs/39737812411) passed
+with 93 PostgreSQL-backed tests, Ruff, static/protocol checks and wheel packaging.
+The installed-wheel local HTTPS browser fixture also passed; live Amsterdam and
+Neocities acceptance remain pending.
