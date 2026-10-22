@@ -1078,6 +1078,11 @@ JS syntax/P00 protocol прошли. Chromium HTTPS 390px проверил ре�
 register/login, create/read/edit/409 stale/renew/list и CSRF rejection. Proof
 activation проверена HTTP/PG fixtures + local TLS transport; real Neocities и
 Amsterdam не проверялись, production migration не применялась.
+Remote CI для кода `1756524`: [run 39726519414](https://github.com/wratixor/node06/actions/runs/39726519414)
+успешен — Python 3.12/PostgreSQL 18, **80 passed**, Ruff/format, migration SQL и
+static build. Deploy на feature ref пропущен. Ветка доставки:
+`f-20261022080056-site-management`, target `main`; последующий docs-only commit
+записывает evidence и уточняет код rate-limit ошибки `AUTH_RATE_LIMITED`.
 
 Следующий пакет: UI управления сайтами на доверенном hosted origin, с обработкой
 409 без потери ввода, скачиванием/перевыпуском proof и правдивым pending/active.

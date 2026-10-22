@@ -119,7 +119,7 @@ ceases to work. A pending claim expires after 30 minutes.
 | 401 `AUTH_REQUIRED` | Sign in again |
 | 403 origin/CSRF/`SITE_FORBIDDEN` | Correct trusted caller, session or owner |
 | 409 `SITE_CONFLICT` / `SITE_CLAIM_EXPIRED` | Reload current state; renew a pending claim if appropriate |
-| 429 `RATE_LIMITED` | Wait for `Retry-After` |
+| 429 `AUTH_RATE_LIMITED` | Wait for `Retry-After` |
 | 429 `SITE_ATTEMPTS_EXCEEDED` | Explicitly renew challenge; waiting alone does not reset it |
 | 503 `VERIFIER_BUSY` | Retry later; `Retry-After: 2`, or shared slots are recovering |
 | 504 `VERIFIER_TIMEOUT` | Check site availability and retry within budgets |
