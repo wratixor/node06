@@ -28,7 +28,7 @@ PAGE = """<!doctype html>
 После восстановления понадобится новый код.</p>
 <textarea id="saved-code" readonly aria-label="Новый аварийный код"></textarea>
 <button id="dismiss-code" type="button">Код сохранён — скрыть</button></section>
-<form id="account-form">
+<form id="account-form" hidden>
 <label>Действие<select id="action"><option value="login">Вход</option>
 <option value="register">Регистрация</option><option value="recover">Восстановление</option>
 </select></label>
@@ -59,7 +59,11 @@ textarea{min-height:5rem;overflow-wrap:anywhere}p{overflow-wrap:anywhere}"""
 
 SCRIPT = """'use strict';
 const el=id=>document.getElementById(id);
-let csrf=null;
+let csrf=null,authRevision=0;
+function signedIn(value){
+ el('account-form').hidden=value;el('session-actions').hidden=!value;
+ if(!value){csrf=null;authRevision++;}
+}
 function validateHandle(){
  el('handle').setCustomValidity(/^[a-z0-9][a-z0-9_-]{2,63}$/.test(el('handle').value)?'':
   'Имя: 3–64 символа, только строчные латинские буквы, цифры, дефис и подчёркивание. '+
@@ -85,13 +89,16 @@ async function api(path,method='GET',data){
  const response=await fetch('/api/v1'+path,{method,headers,credentials:'same-origin',
  body:data?JSON.stringify(data):undefined,cache:'no-store'});
  const value=response.status===204?{}:await response.json();
- if(!response.ok) throw new Error(messages[value.code]||
-  'Не удалось выполнить запрос. Повторите позже.');
+ if(!response.ok){const error=new Error(messages[value.code]||
+  'Не удалось выполнить запрос. Повторите позже.');error.code=value.code;throw error;}
  return value;
 }
 async function session(){
- const value=await api('/me');csrf=value.csrf_token;
- el('session-actions').hidden=false;return value.handle;
+ const revision=authRevision;
+ try{const value=await api('/me');if(revision!==authRevision)return null;
+ csrf=value.csrf_token;signedIn(true);return value.handle;}
+ catch(error){if(revision!==authRevision)return null;
+ if(error.code==='AUTH_REQUIRED')signedIn(false);throw error;}
 }
 function mode(){
  const action=el('action').value;
@@ -110,19 +117,20 @@ el('account-form').addEventListener('submit',async event=>{
  if(action!=='login'&&el('password').value!==el('confirmation').value){
  el('status').textContent='Пароли не совпадают.';return;}
  el('submit').disabled=true;
+ authRevision++;
  try{
  const data={handle:el('handle').value,password:el('password').value};
  if(action==='recover') data.recovery_code=el('recovery').value;
  const value=await api('/auth/'+action,'POST',data);
  if(action==='login'){
-  try{const handle=await session();el('status').textContent='Вход выполнен: '+handle;}
+  try{const handle=await session();if(handle)el('status').textContent='Вход выполнен: '+handle;}
   catch{throw new Error('Браузер не сохранил сессию. '+
    'Разрешите cookies для этого сайта и войдите снова.');}
  }else{
   el('saved-code').value=value.recovery_code;el('recovery-result').hidden=false;
   el('status').textContent=action==='register'?'Аккаунт создан. Сохраните код, затем войдите.':
    'Пароль изменён, старые сессии отозваны. Сохраните новый код, затем войдите.';
-  if(action==='recover'){csrf=null;el('session-actions').hidden=true;}
+  if(action==='recover')signedIn(false);
   el('action').value='login';mode();
  }
  el('password').value='';el('confirmation').value='';el('recovery').value='';
@@ -130,12 +138,20 @@ el('account-form').addEventListener('submit',async event=>{
  finally{el('submit').disabled=false;}
 });
 for(const [id,path] of [['logout','/auth/session'],['logout-all','/auth/sessions']]){
- el(id).addEventListener('click',async()=>{try{await api(path,'DELETE');csrf=null;
- el('session-actions').hidden=true;el('status').textContent='Вы вышли из аккаунта.';}
- catch(error){el('status').textContent=error.message;}});
+ el(id).addEventListener('click',async()=>{authRevision++;try{await api(path,'DELETE');
+ signedIn(false);el('status').textContent='Вы вышли из аккаунта.';}
+ catch(error){if(error.code==='AUTH_REQUIRED')signedIn(false);
+ el('status').textContent=error.message;}});
 }
-mode();session().then(handle=>{el('status').textContent='Вы вошли: '+handle;}).catch(error=>{
- el('status').textContent=error.message;
+mode();session().then(handle=>{
+ if(handle)el('status').textContent='Вы вошли: '+handle;
+}).catch(error=>{
+ signedIn(false);el('status').textContent=error.message;
+});
+window.addEventListener('focus',()=>{
+ if(el('session-actions').hidden)return;
+ session().then(handle=>{if(handle)el('status').textContent='Вы вошли: '+handle;})
+ .catch(error=>{el('status').textContent=error.message;});
 });
 """
 
