@@ -14,11 +14,17 @@ Account/site contracts: [AUTH-V1](AUTH-V1.md), [SITE-MANAGEMENT-V1](SITE-MANAGEM
 ## Existing operator path
 
 A reviewed-source integration is prepared in the private deployment repository:
-[NODE06 operator runbook](https://git.geno-dice.com/Wratixor/geno-dice-deploy/src/branch/f-20261022091458-node06-deploy/docs/NODE06_DEPLOYMENT.md),
-branch `f-20261022091458-node06-deploy`, target `develop`, later reviewed promotion
-to `main`. It adds explicit Amsterdam `--project node06`, never a host-wide timer.
+[NODE06 operator runbook](https://git.geno-dice.com/Wratixor/geno-dice-deploy/src/branch/main/docs/NODE06_DEPLOYMENT.md).
+It provides explicit Amsterdam `--project node06`, outside the host-wide project list.
 Its check-only, environment validation, backup/migration/health ordering and
 permission boundaries have local fixtures. Source publication does not install it.
+
+An opt-in five-minute engine/content timer is prepared separately in deployment
+branch `f-20261022180854-node-autodeploy` (target develop, then reviewed main).
+Installation leaves the timer disabled; only after a successful manual release
+does the owner enable it. See [operator content publication](OPERATOR-CONTENT-DEPLOY.md)
+for the changed-input receipt and unchanged-run behavior. This first-install
+guide is not evidence about current production or whether the timer is enabled.
 
 The authoritative unit/proxy/env/config examples live in that repository:
 `systemd/node06.service.example`, `nginx/node06.conf.example`,
