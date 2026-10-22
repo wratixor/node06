@@ -18,11 +18,13 @@ const messages={AUTH_REQUIRED:'Нужно войти в аккаунт. Введ
  ORIGIN_INVALID:'Нужен адрес HTTPS без пути, параметров и нестандартного порта.',
  INVALID_INPUT:'Проверьте поля и параметры темы.',REQUEST_TOO_LARGE:'Слишком большой запрос.'};
 function status(text){el('status').textContent=text;}
+const homeEditor=window.node06HomeEditor({api,run,status});
 function controls(){
  document.querySelectorAll('button,input,select,textarea').forEach(node=>{
   node.disabled=busy||(!authenticated&&node.id!=='refresh');
  });
  el('more').hidden=!cursor;
+ homeEditor.setEnabled(authenticated&&!busy);
  if(!loaded?.welcome_revision_id||!['pending','active'].includes(loaded.state)||loaded.welcome_source!=='ui')
   el('settings-form').querySelectorAll('button,input,textarea').forEach(b=>{b.disabled=true;});
  if(latest&&(!['pending','active'].includes(latest.state)||latest.welcome_source!=='ui'))el('save-draft').disabled=true;
@@ -61,7 +63,7 @@ function showMeta(){
   ' · версия настроек '+loaded.settings_revision+' · попыток '+loaded.attempt_count;
  el('pending').hidden=loaded.state!=='pending';el('active').hidden=loaded.state!=='active';
  el('proof-url').href=loaded.origin+'/node06-verification.txt';
- el('open-site').href='/sites/'+encodeURIComponent(loaded.id)+'/';
+ el('open-site').href='/sites/'+encodeURIComponent(loaded.id)+'/?p='+encodeURIComponent(loaded.id)+'&open='+encodeURIComponent(loaded.id);
  el('embed-label').hidden=!embedOrigin;
  el('bridge-label').hidden=!embedOrigin;
  el('bridge-url').value=embedOrigin?embedOrigin+'/bridge/v1/'+encodeURIComponent(loaded.id)+'/':'';
@@ -76,7 +78,7 @@ function showMeta(){
 function fill(current){
  loaded=current;latest=null;el('conflict').hidden=true;
  el('name').value=current.display_name||'';el('body').value=current.welcome_body;
- el('theme').value=JSON.stringify(current.theme,null,2);showMeta();
+ el('theme').value=JSON.stringify(current.theme,null,2);showMeta();homeEditor.fill(current);homeEditor.loadPoints();
 }
 async function list(append=false){
  const data=await api('/me/sites?limit=30'+(append&&cursor?'&after='+encodeURIComponent(cursor):''));

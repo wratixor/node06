@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_vali
 
 from .auth import SESSION_COOKIE, AuthError
 from .auth_api import authenticated_mutation, configured_origin, service
+from .home_page import HomePage
 from .site_registry import SiteRegistry
 from .verifier import ProofVerifier
 
@@ -157,4 +158,21 @@ def update_site(site_id: SiteID, payload: SettingsUpdate, request: Request):
         actor.user_id,
         **payload.model_dump(exclude={"theme"}),
         theme=payload.theme.model_dump(exclude_none=True),
+    )
+
+
+class HomeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_settings_revision: Annotated[int, Field(strict=True, ge=1)]
+    home_page: HomePage | None
+
+
+@router.put("/sites/{site_id}/home")
+def update_home(site_id: SiteID, payload: HomeUpdate, request: Request):
+    registry, _auth, actor = manager(request)
+    return registry.update_home_page(
+        site_id,
+        actor.user_id,
+        expected_settings_revision=payload.expected_settings_revision,
+        home_page=payload.home_page.model_dump() if payload.home_page is not None else None,
     )

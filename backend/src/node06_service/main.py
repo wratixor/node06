@@ -160,6 +160,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "account_sessions",
                 "site_management",
                 "site_management_ui",
+                "site_home_blocks",
                 "operator_root_publication",
             ]
             + (["hosted_wiki"] if current_settings.hosted_dist else [])

@@ -289,3 +289,23 @@ def test_operator_roots_visible_through_hosted_and_embed_graph(hosted, pg_databa
         )
     graph = {p["id"]: p for p in client.get("/data/points.json").json()}
     assert active.site_id not in graph and root_id not in graph
+
+
+def test_custom_home_blocks_and_scoped_links_for_all_entrances(hosted, pg_database):
+    from test_home_page import PAGE
+
+    _app, client, active, _pending = hosted
+    with pg_database.begin() as connection:
+        connection.execute(update(sites).where(sites.c.id == active.site_id).values(home_page=PAGE))
+    path = f"/sites/{active.site_id}/"
+    response = client.get(path)
+    assert response.status_code == 200
+    assert 'data-home-page="true"' in response.text
+    assert "<h2>Механики</h2>" in response.text and "<h2>World</h2>" in response.text
+    assert f'href="{path}?p=skills-ru&amp;open=skills-ru"' in response.text
+    assert f'href="{path}"' in response.text
+    assert "Точка Geno-Dice" not in response.text
+    embedded = client.get(EMBED + f"/embed/v1/{active.site_id}/")
+    assert f'href="/embed/v1/{active.site_id}/?p=skills-ru&amp;open=skills-ru"' in embedded.text
+    assert client.put(EMBED + f"/api/v1/sites/{active.site_id}/home", json={}).status_code == 404
+    assert client.get("/sites/home.js").status_code == 200
