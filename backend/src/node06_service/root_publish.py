@@ -117,12 +117,15 @@ def publish(
             for pid in existing.keys() - incoming.keys()
             if current[pid]["lifecycle"] != "retired"
         ]
+        git_home = candidate.home_page.model_dump() if candidate.home_page is not None else None
+        home_changed = site["git_home_page"] != git_home
         summary = {
             "site_id": candidate.site_id,
             "commit_sha": candidate.commit_sha,
             "candidate_digest": candidate.digest,
             "changed": len(changed),
             "retired": len(retired),
+            "home_changed": home_changed,
             "check_only": check,
             "source_authority": "operator",
             "writes_performed": False,
@@ -132,6 +135,7 @@ def publish(
             and source["candidate_digest"] == candidate.digest
             and not changed
             and not retired
+            and not home_changed
         ):
             return summary
         source_values = dict(
@@ -212,12 +216,13 @@ def publish(
                     claim_ref=candidate.site_id,
                 )
             )
-        if site["welcome_source"] != "git" or changed or retired:
+        if site["welcome_source"] != "git" or changed or retired or home_changed:
             connection.execute(
                 update(sites)
                 .where(sites.c.id == candidate.site_id)
                 .values(
                     welcome_source="git",
+                    git_home_page=git_home,
                     settings_revision=site["settings_revision"] + 1,
                     updated_at=now,
                 )

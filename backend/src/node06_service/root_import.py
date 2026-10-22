@@ -18,6 +18,8 @@ from pydantic import (
     model_validator,
 )
 
+from .home_page import HomeBlock, HomeLink, HomePage
+
 SITE = re.compile(r"s_[0-9a-f]{32}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 REVISION = re.compile(r"v_[0-9a-f]{32}\Z")
@@ -88,12 +90,33 @@ class WelcomeSpec(RootFile):
     lang: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$")] = "und"
 
 
+class RootHomeLink(HomeLink):
+    point_id: (
+        Annotated[
+            str,
+            StringConstraints(
+                pattern=r"^(?:[a-z0-9][a-z0-9_-]{0,95}|local/[a-z0-9][a-z0-9-]{0,60})$"
+            ),
+        ]
+        | None
+    ) = None
+
+
+class RootHomeBlock(HomeBlock):
+    links: list[RootHomeLink] = Field(default_factory=list, max_length=8)
+
+
+class RootHomePage(HomePage):
+    blocks: list[RootHomeBlock] = Field(default_factory=list, max_length=12)
+
+
 class RootManifest(StrictModel):
     schema_version: StrictInt = Field(ge=1, le=1)
     site_id: Annotated[str, StringConstraints(pattern=r"^s_[0-9a-f]{32}$")]
     content_directory: Literal["site-content"]
     source_proof: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")] | None = None
     welcome: WelcomeSpec | None = None
+    home_page: RootHomePage | None = None
     points: list[RootSpec] = Field(max_length=100)
 
     @model_validator(mode="after")
@@ -133,6 +156,12 @@ class RootCandidate:
     digest: str
     points: tuple[CandidatePoint, ...]
     warnings: tuple[str, ...]
+    home_page_json: str | None = None
+
+    @property
+    def home_page(self) -> HomePage | None:
+        # Return a fresh view so mutable model lists cannot change an accepted candidate.
+        return HomePage.model_validate_json(self.home_page_json) if self.home_page_json else None
 
     def summary(self) -> dict:
         """No proof, bodies, private host paths or credentials in the default report."""
@@ -141,6 +170,7 @@ class RootCandidate:
             "commit_sha": self.commit_sha,
             "manifest_digest": self.manifest_digest,
             "candidate_digest": self.digest,
+            "home_block_count": len(self.home_page.blocks) if self.home_page else None,
             "points": [
                 {
                     "id": p.id,
@@ -248,6 +278,21 @@ def prepare_candidate(
     ids = {
         local: site_id if local == "welcome" else f"r_{site_id[2:]}_{local}" for local, _ in entries
     }
+    home_page = None
+    if manifest.home_page is not None:
+        home_value = manifest.home_page.model_dump()
+        for block in home_value["blocks"]:
+            for link in block["links"]:
+                target = link.get("point_id")
+                if target and target.startswith("local/"):
+                    linked = ids.get(target.removeprefix("local/"))
+                    if linked is None:
+                        raise RootImportError("HOME_LOCAL_TARGET_MISSING")
+                    link["point_id"] = linked
+        try:
+            home_page = HomePage.model_validate(home_value)
+        except ValueError:
+            raise RootImportError("INVALID_HOME_PAGE") from None
     total = len(raw_manifest)
     prepared = []
     for local, spec in entries:
@@ -332,6 +377,7 @@ def prepare_candidate(
         "commit_sha": commit_sha,
         "manifest_digest": manifest_digest,
         "points": [asdict(p) for p in prepared],
+        "home_page": home_page.model_dump() if home_page else None,
     }
     return RootCandidate(
         site_id,
@@ -340,4 +386,5 @@ def prepare_candidate(
         digest(payload),
         tuple(prepared),
         tuple(sorted(warnings)),
+        home_page.model_dump_json() if home_page is not None else None,
     )

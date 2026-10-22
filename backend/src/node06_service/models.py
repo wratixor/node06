@@ -84,6 +84,11 @@ sites = Table(
     Column("state", String(16), nullable=False, server_default="pending"),
     Column("welcome_source", String(16), nullable=False, server_default="ui"),
     Column("home_page", JSON, nullable=True),
+    Column("git_home_page", JSON, nullable=True),
+    Column("home_page_source", String(16), nullable=False, server_default="auto"),
+    CheckConstraint(
+        "home_page_source IN ('auto', 'git', 'ui', 'welcome')", name="ck_sites_home_page_source"
+    ),
     Column("settings_revision", Integer, nullable=False, server_default="1"),
     Column("display_name", String(160), nullable=True),
     Column("theme", JSON, nullable=False, server_default="{}"),

@@ -10,7 +10,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from .db import Database
-from .home_page import HomePage
+from .home_page import HomePage, HomeSource, resolve_home
 from .models import (
     edge_claims,
     events,
@@ -79,6 +79,10 @@ class PublicSite:
     welcome_revision_id: str
     welcome_body: str
     home_page: dict | None = None
+    git_home_page: dict | None = None
+    home_page_source: HomeSource = "auto"
+    effective_home_page: dict | None = None
+    effective_home_source: str = "welcome"
 
 
 def new_user_id() -> str:
@@ -478,6 +482,9 @@ class SiteRegistry:
             .mappings()
             .one()
         )
+        effective, effective_source = resolve_home(
+            site["home_page"], site["git_home_page"], site["home_page_source"]
+        )
         return {
             "id": site["id"],
             "origin": site["claimed_origin"],
@@ -485,6 +492,10 @@ class SiteRegistry:
             "display_name": site["display_name"],
             "theme": site["theme"],
             "home_page": site["home_page"],
+            "git_home_page": site["git_home_page"],
+            "home_page_source": site["home_page_source"],
+            "effective_home_page": effective,
+            "effective_home_source": effective_source,
             "welcome_source": site["welcome_source"],
             "settings_revision": site["settings_revision"],
             "welcome_revision_id": revision["current_revision_id"],
@@ -611,9 +622,13 @@ class SiteRegistry:
         *,
         expected_settings_revision: int,
         home_page: dict | None,
+        home_page_source: HomeSource | None = None,
     ) -> dict:
         # Validate at the service boundary too, not only through the HTTP model.
         value = HomePage.model_validate(home_page).model_dump() if home_page is not None else None
+        preference = home_page_source or ("ui" if value is not None else "welcome")
+        if preference not in ("auto", "git", "ui", "welcome"):
+            raise ValueError("Invalid home source")
         with self.database.begin() as connection:
             self._authorize(connection, actor_user_id)
             site = self._managed_site(connection, site_id, actor_user_id)
@@ -623,14 +638,17 @@ class SiteRegistry:
                 )
             if site["state"] not in ("pending", "active"):
                 raise SiteConflictError("Inactive site cannot be edited.")
-            if site["home_page"] == value:
+            if site["home_page"] == value and site["home_page_source"] == preference:
                 return site
             now = self.clock()
             connection.execute(
                 update(sites)
                 .where(sites.c.id == site_id)
                 .values(
-                    home_page=value, settings_revision=site["settings_revision"] + 1, updated_at=now
+                    home_page=value,
+                    home_page_source=preference,
+                    settings_revision=site["settings_revision"] + 1,
+                    updated_at=now,
                 )
             )
             connection.execute(
@@ -640,7 +658,10 @@ class SiteRegistry:
                     actor_user_id=actor_user_id,
                     site_id=site_id,
                     point_id=site_id,
-                    payload={"block_count": len(value["blocks"]) if value else None},
+                    payload={
+                        "block_count": len(value["blocks"]) if value else None,
+                        "home_page_source": preference,
+                    },
                     created_at=now,
                 )
             )
@@ -667,6 +688,8 @@ class SiteRegistry:
                     sites.c.display_name,
                     sites.c.welcome_source,
                     sites.c.home_page,
+                    sites.c.git_home_page,
+                    sites.c.home_page_source,
                     sites.c.settings_revision,
                     points.c.current_revision_id,
                     point_revisions.c.body,
@@ -680,6 +703,9 @@ class SiteRegistry:
         )
         if row is None or row["state"] != "active" or row["primary_origin"] is None:
             raise SiteNotFoundError("Active site does not exist.")
+        effective, effective_source = resolve_home(
+            row["home_page"], row["git_home_page"], row["home_page_source"]
+        )
         return PublicSite(
             id=row["id"],
             origin=row["primary_origin"],
@@ -690,6 +716,10 @@ class SiteRegistry:
             welcome_revision_id=row["current_revision_id"],
             welcome_body=row["body"],
             home_page=row["home_page"],
+            git_home_page=row["git_home_page"],
+            home_page_source=row["home_page_source"],
+            effective_home_page=effective,
+            effective_home_source=effective_source,
         )
 
     @staticmethod

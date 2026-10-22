@@ -36,7 +36,11 @@ sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-san
 <form id="home-form"><h3>Главная страница</h3>
 <p>Блоки могут описывать любые аспекты игры или мира. Порядок и язык выбираете вы.
 Эти ссылки служат навигацией и не создают связи или голоса в графе.</p>
-<label><input id="home-auto" type="checkbox" checked> Показывать приветствие вместо собственных блоков</label>
+<label>Источник главной<select id="home-source">
+<option value="auto">Авто: репозиторий → настройки сайта → приветствие</option>
+<option value="git">Из репозитория</option><option value="ui">Из настроек сайта</option>
+<option value="welcome">Только приветствие</option></select></label>
+<p id="home-source-note" role="status"></p>
 <div id="home-fields"><label>Название страницы<input id="home-title" maxlength="160"></label>
 <label>Вступление<textarea id="home-introduction" maxlength="2000"></textarea></label>
 <p id="home-count"></p><div id="home-blocks"></div>

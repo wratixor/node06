@@ -2,9 +2,45 @@
   "schema_version": 1,
   "site_id": "s_00000000000000000000000000000001",
   "content_directory": "site-content",
-  "welcome": {"file": "welcome.md", "mode": "git", "lang": "und"},
+  "welcome": {
+    "file": "welcome.md",
+    "mode": "git",
+    "lang": "und"
+  },
   "points": [
-    {"id": "observation", "file": "observation.md", "lang": "ru"},
-    {"id": "action", "file": "action.md", "lang": "en"}
-  ]
+    {
+      "id": "observation",
+      "file": "observation.md",
+      "lang": "ru"
+    },
+    {
+      "id": "action",
+      "file": "action.md",
+      "lang": "en"
+    }
+  ],
+  "home_page": {
+    "title": "Смыслы / Meanings",
+    "introduction": "Две темы в общем пространстве, не языковые разделы.",
+    "blocks": [
+      {
+        "title": "Наблюдение",
+        "links": [
+          {
+            "label": "Открыть наблюдение",
+            "point_id": "local/observation"
+          }
+        ]
+      },
+      {
+        "title": "Действие",
+        "links": [
+          {
+            "label": "Open action",
+            "point_id": "local/action"
+          }
+        ]
+      }
+    ]
+  }
 }

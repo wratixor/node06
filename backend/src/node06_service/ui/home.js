@@ -11,7 +11,8 @@ window.node06HomeEditor=({api,run,status})=>{
  }
  function controls(){
   form.querySelectorAll('input,textarea,select,button').forEach(node=>{node.disabled=!enabled;});
-  const auto=get('home-auto').checked;
+  const auto=get('home-source').value!=='ui';
+  get('home-fields').hidden=auto;
   get('home-fields').querySelectorAll('input,textarea,select,button').forEach(node=>{node.disabled=!enabled||auto;});
   get('home-title').required=!auto;
   get('home-add').disabled=!enabled||auto||blocks.children.length>=12;
@@ -61,14 +62,19 @@ window.node06HomeEditor=({api,run,status})=>{
  }
  function fill(current){
   site=current;latest=null;get('home-conflict').hidden=true;
-  const page=current.home_page;get('home-auto').checked=page===null||page===undefined;
+  const page=current.home_page;
+  get('home-source').value=current.home_page_source||(page?'ui':'auto');
+  const names={git:'из репозитория',ui:'из настроек сайта',welcome:'приветствие'};
+  get('home-source-note').textContent='Сейчас показывается: '+(names[current.effective_home_source]||'приветствие')+
+   '. '+(current.git_home_page?'В Git опубликовано блоков: '+current.git_home_page.blocks.length+'.':'Главная из Git ещё не опубликована.')+
+   ' Для редактирования блоков здесь выберите «Из настроек сайта».';
   get('home-title').value=page?.title||current.display_name||'Главная';
   get('home-introduction').value=page?.introduction||'';
   blocks.replaceChildren();for(const block of page?.blocks||[])addBlock(block);
   get('home-preview').href='/sites/'+encodeURIComponent(current.id)+'/';controls();
  }
  function read(){
-  if(get('home-auto').checked)return null;
+  if(get('home-source').value!=='ui')return site?.home_page??null;
   return {title:get('home-title').value,introduction:get('home-introduction').value,
    blocks:[...blocks.children].map(node=>({title:node.querySelector('.home-block-title').value,
     description:node.querySelector('.home-block-description').value,
@@ -79,18 +85,18 @@ window.node06HomeEditor=({api,run,status})=>{
   if(!site)return;
   try{
    const result=await api('/sites/'+encodeURIComponent(site.id)+'/home','PUT',{
-    expected_settings_revision:expected,home_page:read()});
+    expected_settings_revision:expected,home_page:read(),home_page_source:get('home-source').value});
    fill(result);status('Главная страница сохранена. Можно открыть её в новой вкладке.');
   }catch(error){
    if(error.status!==409)throw error;
    latest=await api('/sites/'+encodeURIComponent(site.id)+'/manage');
-   get('home-server').textContent=JSON.stringify(latest.home_page,null,2);get('home-conflict').hidden=false;
+   get('home-server').textContent=JSON.stringify({home_page_source:latest.home_page_source,home_page:latest.home_page,git_home_page:latest.git_home_page},null,2);get('home-conflict').hidden=false;
    status('Настройки сайта изменились. Ваши блоки сохранены в форме; сравните с серверной версией.');
   }
  }
  form.addEventListener('submit',event=>{event.preventDefault();run(()=>save());});
  get('home-add').addEventListener('click',()=>{if(blocks.children.length<12)addBlock();});
- get('home-auto').addEventListener('change',controls);
+ get('home-source').addEventListener('change',controls);
  get('home-use-server').addEventListener('click',()=>{if(latest)fill(latest);});
  get('home-overwrite').addEventListener('click',()=>run(()=>latest&&save(latest.settings_revision)));
  return {fill,setEnabled(value){enabled=value&&!!site&&['pending','active'].includes(site.state);controls();},
