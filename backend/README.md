@@ -88,3 +88,10 @@ boundaries, session revocation/challenge renewal during I/O, immutable welcome
 history and concurrent settings edits. No migration has been applied in production.
 
 See `docs/DEPLOYMENT-HANDOFF.md` before wiring this service into an operator pipeline.
+
+## P04a root preflight
+
+Read-only local Git snapshot validation: [ROOT-PREFLIGHT-V1](../docs/ROOT-PREFLIGHT-V1.md).
+Run `python -m node06_service.root_preflight --schema` or supply repo, immutable
+commit and expected site ID. No GitHub fetch, source proof verification, database
+writes, server import routes or migrations are added by this slice.

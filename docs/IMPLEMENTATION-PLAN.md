@@ -984,6 +984,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | P03b | Owner-only create/list/manage/renew/verify/settings API, общие verifier slots/deadline, version preconditions и immutable welcome history; UI добавлен P03c |
 | P03c | `/sites/` UI, hosted/game-lore вход, общая public projection, read-only iframe и theme; подготовлен отдельный manual deploy target |
 | P03d | Public read bridge/SDK: site/point/search/capabilities, локальный HTTPS browser acceptance |
+| P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; P04 source proof/transport/DB preview/accept ещё не готовы |
 | P03 remainder–P14 | Scoped embed grants/consent/authenticated bridge, imports/social math/tariffs ещё впереди |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
@@ -1200,3 +1201,17 @@ account-sync доверия. Предусмотреть опциональную
 не постоянный секрет в публичном профиле. Подробный flow, границы scopes, источники
 авторства, удаления/offline и приёмка — в ENTRANCES-ROOTS-NETWORK. Действующая
 авторизация/БД не меняются этим документом.
+
+P04a, 22.10.2026: реализованы структурная schema manifest, чистый validator
+недоверенных blobs, stable namespaced IDs/site welcome, bounded inline Markdown
+links и external revision pins, детерминированный candidate/meaning digest,
+read-only локальный Git adapter/CLI. Пример корней — `examples/root-source`,
+контракт/границы — `docs/ROOT-PREFLIGHT-V1.md`. Это не source ownership proof,
+публичный импорт или запись в БД. Новых migrations/HTTP routes/runtime config нет.
+Следующий пакет — source registration/proof, GitHub transport и persisted private
+preview/atomic accept с core revisions и edge provenance; затем entrance root sets.
+
+Проверка P04a: 142 local PostgreSQL-backed tests passed (46 новых root fixtures),
+Ruff/format, static build 51 roots, P00 protocol, installed-wheel CLI/schema и
+committed bilingual root example прошли. Это локальная проверка, не импорт
+в production. Source proof/accept/retirement и UI подключения остаются P04b+.

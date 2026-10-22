@@ -1,6 +1,9 @@
 # NODE06 site roots and GitHub fork import v1
 
-Status: target contract, not implemented. Requested 13 September 2026.
+Status: overall target contract. P04a read-only manifest/snapshot preflight is
+implemented in [ROOT-PREFLIGHT-V1](ROOT-PREFLIGHT-V1.md); source registration,
+GitHub transport, DB preview/accept and public imports remain unimplemented.
+Requested 13 September 2026.
 See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) and [API-V1.md](API-V1.md).
 
 ## 1. Why forks are useful
@@ -12,7 +15,7 @@ This content-source connection itself creates no database fork, independent
 user system or separate meaning-space. An independently deployed backend copy
 is a different operation. Entrance-specific root sets/home layouts, site-less
 users and future inter-server links are clarified in
-[ENTRANCES-ROOTS-NETWORK](ENTRANCES-ROOTS-NETWORK.md); this importer remains
+[ENTRANCES-ROOTS-NETWORK](ENTRANCES-ROOTS-NETWORK.md); the end-to-end importer remains
 unimplemented. Each entrance may start from its own root set rather than the
 same mandatory index, without replacing another source's canonical IDs.
 
@@ -46,8 +49,10 @@ would need a separate authorization model and is deferred.
 
 ## 3. Manifest sketch
 
-Exact JSON Schema must be published in P04 before importer implementation.
-Example is illustrative and not a live configuration:
+The P04a structural JSON Schema is published in
+[schemas/root-manifest-v1.schema.json](schemas/root-manifest-v1.schema.json).
+Semantic limits and supported subset are in ROOT-PREFLIGHT-V1. The example below
+can be checked locally, but is not a connected/verified server configuration:
 
 ```json
 {

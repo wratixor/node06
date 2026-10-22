@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "RootSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-][A-Za-z0-9_./-]*\\.md$",
+          "title": "File",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]{0,60}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "lang": {
+          "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$",
+          "title": "Lang",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "id",
+        "lang"
+      ],
+      "title": "RootSpec",
+      "type": "object"
+    },
+    "WelcomeSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-][A-Za-z0-9_./-]*\\.md$",
+          "title": "File",
+          "type": "string"
+        },
+        "mode": {
+          "const": "git",
+          "title": "Mode",
+          "type": "string"
+        },
+        "lang": {
+          "default": "und",
+          "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$",
+          "title": "Lang",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "mode"
+      ],
+      "title": "WelcomeSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "maximum": 1,
+      "minimum": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "site_id": {
+      "pattern": "^s_[0-9a-f]{32}$",
+      "title": "Site Id",
+      "type": "string"
+    },
+    "content_directory": {
+      "const": "site-content",
+      "title": "Content Directory",
+      "type": "string"
+    },
+    "source_proof": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Proof"
+    },
+    "welcome": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WelcomeSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "points": {
+      "items": {
+        "$ref": "#/$defs/RootSpec"
+      },
+      "maxItems": 100,
+      "title": "Points",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "site_id",
+    "content_directory",
+    "points"
+  ],
+  "title": "RootManifest",
+  "type": "object"
+}
