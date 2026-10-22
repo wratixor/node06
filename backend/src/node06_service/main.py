@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response
 from .account_ui import router as account_router
 from .auth import AuthError
 from .auth_api import router as auth_router
+from .bridge import register_bridge
 from .config import Settings, get_settings
 from .db import Database
 from .hosted import management_path, register_hosted, request_origin
@@ -162,7 +163,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ]
             + (["hosted_wiki"] if current_settings.hosted_dist else [])
             + (
-                ["read_only_embed"]
+                ["read_only_embed", "public_read_bridge"]
                 if current_settings.hosted_dist and current_settings.embed_origin
                 else []
             ),
@@ -199,6 +200,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return PublicSiteResponse(**site.__dict__)
 
     register_hosted(app, current_settings)
+    register_bridge(app)
     return app
 
 

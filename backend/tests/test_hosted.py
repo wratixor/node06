@@ -199,3 +199,68 @@ def test_missing_database_has_explicit_public_failure(static_bundle):
 def test_invalid_cookie_isolation_or_origin_fails_startup(management, embed):
     with pytest.raises(ValueError):
         create_app(Settings(management_origin=management, embed_origin=embed))
+
+
+def test_bridge_document_and_anonymous_api_boundary(hosted):
+    _app, client, active, pending = hosted
+    path = f"/bridge/v1/{active.site_id}/"
+    assert client.get(path).status_code == 404
+    doc = client.get(EMBED + path)
+    assert doc.status_code == 200
+    assert (
+        f"frame-ancestors https://garden.example {ORIGIN}" in doc.headers["content-security-policy"]
+    )
+    assert "set-cookie" not in doc.headers
+    assert client.get(EMBED + f"/bridge/v1/{pending.site_id}/").status_code == 404
+    assert client.get(EMBED + "/bridge/assets/bridge.js").status_code == 200
+    api = EMBED + path + "read"
+    caps = client.get(api, params={"method": "capabilities.get"})
+    assert caps.json()["read_only"] is True
+    assert "public_read_bridge" in client.get("/api/v1/meta").json()["implemented"]
+    assert client.post(api, json={"method": "point.createIntent"}).status_code == 405
+    assert (
+        client.get(api, params={"method": "point.createIntent"}).json()["code"]
+        == "METHOD_NOT_ALLOWED"
+    )
+    assert (
+        client.get(api, params={"method": "site.get", "url": "https://evil.example"}).status_code
+        == 400
+    )
+    assert client.get(api + "?method=site.get&method=point.get").status_code == 400
+
+
+def test_bridge_reads_same_graph_and_bounded_search(hosted):
+    _app, client, active, pending = hosted
+    api = EMBED + f"/bridge/v1/{active.site_id}/read"
+    assert (
+        client.get(api, params={"method": "site.get"}).json()["welcome_point_id"] == active.site_id
+    )
+    for point_id in (active.site_id, "field-ru", "field-en", "all-sites"):
+        result = client.get(api, params={"method": "point.get", "point_id": point_id})
+        assert result.status_code == 200
+        assert result.json()["id"] == point_id
+    assert (
+        client.get(api, params={"method": "point.get", "point_id": pending.site_id}).status_code
+        == 404
+    )
+    result = client.get(api, params={"method": "points.search", "query": "skill"}).json()
+    assert 0 < len(result["items"]) <= 20
+    assert set(result["items"][0]) == {"id", "preview"}
+    assert (
+        client.get(api, params={"method": "points.search", "query": "x" * 129}).status_code == 400
+    )
+
+
+def test_bridge_revoked_site_and_oversize_reads_fail_closed(hosted, pg_database, monkeypatch):
+    app, client, active, _pending = hosted
+    api = EMBED + f"/bridge/v1/{active.site_id}/read"
+    monkeypatch.setattr(
+        app.state.hosted_bundle, "graph", lambda _: [{"id": "large", "html": "x" * 270000}]
+    )
+    assert client.get(api, params={"method": "point.get", "point_id": "large"}).status_code == 413
+    with pg_database.begin() as connection:
+        connection.execute(
+            update(sites).where(sites.c.id == active.site_id).values(state="inactive")
+        )
+    assert client.get(api, params={"method": "capabilities.get"}).status_code == 404
+    assert client.get(EMBED + f"/bridge/v1/{active.site_id}/").status_code == 404

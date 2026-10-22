@@ -2,7 +2,8 @@
 
 Статус: P00/P01, реестр P02, P03a аккаунты/сессии/восстановление и P03b HTTP
 управления сайтами реализованы. P03c добавляет UI, hosted-вики и read-only full
-iframe локально; scoped embed auth и социальный слой ещё впереди. Текущие проверки — в Progress ниже; implemented
+iframe; P03d добавляет публичный маленький API bridge и SDK. Scoped embed auth
+и социальный слой ещё впереди. Текущие проверки — в Progress ниже; implemented
 contracts — [AUTH-V1.md](AUTH-V1.md) и [SITE-MANAGEMENT-V1.md](SITE-MANAGEMENT-V1.md).
 Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
 Редакция 2: общая сеть сайтов, bridge + full embed + hosted frontend + GitHub roots.
@@ -973,7 +974,8 @@ import queue fairness/memory и диск. Это цели исследовани
 | P03a | Регистрация/вход/logout/me, аварийный код, first-party `/account/`, secure cookie/CSRF и PostgreSQL limits; остальной P03 ниже |
 | P03b | Owner-only create/list/manage/renew/verify/settings API, общие verifier slots/deadline, version preconditions и immutable welcome history; UI добавлен P03c |
 | P03c | `/sites/` UI, hosted/game-lore вход, общая public projection, read-only iframe и theme; подготовлен отдельный manual deploy target |
-| P03 remainder–P14 | Scoped embed grants/consent/bridge, imports/social math/tariffs ещё впереди |
+| P03d | Public read bridge/SDK: site/point/search/capabilities, локальный HTTPS browser acceptance |
+| P03 remainder–P14 | Scoped embed grants/consent/authenticated bridge, imports/social math/tariffs ещё впереди |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1096,7 +1098,8 @@ public graph projection и отдельный read-only `/embed/v1/{s_id}/` ис
 `wiki.geno-dice.com` + `embed.geno-dice.com` используют один backend/DB. Private
 API/UI закрыты на embed host, cookie host-only; frame-ancestors — exact verified
 parent + trusted management preview. Storage denial не ломает чтение. Это не
-PKCE/grants/bridge и не authenticated iframe: записывать через iframe пока нельзя.
+PKCE/grants и не authenticated iframe: записывать через iframe пока нельзя.
+Публичный read-only bridge добавлен отдельным следующим пакетом (ниже).
 Static roots пока читаются из build projection; P04 importer не реализован.
 Site/directory координаты null/display-only, social math не подменяется seed.
 Public graph имеет explicit cap 200 active sites с 503 вместо silent truncation.
@@ -1146,3 +1149,25 @@ Public onboarding широкой сети, origin release/transfer и автом
 Полноценная hosted-вики одновременно служит демонстрацией, fallback для
 ограниченных браузеров и основой full embed. Это уменьшает число отдельных
 клиентов, которые команде пришлось бы поддерживать.
+
+
+P03d public bridge, 22.10.2026: отдельный маленький transport iframe
+`/bridge/v1/{site_id}/`, bounded same-origin public read endpoint и SDK,
+который владелец копирует на свой статический сайт. Реализованы только
+`site.get`, `point.get`, `points.search`, `capabilities.get`; общий hosted graph,
+без языкового разделения. Exact source/origin/channel/envelope, отказ от extra
+params/arbitrary URLs/writes, 8 in-flight, deadlines, повторная проверка active
+site на каждом read, credentials omit/storage-free, закрытие SDK при reload.
+В `/sites/` появился URL посредника рядом с кодом полного iframe.
+Контракт, рабочий пример и ограничения: `docs/PUBLIC-BRIDGE-V1.md`.
+Это не scoped embed auth/PKCE/consent и не завершённый социальный API. Новых
+миграций или изменений proxy/production нет. Обновление toolkit пользователем
+не доказывает установку этого нового application packet. Следующий gate:
+доставка application source и реальный Neocities Free acceptance, затем
+scoped grants/consent/semantic editor/social writes по оставшемуся плану.
+
+Проверено локально: полный PostgreSQL suite **96 passed**; Ruff/format, JS syntax,
+P00 protocol и Alembic offline SQL прошли. Installed-wheel Chromium HTTPS fixture
+прошёл: реальные typed reads/search через SDK при CSP connect-src self, rejected
+writes/arbitrary params/spoofs, reload cleanup, blocked storage и отсутствие
+global cookie на embed requests. Live Neocities и фактический сервер не проверены.

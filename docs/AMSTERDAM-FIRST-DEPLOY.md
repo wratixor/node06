@@ -119,5 +119,12 @@ public onboarding, arrange NODE06 PostgreSQL backups/restore rehearsal through
 the existing operator backup path. Confirm service health plus user flows after
 any rollback; a successful restart alone is insufficient.
 
+The public small bridge is a separate application update, documented in
+[PUBLIC-BRIDGE-V1](PUBLIC-BRIDGE-V1.md). It uses `/bridge/` routes already covered
+by the embed proxy; keep the `/api` deny. After updating the application, verify
+`public_read_bridge` in trusted `/api/v1/meta`, and test an active Neocities site
+using its own copied SDK/script and real verified origin. A toolkit update alone
+does not prove this application packet is installed or that Neocities accepted it.
+
 Do not claim first deployment is complete until actual host, DNS/TLS, runtime,
 migration and browser acceptance evidence have been recorded.

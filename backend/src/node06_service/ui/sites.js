@@ -63,6 +63,8 @@ function showMeta(){
  el('proof-url').href=loaded.origin+'/node06-verification.txt';
  el('open-site').href='/sites/'+encodeURIComponent(loaded.id)+'/';
  el('embed-label').hidden=!embedOrigin;
+ el('bridge-label').hidden=!embedOrigin;
+ el('bridge-url').value=embedOrigin?embedOrigin+'/bridge/v1/'+encodeURIComponent(loaded.id)+'/':'';
  el('show-preview').hidden=!embedOrigin;
  el('preview').hidden=true;el('preview').removeAttribute('src');
  el('edit-note').textContent=loaded.welcome_source==='git'?'Текст управляется Git-источником.':
