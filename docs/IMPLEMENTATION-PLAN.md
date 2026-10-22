@@ -989,6 +989,8 @@ import queue fairness/memory и диск. Это цели исследовани
 | P03c | `/sites/` UI, hosted/game-lore вход, общая public projection, read-only iframe и theme; подготовлен отдельный manual deploy target |
 | P03d | Public read bridge/SDK: site/point/search/capabilities, локальный HTTPS browser acceptance |
 | P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; P04 source proof/transport/DB preview/accept ещё не готовы |
+| P04 operator publication | Accepted immutable Git roots/provenance/retirement and manifest home already in main; self-service ownership/transport/private preview still pending |
+| P05a public reads | Current point API, indexed full-body prefix search and bounded neighbor pages; source prepared, no authoring/votes/UI/bridge upgrade yet. See [contract](PUBLIC-POINTS-V1.md) |
 | P03 remainder–P14 | Scoped embed grants/consent/authenticated bridge, imports/social math/tariffs ещё впереди |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
@@ -1219,3 +1221,19 @@ preview/atomic accept с core revisions и edge provenance; затем entrance 
 Ruff/format, static build 51 roots, P00 protocol, installed-wheel CLI/schema и
 committed bilingual root example прошли. Это локальная проверка, не импорт
 в production. Source proof/accept/retirement и UI подключения остаются P04b+.
+
+P05a, 22.10.2026: current-only public reads/search/neighbors over static core and
+accepted DB revisions. Migration 0008 normalizes Unicode search text and builds
+a GIN index; online upgrade required. No history or draft leaks, fabricated core
+revision IDs, social writes or change to legacy bridge search. Next bounded task:
+bridge/picker integration; self-service imports and D16/D17-gated authoring/support
+remain unfinished. Future repository devlogs: [DEVLOG-PLAN](DEVLOG-PLAN.md).
+
+P05a validation: full disposable PostgreSQL suite 188 passed; after the final
+accepted-digest consistency fix, the seven public-point tests were repeated.
+Coverage includes current-vs-stale/draft visibility, full-body Unicode prefix
+search, source retirement, orphan edge claims, page cursors/limits, response
+budget, unavailable configuration and populated online migration down/up. Ruff,
+format, 51-root build, P00 protocol, JS syntax, offline SQL generation and local
+document links checked. Offline migration SQL intentionally contains a stop for
+the Unicode backfill. No new browser UI or production deployment was performed.

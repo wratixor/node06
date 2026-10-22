@@ -147,6 +147,7 @@ class HostedBundle:
                         sites.c.state == "active",
                         sites.c.primary_origin == root_sources.c.origin,
                         sites.c.owner_user_id == root_sources.c.owner_user_id,
+                        root_entries.c.revision_id == points.c.current_revision_id,
                         points.c.lifecycle == "active",
                     )
                     .order_by(root_entries.c.point_id)

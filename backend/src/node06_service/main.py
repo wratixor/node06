@@ -13,6 +13,7 @@ from .bridge import register_bridge
 from .config import Settings, get_settings
 from .db import Database
 from .hosted import management_path, register_hosted, request_origin
+from .point_api import router as point_router
 from .request_limits import AuthBodyLimit
 from .schemas import PublicSiteResponse
 from .site_api import router as site_router
@@ -47,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(account_router)
     app.include_router(site_router)
+    app.include_router(point_router)
     app.include_router(site_ui_router)
 
     @app.exception_handler(SiteRegistryError)
@@ -157,6 +159,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "ready",
                 "meta",
                 "public_site_read",
+                "public_point_read",
+                "point_search",
+                "bounded_neighbors",
                 "account_sessions",
                 "site_management",
                 "site_management_ui",

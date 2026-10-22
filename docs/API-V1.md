@@ -4,6 +4,7 @@ Status: target contract with P01/P02, P03a first-party accounts and P03b site
 management plus hosted/site UI and a read-only iframe implemented locally.
 Updated 22 October 2026. Exact current payloads:
 [AUTH-V1](AUTH-V1.md) and [SITE-MANAGEMENT-V1](SITE-MANAGEMENT-V1.md).
+P05a current public reads/search/neighbors: [PUBLIC-POINTS-V1](PUBLIC-POINTS-V1.md).
 The remaining routes/behavior below are target design unless marked implemented.
 
 Originally updated 13 September 2026 from the single-site API draft. The owner's current direction is a common service for
@@ -176,6 +177,11 @@ point editor and registered Git-source mode remain planned.
 Source settings and privileged management are absent from bridge commands.
 
 ### Graph, editor and signals
+
+The table below is target design. The implemented P05a subset uses `after` ID
+pagination (not the future snapshot `cursor`/`source` filters): exact payloads and
+visibility in [PUBLIC-POINTS-V1](PUBLIC-POINTS-V1.md). Editor, field, history and
+signals remain planned.
 
 ```text
 GET    /points/{point_id}
