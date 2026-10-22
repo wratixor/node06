@@ -99,3 +99,7 @@ writes, server import routes or migrations are added by this slice.
 Operator content publication and migration 0005: [deployment contract](../docs/OPERATOR-CONTENT-DEPLOY.md).
 
 Per-site home blocks, owner editor and migration 0006: [HOME-BLOCKS-V1](../docs/HOME-BLOCKS-V1.md).
+
+Public current-point reads, bounded full-body prefix search and migration 0008:
+[PUBLIC-POINTS-V1](../docs/PUBLIC-POINTS-V1.md). Online Alembic upgrade is required
+for its Unicode backfill; generated offline SQL deliberately fails at this step.

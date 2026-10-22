@@ -306,6 +306,7 @@ def build() -> None:
             "created_at": p.created_at,
             "last_interaction_at": p.updated_at,
             "preview": preview(p.text),
+            "body": p.text,
             "html": render_markdown(p.text, set(points)),
             "origin": "root",
             "coordinates": coordinates[p.id],

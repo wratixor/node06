@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    literal_column,
 )
 
 metadata = MetaData()
@@ -62,17 +63,28 @@ points = Table(
     ),
 )
 
+
+def revision_search_text(context):
+    return context.get_current_parameters()["body"].casefold()
+
+
 point_revisions = Table(
     "point_revisions",
     metadata,
     Column("id", String(34), primary_key=True),
     Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), nullable=False),
     Column("body", Text, nullable=False),
+    Column("search_text", Text, nullable=False, default=revision_search_text, server_default=""),
     Column("declared_links", JSON, nullable=False, server_default="[]"),
     Column("editor_user_id", ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
 Index("ix_point_revisions_point_created", point_revisions.c.point_id, point_revisions.c.created_at)
+Index(
+    "ix_point_revisions_search_simple",
+    func.to_tsvector(literal_column("'simple'::regconfig"), point_revisions.c.search_text),
+    postgresql_using="gin",
+).ddl_if(dialect="postgresql")
 
 sites = Table(
     "sites",
