@@ -33,10 +33,11 @@ PAGE = """<!doctype html>
 <option value="register">Регистрация</option><option value="recover">Восстановление</option>
 </select></label>
 <label>Имя пользователя<input id="handle" autocomplete="username" required
-pattern="[a-z0-9][a-z0-9_-]{2,63}" minlength="3" maxlength="64"></label>
+pattern="[a-z0-9][a-z0-9_\\-]{2,63}" minlength="3" maxlength="64"></label>
 <p>3–64 символа: строчные латинские буквы, цифры, дефис и подчёркивание.</p>
 <label>Пароль<input id="password" type="password" autocomplete="current-password"
 required minlength="12" maxlength="128"></label>
+<p>Пароль: 12–128 символов.</p>
 <label id="confirmation-label" hidden>Повторите новый пароль
 <input id="confirmation" type="password" autocomplete="new-password" maxlength="128"></label>
 <label id="recovery-label" hidden>Аварийный код<input id="recovery" autocomplete="off"
@@ -59,6 +60,15 @@ textarea{min-height:5rem;overflow-wrap:anywhere}p{overflow-wrap:anywhere}"""
 SCRIPT = """'use strict';
 const el=id=>document.getElementById(id);
 let csrf=null;
+function validateHandle(){
+ el('handle').setCustomValidity(/^[a-z0-9][a-z0-9_-]{2,63}$/.test(el('handle').value)?'':
+  'Имя: 3–64 символа, только строчные латинские буквы, цифры, дефис и подчёркивание. '+
+  'Первый символ — буква или цифра. Например: wratixor.');
+}
+el('handle').addEventListener('input',validateHandle);
+el('account-form').addEventListener('invalid',event=>{
+ el('status').textContent=event.target.validationMessage;
+},true);
 const messages={INVALID_CREDENTIALS:'Неверное имя или пароль.',
 INVALID_RECOVERY:'Аварийный код не подходит или уже использован.',
 ACCOUNT_CONFLICT:'Не удалось зарегистрировать это имя. Выберите другое.',
@@ -96,6 +106,7 @@ el('dismiss-code').addEventListener('click',()=>{
 });
 el('account-form').addEventListener('submit',async event=>{
  event.preventDefault();const action=el('action').value;
+ validateHandle();if(!el('account-form').reportValidity())return;
  if(action!=='login'&&el('password').value!==el('confirmation').value){
  el('status').textContent='Пароли не совпадают.';return;}
  el('submit').disabled=true;

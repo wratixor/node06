@@ -9,7 +9,10 @@ action confirmation remain next work. There is no Wallet or Arena account link.
 
 An account is common to the service, independent of the site used to discover it.
 Handles are 3–64 ASCII lowercase letters, digits, hyphen or underscore, starting
-with a letter/digit. Passwords are 12–128 characters, at most 512 UTF-8 bytes.
+with a letter/digit. The account form rejects uppercase names locally with an
+explicit field message and preserves all entered values; it does not silently
+normalize the user's identifier. Its HTML pattern escapes the hyphen for modern
+browsers' Unicode-v validation. Passwords are 12–128 characters, at most 512 UTF-8 bytes.
 Registration returns `201` with `account_created=true`, the user ID/handle and a
 single newly generated recovery code; it does not log the user in. A conflict
 returns `409 ACCOUNT_CONFLICT`, never an account-created result.

@@ -31,6 +31,19 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#handle').fill(handle);
     await page.locator('#password').fill(password);
     await page.locator('#confirmation').fill(password);
+    let registrations = 0;
+    page.on('request', request => {
+      if (request.method() === 'POST' && request.url().endsWith('/api/v1/auth/register')) registrations++;
+    });
+    await page.locator('#handle').fill(handle.toUpperCase());
+    await page.locator('#submit').click();
+    assert((await page.locator('#status').textContent()).includes('строчные латинские'));
+    assert.equal(registrations, 0, 'Invalid uppercase name must not reach registration API');
+    assert.equal(await page.locator('#handle').inputValue(), handle.toUpperCase());
+    assert.equal(await page.locator('#password').inputValue(), password);
+    await page.locator('#handle').fill(handle);
+    assert.equal(await page.locator('#handle').evaluate(input => input.validity.valid), true,
+      'Browser Unicode-v pattern must accept a valid hyphenated lowercase name');
     await page.locator('#submit').click();
     await page.locator('#recovery-result').waitFor({ state: 'visible' });
     await page.locator('#password').fill(password);
