@@ -457,18 +457,34 @@ class Social:
                 active.append((row["user_id"], pid))
         data = calculate(ids, trust, active)
         mass, held = 0, 0
+        point_mass = {}
         for row in rows:
             units = data["allocations"].get(row["user_id"], {}).get(row["point_id"], 0)
             point = current[row["point_id"]]
-            if (
+            if point:
+                entry = point_mass.setdefault(
+                    row["point_id"],
+                    {
+                        **self.pin(point),
+                        "current": 0,
+                        "held": 0,
+                        "subscribed": 0,
+                    },
+                )
+                entry["subscribed"] += units
+            confirmed = bool(
                 point
                 and point["content_digest"] == row["content_digest"]
                 and point["revision_id"] == row["revision_id"]
-            ):
+            )
+            if confirmed:
                 mass += units
             else:
                 held += units
+            if point:
+                entry["current" if confirmed else "held"] += units
         data.update(
+            point_mass=point_mass,
             mass_units=mass,
             held_units=held,
             cutoff_seq=c.scalar(select(func.max(social_events.c.seq))) or 0,
@@ -477,6 +493,7 @@ class Social:
             raise InfluenceUnavailable("MASS_CONSERVATION_FAILED")
         identity = digest(
             {
+                "projection": "point-mass/1",
                 "cutoff_seq": data["cutoff_seq"],
                 "users": ids,
                 "trust": sorted(trust),

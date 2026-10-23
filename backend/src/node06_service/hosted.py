@@ -225,19 +225,14 @@ class HostedBundle:
                 },
             }
         # Published user content shares the same projection and canonical edge claims.
-        from .models import authored_points, edge_claims, point_edges
+        from .models import edge_claims, point_edges
         from .public_points import PublicPoints
 
         public = PublicPoints(database, roots=self.roots)
         cap = request.app.state.settings.hosted_site_limit * 101
         with database.connect() as connection:
             authored = (
-                connection.execute(
-                    public._query()
-                    .where(authored_points.c.point_id.is_not(None))
-                    .order_by(points.c.id)
-                    .limit(cap + 1)
-                )
+                connection.execute(public._query().order_by(points.c.id).limit(cap + 1))
                 .mappings()
                 .all()
             )
@@ -245,6 +240,12 @@ class HostedBundle:
                 raise GraphUnavailable("GRAPH_CAPACITY_EXCEEDED")
             for row in authored:
                 point = public._convert(row)
+                if row["authored_lang"] is None:
+                    if point["id"] in by_id:
+                        by_id[point["id"]].update(
+                            {k: point[k] for k in ("revision_id", "content_digest")}
+                        )
+                    continue
                 by_id[point["id"]] = {
                     **point,
                     "links": [],
@@ -345,8 +346,8 @@ class HostedBundle:
             )
             source = source.replace("ROOT ERA / STATIC FIELD", "SHARED CONCEPT GRAPH")
         source = source.replace(
-            "static root field · social layer planned",
-            "shared graph · read-only preview · social layer planned",
+            "static root field · shared social service",
+            "shared graph · versioned support",
         )
         return source.replace("</nav>", navigation + "</nav>", 1)
 

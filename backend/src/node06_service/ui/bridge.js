@@ -2,7 +2,7 @@
 (() => {
   const protocol = "node06-embed/1";
   const methods = ["capabilities.get", "site.get", "point.get", "points.search",
-    "point.read", "points.searchPage", "point.neighbors"];
+    "point.read", "points.searchPage", "point.neighbors", "point.social"];
   const parents = document.body.dataset.parents.split(" ");
   const site = document.body.dataset.site;
   const active = new Set();
@@ -37,7 +37,7 @@
     const { id, method, params } = message;
     if (!methods.includes(method)) { fail(id, "METHOD_NOT_ALLOWED"); return; }
     const paged = ["points.searchPage", "point.neighbors"].includes(method);
-    const keys = ["point.get", "point.read", "point.neighbors"].includes(method) ? ["point_id"]
+    const keys = ["point.get", "point.read", "point.neighbors", "point.social"].includes(method) ? ["point_id"]
       : ["points.search", "points.searchPage"].includes(method) ? ["query"] : [];
     const allowed = paged ? [...keys, "after", "limit"] : keys;
     if (Object.keys(params).some(key => !allowed.includes(key))
@@ -45,7 +45,7 @@
       || (Object.hasOwn(params, "after") && (typeof params.after !== "string"
         || !/^(?:[a-z0-9][a-z0-9_-]{0,95})?$/.test(params.after)))
       || (Object.hasOwn(params, "limit") && (!Number.isInteger(params.limit) || params.limit < 1 || params.limit > 50))
-      || (["point.read", "point.neighbors"].includes(method) && !/^[a-z0-9][a-z0-9_-]{0,95}$/.test(params.point_id))) {
+      || (["point.read", "point.neighbors", "point.social"].includes(method) && !/^[a-z0-9][a-z0-9_-]{0,95}$/.test(params.point_id))) {
       fail(id, "INVALID_PARAMS"); return;
     }
     // Ignore duplicate pending IDs, preserving the original request's single response.

@@ -25,6 +25,9 @@ function neighborhood(points, id) {
     ...(process.env.NODE06_BROWSER_EXECUTABLE ? { executablePath: process.env.NODE06_BROWSER_EXECUTABLE } : {}) });
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    // Offline field/navigation fixture: do not contact the production bridge.
+    // The packaged HTTPS fixture separately exercises the real two-origin SDK.
+    await page.route('**/assets/connection.json', route => route.abort());
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const points = await (await fetch(`${base}/data/points.json`)).json();

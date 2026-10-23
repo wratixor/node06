@@ -325,3 +325,37 @@ def test_setup_and_all_copies_link_to_configured_management(hosted):
     assert f'href="{ORIGIN}/sites/"' in embedded.text
     assert f'href="{ORIGIN}/setup/"' in embedded.text
     assert "режим" in client.get("/setup/").text.lower()
+
+
+def test_social_bridge_is_bounded_public_read_and_pins_match_display(hosted):
+    from node06_service.public_points import PublicPoints
+    from node06_service.social import Social
+
+    app, client, active, pending = hosted
+    public = PublicPoints(app.state.database, roots=app.state.hosted_bundle.roots)
+    Social(public).work()
+    api = f"{EMBED}/bridge/v1/{active.site_id}/read"
+    direct = client.get("/api/v1/points/skills-ru/social-summary").json()
+    bridged = client.get(api, params={"method": "point.social", "point_id": "skills-ru"})
+    assert bridged.status_code == 200
+    assert bridged.json() == direct
+    assert (
+        "point.social" in client.get(api, params={"method": "capabilities.get"}).json()["methods"]
+    )
+    for extras in ({"after": ""}, {"limit": 1}, {"user_id": "forged"}):
+        assert (
+            client.get(
+                api, params={"method": "point.social", "point_id": "skills-ru", **extras}
+            ).status_code
+            == 400
+        )
+    assert (
+        client.get(api, params={"method": "point.social", "point_id": pending.site_id}).status_code
+        == 404
+    )
+    graph = client.get("/data/points.json").json()
+    for pid in ("skills-ru", active.site_id, "all-sites"):
+        displayed = next(p for p in graph if p["id"] == pid)
+        current = client.get(f"/api/v1/points/{pid}/social-summary").json()
+        assert displayed["content_digest"] == current["content_digest"]
+        assert displayed["revision_id"] == current["revision_id"]

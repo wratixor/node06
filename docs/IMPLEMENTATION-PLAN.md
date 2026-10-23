@@ -1380,3 +1380,15 @@ refresh their current pins when chosen. They never create support, votes or mass
 Detailed contract: POINT-AUTHORING-V1. Cross-server favorites synchronization and
 rich-text/WYSIWYG editing are not introduced by this packet. Source validation
 and production rollout remain separate states.
+
+### Field social status — 23 October 2026
+
+Implemented source: public influence/proposal state in field text panels and
+shared search details, contextual first-party management links and first-party
+own subscription/ballot display. Static Neocities and full frames use additive
+read-only `point.social`; no account data crosses the parent/iframe boundary.
+Per-point snapshot aggregates preserve current versus held mass and version pins.
+Pending or older displayed texts do not inherit fresh labels. No geometry/radius,
+weight formula or vote-policy change and no new migration. SOCIAL-V1 owns the
+HTTP/pin/compatibility contract. Runtime read-only checks confirmed autodeploy
+reached editor main9fc00b1 during this work; this new packet still needs review.

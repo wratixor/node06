@@ -98,7 +98,8 @@
             const { query: q, ...page } = params;
             return read(`/api/v1/points/search?${new URLSearchParams({ q, ...page })}`);
           }
-          return read(`/api/v1/points/${encodeURIComponent(params.point_id)}`);
+          const suffix = method === "point.social" ? "/social-summary" : method === "point.neighbors" ? "/neighbors" : "";
+          return read(`/api/v1/points/${encodeURIComponent(params.point_id)}${suffix}`);
         };
       }
       const config = await read("/assets/connection.json");
@@ -129,6 +130,12 @@
       throw error;
     }
   }
+  window.node06ManagementOrigin = () => transportConfig?.serviceOrigin || body.dataset.managementOrigin || (body.dataset.hosted === "true" && !body.dataset.searchSite ? location.origin : "");
+  window.readNode06Public = (method, params) => {
+    if (!["point.read", "points.searchPage", "point.neighbors", "point.social"].includes(method))
+      return Promise.reject(new Error("METHOD_NOT_ALLOWED"));
+    return request(method, params);
+  };
   function href(id) {
     if (transportConfig) {
       const url = new URL(`/sites/${transportConfig.siteId}/`, transportConfig.serviceOrigin);
@@ -166,6 +173,10 @@
       const relatedUrl = new URL("/editor/", transportConfig?.serviceOrigin || body.dataset.managementOrigin || location.origin);
       relatedUrl.search = new URLSearchParams({ from: point.id });
       related.href = relatedUrl.href; related.target = "_blank"; related.rel = "noopener noreferrer";
+      if (window.renderNode06Social) {
+        const social = element("section", "", detail);
+        window.renderNode06Social(social, point.id, selected);
+      }
       const address = element("input", "", detail);
       address.value = selected.href;
       address.readOnly = true;

@@ -190,3 +190,12 @@ The dropdown follows the input on scroll/resize and fits desktop/mobile viewport
 No API/bridge/auth/DB changes. Built CSS/browser scripts use content-hash query
 versions; the first-party editor uses matching hashes from the actual hosted
 bundle, preventing stale cached CSS from leaving new controls unstyled.
+
+## Additive public social summary
+
+`point.social` accepts exactly `{point_id}` and returns the public bounded
+`node06-point-social/1` summary from SOCIAL-V1. No pagination, arbitrary URL,
+user ID, credentials or write flag is accepted. It includes influence/version
+status and at most one open weighted proposal tally; no private subscriber list
+or individual vote. Feature-detect through capabilities.get; an older bridge can
+reject this method while ordinary search/read continues. Protocol stays /1.
