@@ -10,7 +10,14 @@ class AuthBodyLimit:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or not scope["path"].startswith(
-            ("/api/v1/auth/", "/api/v1/sites", "/api/v1/points")
+            (
+                "/api/v1/auth/",
+                "/api/v1/sites",
+                "/api/v1/points",
+                "/api/v1/proposals",
+                "/api/v1/people",
+                "/api/v1/me/",
+            )
         ):
             return await self.app(scope, receive, send)
         maximum = self.maximum if scope["path"].startswith("/api/v1/auth/") else 65536

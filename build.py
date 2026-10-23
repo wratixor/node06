@@ -10,6 +10,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
 CONTENT = ROOT / "content"
@@ -247,11 +248,33 @@ def asset_url(name: str) -> str:
     return f"/assets/{name}?v={version}"
 
 
+def service_navigation() -> str:
+    """Static copies link to their configured trusted service; no API access needed."""
+    connection = STATIC / "connection.json"
+    if not connection.exists():
+        return ""
+    origin = json.loads(connection.read_text()).get("serviceOrigin", "")
+    if not origin:
+        return ""
+    parsed = urlsplit(origin)
+    if (parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password
+            or parsed.path not in ("", "/") or parsed.query or parsed.fragment):
+        raise SystemExit("connection.json serviceOrigin must be an HTTPS origin")
+    origin = html.escape(origin.rstrip("/"), quote=True)
+    return '<!--service-nav-->' + ''.join(
+        f'<a href="{origin}{path}" target="_blank" rel="noopener noreferrer">{label} ↗</a>'
+        for path, label in (("/account/", "ACCOUNT"), ("/sites/", "MY SITES"),
+                            ("/community/", "COMMUNITY"), ("/editor/", "NEW POINT"))
+    ) + '<!--/service-nav-->'
+
+
 def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") -> str:
     nav = (
         '<a href="/">NODE06</a>'
         '<a href="/recent/">RECENT</a>'
         '<a href="/about/">ABOUT</a>'
+        '<a href="/setup/">SETUP / УСТАНОВКА</a>'
+        + service_navigation()
     )
     return f'''<!doctype html>
 <html lang="{lang}">
@@ -374,6 +397,10 @@ def build() -> None:
         f'<li><time>{p.updated_at[:10]}</time><a href="/?p={p.id}&open={p.id}">{html.escape(preview(p.text, 150))}</a><span>{len(p.links)} links</span></li>'
         for p in sorted(points.values(), key=lambda p: p.updated_at, reverse=True)
     )
+    guide = (ROOT / "docs/SELF-HOSTING.md").read_text(encoding="utf-8")
+    write(DIST / "setup/index.html", shell("Setup / Установка",
+          '<section class="prose"><h1>Установка / Setup</h1>' + render_markdown(guide, set()) + '</section>',
+          "ru", "setup"))
     write(DIST / "recent" / "index.html", shell("RECENT", f'<section class="recent"><h1>RECENT</h1><ul>{all_rows}</ul></section>', "en", "recent"))
     write(DIST / "about" / "index.html", shell("ABOUT", about_ru + about_en, "en", "about"))
     print(f"Built {len(points)} points into {DIST}")

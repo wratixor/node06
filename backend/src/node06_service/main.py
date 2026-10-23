@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from uuid import uuid4
@@ -12,6 +13,7 @@ from .auth_api import router as auth_router
 from .author_api import router as author_router
 from .authoring import AuthoringError
 from .bridge import register_bridge
+from .community_ui import router as community_router
 from .config import Settings, get_settings
 from .db import Database
 from .editor_ui import router as editor_router
@@ -32,6 +34,7 @@ from .site_registry import (
     SiteRegistryError,
 )
 from .site_ui import router as site_ui_router
+from .social_api import router as social_router
 from .verifier import VerifierBusyError, VerifierTimeoutError
 
 
@@ -40,8 +43,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        yield
-        app.state.database.dispose()
+        stop = asyncio.Event()
+        task = None
+        if current_settings.database_url:
+            from .social_worker import run
+
+            task = asyncio.create_task(run(app, stop))
+        try:
+            yield
+        finally:
+            stop.set()
+            if task:
+                await task
+            app.state.database.dispose()
 
     app = FastAPI(
         title="NODE06 service", version="0.1.0", docs_url=None, redoc_url=None, lifespan=lifespan
@@ -52,6 +66,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(account_router)
     app.include_router(site_router)
+    app.include_router(social_router)
+    app.include_router(community_router)
     app.include_router(author_router)
     app.include_router(editor_router)
     app.include_router(point_router)
@@ -87,6 +103,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def point_error(request: Request, exc):
         return JSONResponse(
             {"code": exc.code}, status_code=exc.status, headers={"Cache-Control": "no-store"}
+        )
+
+    from .influence import InfluenceUnavailable
+
+    @app.exception_handler(InfluenceUnavailable)
+    async def influence_error(request: Request, exc):
+        return JSONResponse(
+            {"code": exc.args[0]}, status_code=503, headers={"Cache-Control": "no-store"}
         )
 
     @app.exception_handler(AuthError)
@@ -135,6 +159,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             request.url.path.startswith(("/api/v1/auth/", "/api/v1/me"))
             or request.url.path.endswith("/manage")
             or request.url.path == "/api/v1/ui-config"
+            or (
+                request.url.path.startswith(("/api/v1/proposals", "/api/v1/people"))
+                and request.method != "GET"
+            )
             or (request.url.path.startswith("/api/v1/points") and request.method != "GET")
             or (request.url.path.startswith("/api/v1/sites") and request.method != "GET")
         ):
@@ -168,6 +196,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "service": "node06",
             "build_revision": current_settings.build_revision,
             "embed_protocol": "node06-embed/1",
+            "social_worker": getattr(
+                app.state,
+                "social_worker_status",
+                {"state": "disabled" if not current_settings.database_url else "starting"},
+            ),
             "implemented": [
                 "health",
                 "ready",
@@ -176,6 +209,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "public_point_read",
                 "point_search",
                 "point_authoring",
+                "revision_subscriptions",
+                "revision_proposals",
+                "influence_t1",
+                "private_inbox",
                 "authored_point_history",
                 "bounded_neighbors",
                 "account_sessions",
@@ -193,7 +230,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ),
             "not_implemented": [
                 "embed_auth",
-                "point_reactions",
+                "signed_point_reactions",
                 "imports",
                 "billing",
             ],

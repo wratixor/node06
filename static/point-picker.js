@@ -158,6 +158,10 @@
       const open = element("a", "Открыть / Open", actions);
       open.href = selected.href;
       if (transportConfig) { open.target = "_blank"; open.rel = "noopener"; }
+      const community = element("a", "Поддержка / Versions", actions);
+      const communityUrl = new URL("/community/", transportConfig?.serviceOrigin || body.dataset.managementOrigin || location.origin);
+      communityUrl.search = new URLSearchParams({ p: point.id });
+      community.href = communityUrl.href; community.target = "_blank"; community.rel = "noopener noreferrer";
       const address = element("input", "", detail);
       address.value = selected.href;
       address.readOnly = true;

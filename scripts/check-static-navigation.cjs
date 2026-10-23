@@ -28,6 +28,19 @@ function neighborhood(points, id) {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const points = await (await fetch(`${base}/data/points.json`)).json();
+    const connection = await (await fetch(`${base}/assets/connection.json`)).json();
+    await page.goto(base + '/');
+    for (const path of ['/account/', '/sites/', '/community/', '/editor/']) {
+      await page.locator(`nav a[href="${connection.serviceOrigin}${path}"]`).waitFor();
+    }
+    await page.locator('nav a[href="/setup/"]').click();
+    await page.waitForURL('**/setup/');
+    assert.match(await page.locator('main').innerText(), /Режим 5/);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(base + '/');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.setViewportSize({ width: 1440, height: 1000 });
+
     async function checkField(id, dataset = points) {
       await page.waitForFunction(id => document.querySelector('#field-center-id')?.textContent === id, id);
       const nodes = await page.locator('#field-map .node').evaluateAll(nodes => nodes.map(n =>

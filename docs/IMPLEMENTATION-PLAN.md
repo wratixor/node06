@@ -462,8 +462,8 @@ pending; новая формулировка не получает старую 
 ## 8. Доверие и масса: сначала проверяемый расчёт
 
 API фиксирует 1 unit base influence на active user **во всём общем графе** и бюджеты people=0.5,
-points=0.5. Формула рекурсии ещё не определена. Ниже **кандидат T1**, который
-нужно принять отдельной короткой ADR после проверки синтетическими сценариями.
+points=0.5. Владелец утвердил T1 для первой версии с проверкой сохранения
+влияния. Реализованный численный контракт: [SOCIAL-V1](SOCIAL-V1.md).
 
 Регистрация сайта, импорт Markdown, второе iframe и открытие того же пользователя
 на другом сайте не добавляют base mass. Site points и Git roots — terminal sinks,
@@ -475,7 +475,7 @@ points=0.5. Формула рекурсии ещё не определена. Н
 ```text
 w(0) = [1, ..., 1]
 w(t+1) = (1-d) * [1, ..., 1] + d * transpose(T) * w(t)
-0 <= d < 1; начальный исследуемый d = 0.5
+0 <= d < 1; утверждённый v1 d = 0.5
 people_i = 0.5 * w_i
 point_budget_i = 0.5 * w_i
 n_i = число confirmed И pending положительных реакций i
@@ -505,10 +505,10 @@ sum(people) + sum(mass) + held_pending + idle = N
 Добавление публикаций без новых пользователей не меняет N.
 Если из двух поддержанных точек одну изменили, её 0.25 уходит в held_pending,
 другая остаётся 0.25. Подтверждение возвращает долю новой версии, снятие реакции
-явно меняет распределение. Это предложение, требующее принятия вместе с T1.
+явно меняет распределение. Это утверждённое поведение T1 v1.
 
 Суммарная погрешность proposal ≤1e-9*max(1,N), L1 residual проверяется; максимум
-итераций 500, non-convergence/NaN/negative result не публикуются. Обход ID
+итераций 128, non-convergence/NaN/negative result не публикуются. Обход ID
 детерминирован; алгоритм/config/version/input digest сохраняются. Не округлять
 до двух знаков на промежуточных этапах. Rounding — только UI.
 
@@ -920,7 +920,7 @@ import queue fairness/memory и диск. Это цели исследовани
 |---|---|---|
 | D01 | Bridge + full iframe, Neocities Free | Выбрано владельцем; production feasibility проверяется P00/P12, не покупать Supporter |
 | D02 | Один repo/API/DB и hosted frontend Amsterdam | Выбрано направление; versions/domain topology подтвердить P01/P12 |
-| D03 | Смысл support/oppose и T1 formula | Исходный API + проверяемый кандидат §8; коэффициент ещё не принят |
+| D03 | Смысл support/oppose и T1 formula | T1 v1 принят: damping 0.5, точные полубюджеты; SOCIAL-V1 |
 | D04 | Автор редактирует свои точки и ссылки | Новое требование отменяет общий create-only запрет; чужие пары/источники недоступны |
 | D05 | Social coordinates | Self anchors vs emergent layout, требуется prototype/owner review |
 | D06 | Users as mapped points | Отдельная безопасная projection, no double mass; details deferred |
@@ -1332,8 +1332,8 @@ must exceed old; equality retains current. Immediate 100% means positive subscri
 new-version ballots, not a count of consenting accounts or a share of cast ballots. Use one
 consistent authoritative influence snapshot and preserve its identity in the
 result. P05 subscription/proposal storage precedes P06 validated influence
-snapshots, which must precede binding weighted adoption. T1 remains an unapproved
-candidate; no one-account-one-vote placeholder may ship as the agreed mechanism.
+snapshots, which must precede binding weighted adoption. T1 was subsequently explicitly approved for v1 with conservation checks.
+The implementation uses fixed-point ballots and no headcount fallback.
 
 Static NODE06 entrance also includes its Neocities profile link under the title:
 https://neocities.org/site/node06 . Hosted tenant home replaces this static entrance
@@ -1352,3 +1352,20 @@ new-version ballots covering all of it. Silent positive influence blocks only
 early consent coverage, never adds old-version votes to the scheduled tally.
 100% of ballots cast so far is insufficient while positive subscribed influence
 remains uncast.
+
+
+### Implemented social packet — 23 October 2026
+
+Migration 0010 adds revision subscriptions, daily proposals, explicit ballots,
+trust, snapshots, durable private inbox/outbox and Git update provenance.
+First-party `/community/` provides old/new comparison, support/voting, trust and
+feed. The application worker runs every 30 seconds with a configured database.
+P05 social storage + P06 influence foundation are implemented together; signed
+point reactions, graph geometry, remote subscriptions/account sync remain next
+packets. Deployment of this branch is not claimed. Full installed-wheel browser
+check and disposable PostgreSQL tests validate the source. See SOCIAL-V1.
+
+Every static copy now links to ACCOUNT, MY SITES, COMMUNITY and NEW POINT using
+its public connection.json serviceOrigin. `/setup/` is built from
+docs/SELF-HOSTING.md; hosted copies expose the same guide and use their own
+management origin. Public frames link out to trusted management in a new tab.

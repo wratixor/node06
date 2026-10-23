@@ -1,8 +1,8 @@
 # Revision subscriptions and community proposals: next implementation packet
 
 Owner decisions recorded and clarified 23 October 2026. This revision supersedes
-the earlier system-only protection, Git/community-overlay and headcount-voting proposals. This is an implementation plan, **not
-implemented runtime behavior**. P05c authoring is described in
+the earlier system-only protection, Git/community-overlay and headcount-voting proposals. The accepted rules are implemented in the social v1 source packet; see
+[SOCIAL-V1](SOCIAL-V1.md) for exact shipped scope and validation. Deployment is separate. P05c authoring is described in
 [POINT-AUTHORING-V1.md](POINT-AUTHORING-V1.md).
 
 ## Accepted product rules
@@ -241,3 +241,13 @@ This packet does not silently approve a trust formula, pricing, federation,
 geographic moderation or public publication of previously hidden lore. Binding
 adoption requires the P06 influence dependency above; other items remain their
 separate approved plan stages.
+
+
+## Implementation update — 23 October 2026
+
+Owner explicitly approved T1 for v1 with conservation checks. This supersedes the
+older unapproved-model wording above. [SOCIAL-V1](SOCIAL-V1.md) is the implemented
+contract: immutable subscriptions/proposals, explicit ballots, durable inbox,
+Git support transfer, trust, conserved snapshots and automatic 30s worker. The
+first-party `/community/` UI compares both versions and links from every copy.
+No signed opposition, social geometry or federation is implied.

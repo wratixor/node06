@@ -1,6 +1,7 @@
 from sqlalchemy import (
     JSON,
     BigInteger,
+    Boolean,
     CheckConstraint,
     Column,
     DateTime,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     literal_column,
+    text,
 )
 
 metadata = MetaData()
@@ -280,4 +282,138 @@ point_operations = Table(
     Column("request_digest", String(64), nullable=False),
     Column("response", JSON, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+
+subscriptions = Table(
+    "subscriptions",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), primary_key=True),
+    Column("active", Boolean, nullable=False, server_default="true"),
+    Column("revision_id", ForeignKey("point_revisions.id", ondelete="RESTRICT"), nullable=True),
+    Column("content_digest", String(64), nullable=False),
+    Column("static_body", Text, nullable=True),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+Index("ix_subscriptions_point_active", subscriptions.c.point_id, subscriptions.c.active)
+proposals = Table(
+    "proposals",
+    metadata,
+    Column("id", String(34), primary_key=True),
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), nullable=False),
+    Column("author_user_id", ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
+    Column("base_revision_id", String(34), nullable=True),
+    Column("base_digest", String(64), nullable=False),
+    Column("base_body", Text, nullable=False),
+    Column("base_lang", String(80), nullable=False),
+    Column(
+        "candidate_revision_id",
+        ForeignKey("point_revisions.id", ondelete="RESTRICT"),
+        nullable=False,
+    ),
+    Column("candidate_digest", String(64), nullable=False),
+    Column("content", JSON, nullable=False),
+    Column("citations", JSON, nullable=False),
+    Column("state", String(16), nullable=False, server_default="open"),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("closes_at", DateTime(timezone=True), nullable=False),
+    Column("result", JSON, nullable=True),
+    CheckConstraint("state IN ('open','adopted','retained','stale')", name="ck_proposals_state"),
+)
+Index(
+    "uq_proposals_open",
+    proposals.c.point_id,
+    unique=True,
+    postgresql_where=text("state = 'open'"),
+    sqlite_where=text("state = 'open'"),
+)
+Index("ix_proposals_due", proposals.c.state, proposals.c.closes_at)
+ballots = Table(
+    "ballots",
+    metadata,
+    Column("proposal_id", ForeignKey("proposals.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("choice", String(3), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+    CheckConstraint("choice IN ('old','new')", name="ck_ballots_choice"),
+)
+social_user_state = Table(
+    "social_user_state",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("last_proposed_at", DateTime(timezone=True), nullable=True),
+)
+user_trust = Table(
+    "user_trust",
+    metadata,
+    Column("source_user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("target_user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    CheckConstraint("source_user_id != target_user_id", name="ck_trust_no_self"),
+)
+social_events = Table(
+    "social_events",
+    metadata,
+    Column(
+        "seq", BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True
+    ),
+    Column("kind", String(40), nullable=False),
+    Column("point_id", ForeignKey("points.id", ondelete="SET NULL"), nullable=True),
+    Column("proposal_id", ForeignKey("proposals.id", ondelete="SET NULL"), nullable=True),
+    Column("actor_user_id", ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    Column("payload", JSON, nullable=False),
+    Column("public", Boolean, nullable=False, server_default="false"),
+    Column("fanout_done", Boolean, nullable=False, server_default="true"),
+    Column("audience_cursor", String(34), nullable=False, server_default=""),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_social_events_outbox", social_events.c.fanout_done, social_events.c.seq)
+subscription_intervals = Table(
+    "subscription_intervals",
+    metadata,
+    Column("id", String(34), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), nullable=False),
+    Column("start_seq", ForeignKey("social_events.seq", ondelete="RESTRICT"), nullable=False),
+    Column("end_seq", ForeignKey("social_events.seq", ondelete="RESTRICT"), nullable=True),
+)
+Index(
+    "ix_subscription_audience", subscription_intervals.c.point_id, subscription_intervals.c.user_id
+)
+inbox = Table(
+    "inbox",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("event_seq", ForeignKey("social_events.seq", ondelete="CASCADE"), primary_key=True),
+    Column("read_at", DateTime(timezone=True), nullable=True),
+)
+core_publications = Table(
+    "core_publications",
+    metadata,
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), primary_key=True),
+    Column("content_digest", String(64), nullable=False),
+    Column("body", Text, nullable=False),
+    Column("build_revision", String(128), nullable=False),
+)
+influence_runs = Table(
+    "influence_runs",
+    metadata,
+    Column("id", String(34), primary_key=True),
+    Column("input_digest", String(64), nullable=False),
+    Column("data", JSON, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+
+support_history = Table(
+    "support_history",
+    metadata,
+    Column("event_seq", ForeignKey("social_events.seq", ondelete="RESTRICT"), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), primary_key=True),
+    Column("previous_revision_id", String(34), nullable=True),
+    Column("previous_digest", String(64), nullable=True),
+    Column("revision_id", String(34), nullable=True),
+    Column("content_digest", String(64), nullable=False),
+    Column("reason", String(32), nullable=False),
 )

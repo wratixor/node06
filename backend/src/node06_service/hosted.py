@@ -2,6 +2,7 @@
 
 import html
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
@@ -69,7 +70,10 @@ def validate_embed_origin(settings: Settings) -> None:
 
 def management_path(path: str, method: str) -> bool:
     return (
-        path.startswith(("/editor", "/account", "/sites", "/api/v1/auth/", "/api/v1/me"))
+        path.startswith(
+            ("/community", "/editor", "/account", "/sites", "/api/v1/auth/", "/api/v1/me")
+        )
+        or (path.startswith(("/api/v1/proposals", "/api/v1/people")) and method != "GET")
         or (path.startswith("/api/v1/points") and method != "GET")
         or path == "/api/v1/ui-config"
         or (path.startswith("/api/v1/sites") and (method != "GET" or path.endswith("/manage")))
@@ -230,7 +234,7 @@ class HostedBundle:
             authored = (
                 connection.execute(
                     public._query()
-                    .where(authored_points.c.point_id.is_not(None), points.c.origin == "user")
+                    .where(authored_points.c.point_id.is_not(None))
                     .order_by(points.c.id)
                     .limit(cap + 1)
                 )
@@ -282,6 +286,7 @@ class HostedBundle:
             "home-point": home,
             "home-page": "true",
             "hosted": "true",
+            "management-origin": settings.management_origin or "",
             "search-site": home if embedded else "",
             "tenant": "true" if site else "",
             "theme": json.dumps(theme or {}),
@@ -306,6 +311,7 @@ class HostedBundle:
             source = source.replace('href="/"', f'href="{html.escape(field_path, quote=True)}"')
         feed = field_path + "?" + urlencode({"p": ALL_SITES_ID, "mode": "feed"})
         source = source.replace('href="/recent/"', f'href="{html.escape(feed, quote=True)}"')
+        source = re.sub(r"<!--service-nav-->.*?<!--/service-nav-->", "", source, flags=re.S)
         navigation = f'<a href="{field_path}?p=all-sites&amp;open=all-sites">ALL SITES</a>'
         if embedded:
             source = source.replace(
@@ -313,15 +319,28 @@ class HostedBundle:
                 f'<a href="{html.escape(settings.management_origin)}/about/" '
                 'target="_blank" rel="noopener">ABOUT ↗</a>',
             )
+            source = source.replace(
+                'href="/setup/"',
+                f'href="{html.escape(settings.management_origin)}/setup/" '
+                'target="_blank" rel="noopener"',
+            )
+            navigation += (
+                f'<a href="{html.escape(settings.management_origin)}/sites/" '
+                'target="_blank" rel="noopener">MY SITES ↗</a>'
+            )
             navigation += (
                 f'<a href="{html.escape(settings.management_origin)}/account/" '
                 'target="_blank" rel="noopener">ACCOUNT ↗</a>'
+            )
+            navigation += (
+                f'<a href="{html.escape(settings.management_origin)}/community/" '
+                'target="_blank" rel="noopener">COMMUNITY ↗</a>'
             )
             source = source.replace("ROOT ERA / STATIC FIELD", "READ ONLY / SHARED GRAPH")
         else:
             navigation += (
                 '<a href="/sites/">MY SITES</a><a href="/account/">ACCOUNT</a>'
-                '<a href="/editor/">NEW POINT</a>'
+                '<a href="/editor/">NEW POINT</a><a href="/community/">COMMUNITY</a>'
             )
             source = source.replace("ROOT ERA / STATIC FIELD", "SHARED CONCEPT GRAPH")
         source = source.replace(
@@ -418,15 +437,31 @@ def register_hosted(app: FastAPI, settings: Settings) -> None:
     def recent():
         return RedirectResponse("/?p=all-sites&mode=feed")
 
+    def information_page(name: str):
+        source = (bundle.directory / name / "index.html").read_text()
+        origin = html.escape(settings.management_origin or "", quote=True)
+        navigation = "".join(
+            f'<a href="{origin}{path}">{label}</a>'
+            for path, label in (
+                ("/account/", "ACCOUNT"),
+                ("/sites/", "MY SITES"),
+                ("/community/", "COMMUNITY"),
+                ("/editor/", "NEW POINT"),
+            )
+        )
+        source = re.sub(r"<!--service-nav-->.*?<!--/service-nav-->", navigation, source, flags=re.S)
+        return HTMLResponse(
+            source,
+            headers={**PUBLIC_HEADERS, "Content-Security-Policy": CSP + "frame-ancestors 'none'"},
+        )
+
+    @app.get("/setup/")
+    def setup():
+        return information_page("setup")
+
     @app.get("/about/")
     def about():
-        return FileResponse(
-            bundle.directory / "about/index.html",
-            headers={
-                **PUBLIC_HEADERS,
-                "Content-Security-Policy": CSP + "frame-ancestors 'none'",
-            },
-        )
+        return information_page("about")
 
     @app.get("/p/{point_id}/")
     def point_link(point_id: str):

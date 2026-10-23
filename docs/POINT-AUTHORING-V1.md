@@ -127,25 +127,13 @@ Owner confirmed in this chat on 23 October:
    auto-adopt. Zero-total influence never auto-adopts. Activity-based duration is
    future policy.
 
-Not yet implemented: subscriptions/support, proposal voting, inbox/feed delivery,
-majority/expiry processing, trust/mass, authenticated embed, self-service Git
-imports, federation/profile sync. Do not expose a proposal endpoint that silently
-falls back to direct author writes. The majority rule is confirmed above;
-no automatic adoption is enabled in P05c.
+The social v1 packet now enforces subscriber-aware edits and adds subscriptions,
+proposals, explicit influence-weighted ballots, private inbox and trust:
+[SOCIAL-V1](SOCIAL-V1.md). Authors may directly edit only non-Git points without
+active subscribers. Git roots remain protected and transfer support automatically
+on accepted source updates. Authenticated embeds, signed reactions, self-service
+imports and federation remain future work.
 
-Next packet should add revision subscriptions, proposals tied to a base revision,
-private durable inbox plus feed, and explicit protected-point policy. Every
-adoption must atomically recheck base revision, pinned target revisions, protection,
-unique user support and the approved weighted old-versus-new influence/time rule.
-Stale proposals need rebasing rather than overwriting newer text. Author writes
-and source changes must preserve revision consistency. Imported content needs a recorded
-Git authority and automatic support-transfer/changelog contract. Git points do
-not receive community overlays; accepted repository updates become current
-without a community vote, under the existing source authority checks.
-Add rollback/race/expiry and new-user-majority tests before enabling that packet.
-
-Until that packet exists, direct author edits are the original author-only
-behavior and there are no subscribers whose support could be transferred.
 Normal backup-first application deploy runs the online migration; no new site
 registration, content fork or deploy-tool update is needed. Downgrade drops the
 publication/receipt/citation registry; use backup/review instead of treating it as
@@ -156,5 +144,5 @@ Detailed next packet: [revision proposals](REVISION-PROPOSALS-PLAN.md).
 
 Influence correction, 23 October: subscription counts are not voting weights.
 Binding adoption depends on authoritative versioned influence snapshots; do not
-use headcount as an interim implementation. The existing T1 formula is still a
-candidate, not approved by this correction.
+use headcount as an interim implementation. T1 was subsequently explicitly approved for v1 with conservation checks; see
+SOCIAL-V1 for the numerical contract.
