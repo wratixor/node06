@@ -419,6 +419,7 @@
   host.addEventListener('wheel',e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY>0?.92:1.08),.65,1.7);renderMap();},{passive:false});
 
   document.addEventListener('keydown',e=>{
+    if(document.querySelector('#point-picker[open]')) return;
     if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) return;
     if(e.key==='Escape'&&!panel.hidden){
       e.preventDefault();

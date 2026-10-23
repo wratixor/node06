@@ -56,6 +56,75 @@ def test_public_core_and_current_db_reads(hosted):
     assert "public_point_read" in client.get("/api/v1/meta").json()["implemented"]
 
 
+def test_paged_bridge_parity_legacy_and_revocation(hosted, pg_database):
+    _app, client, active, pending = hosted
+    api = EMBED + f"/bridge/v1/{active.site_id}/read"
+    body = "Начало " * 80 + " ВоЛшЕбСтВо farawayword"
+    publish(pg_database, candidate(active, body=body), REPO, "https://garden.example")
+    pid = f"r_{active.site_id[2:]}_idea"
+    page = client.get(api, params={"method": "points.searchPage", "query": "ВОЛШЕБ", "limit": 1})
+    assert page.status_code == 200
+    assert page.json() == search(client, "ВОЛШЕБ", limit=1)
+    assert page.json()["items"][0]["id"] == pid
+    assert (
+        client.get(api, params={"method": "point.read", "point_id": pid}).json()
+        == client.get("/api/v1/points/" + pid).json()
+    )
+    assert (
+        client.get(api, params={"method": "point.neighbors", "point_id": pid, "limit": 1}).json()
+        == client.get("/api/v1/points/" + pid + "/neighbors", params={"limit": 1}).json()
+    )
+    legacy = client.get(api, params={"method": "points.search", "query": "farawayword"}).json()
+    assert legacy == {"items": [], "truncated": False}
+    capabilities = client.get(api, params={"method": "capabilities.get"}).json()
+    assert {"point.read", "points.searchPage", "point.neighbors"} <= set(capabilities["methods"])
+    assert (
+        client.get(api, params={"method": "point.read", "point_id": pending.site_id}).status_code
+        == 404
+    )
+    with pg_database.begin() as c:
+        c.execute(update(sites).where(sites.c.id == active.site_id).values(state="inactive"))
+    assert (
+        client.get(api, params={"method": "points.searchPage", "query": "ВОЛШЕБ"}).status_code
+        == 404
+    )
+
+
+def test_paged_bridge_input_bounds_and_cursors(hosted):
+    _app, client, active, _pending = hosted
+    api = EMBED + f"/bridge/v1/{active.site_id}/read"
+    first = client.get(
+        api, params={"method": "points.searchPage", "query": "skill", "limit": 1}
+    ).json()
+    assert first["next_cursor"]
+    second = client.get(
+        api,
+        params={
+            "method": "points.searchPage",
+            "query": "skill",
+            "limit": 1,
+            "after": first["next_cursor"],
+        },
+    ).json()
+    assert second["items"][0]["id"] > first["items"][0]["id"]
+    for params in [
+        {"method": "points.searchPage", "query": "skill", "limit": "1.5"},
+        {"method": "points.searchPage", "query": "skill", "limit": "51"},
+        {"method": "points.searchPage", "query": "skill", "after": "../bad"},
+        {"method": "points.searchPage", "query": "skill", "url": "https://evil.example"},
+        {"method": "point.read", "point_id": "skills-ru", "limit": 1},
+        {"method": "point.neighbors", "point_id": "../secret"},
+    ]:
+        assert client.get(api, params=params).status_code == 400
+    assert client.get(api + "?method=points.searchPage&query=skill&query=other").status_code == 400
+    assert (
+        client.get(
+            api.replace(EMBED, ""), params={"method": "point.read", "point_id": "skills-ru"}
+        ).status_code
+        == 404
+    )
+
+
 def test_full_body_prefix_search_and_stale_revision_is_not_searchable(hosted, pg_database):
     _app, client, active, _pending = hosted
     extra = " Начало " * 80 + "уникальнопоздний ВоЛшЕбСтВо Straße"

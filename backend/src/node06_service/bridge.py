@@ -2,6 +2,7 @@
 
 import html
 import json
+import re
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -9,11 +10,42 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from .hosted import CSP, PUBLIC_HEADERS, GraphUnavailable, request_origin
+from .public_points import PublicPointError, PublicPoints
+from .root_import import POINT
 from .site_registry import SiteNotFoundError, SiteRegistry
 
-METHODS = ["capabilities.get", "site.get", "point.get", "points.search"]
+PAGED_METHODS = ["point.read", "points.searchPage", "point.neighbors"]
+METHODS = ["capabilities.get", "site.get", "point.get", "points.search", *PAGED_METHODS]
 # Leave room for channel/request ID and the response envelope within 256 KiB.
 MAX_RESPONSE_BYTES = 255 * 1024
+
+
+def current_read(app, method, params):
+    key = "query" if method == "points.searchPage" else "point_id"
+    allowed = {key} if method == "point.read" else {key, "after", "limit"}
+    if key not in params or set(params) - allowed:
+        raise PublicPointError("INVALID_PARAMS", 400)
+    value = params[key]
+    if not 1 <= len(value) <= 128 or (key == "point_id" and not POINT.fullmatch(value)):
+        raise PublicPointError("INVALID_PARAMS", 400)
+    after = params.get("after", "")
+    limit = params.get("limit", "20" if key == "query" else "50")
+    if (
+        not re.fullmatch(r"(?:[a-z0-9][a-z0-9_-]{0,95})?", after)
+        or not re.fullmatch(r"[1-9][0-9]?", limit)
+        or int(limit) > 50
+    ):
+        raise PublicPointError("INVALID_PARAMS", 400)
+    store = PublicPoints(
+        app.state.database,
+        roots=app.state.hosted_bundle.roots,
+        build_revision=app.state.settings.build_revision,
+    )
+    if method == "point.read":
+        return store.get(value)
+    if key == "query":
+        return store.search(value, after=after, limit=int(limit))
+    return store.neighbors(value, after=after, limit=int(limit))
 
 
 def register_bridge(app: FastAPI) -> None:
@@ -84,7 +116,9 @@ def register_bridge(app: FastAPI) -> None:
             method = params.pop("method", None)
             if method not in METHODS:
                 return error("METHOD_NOT_ALLOWED")
-            if method in ("capabilities.get", "site.get"):
+            if method in PAGED_METHODS:
+                data = current_read(app, method, params)
+            elif method in ("capabilities.get", "site.get"):
                 if params:
                     return error("INVALID_PARAMS")
                 data = (
@@ -117,5 +151,7 @@ def register_bridge(app: FastAPI) -> None:
             return JSONResponse(data, headers=PUBLIC_HEADERS)
         except SiteNotFoundError:
             return error("SITE_NOT_FOUND", 404)
+        except PublicPointError as exc:
+            return error(exc.code, exc.status)
         except (GraphUnavailable, SQLAlchemyError):
             return error("GRAPH_UNAVAILABLE", 503)

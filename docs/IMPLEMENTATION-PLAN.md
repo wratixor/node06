@@ -1237,3 +1237,24 @@ budget, unavailable configuration and populated online migration down/up. Ruff,
 format, 51-root build, P00 protocol, JS syntax, offline SQL generation and local
 document links checked. Offline migration SQL intentionally contains a stop for
 the Unicode backfill. No new browser UI or production deployment was performed.
+
+
+P05b, 23.10.2026 (source): additive `points.searchPage`/`point.read`/`point.neighbors`
+bridge methods reuse the P05a current-only store; legacy methods are preserved.
+Shared header search/picker works with hosted API, full iframe same-origin bridge
+and static-site postMessage SDK. It previews plain text and copies a web address;
+future editor onSelect receives current revision/digest without creating links,
+votes or posts. Static map remains local; shared external points open in the
+hosted entrance. Connection settings: static/connection.json, existing Neocities
+site ID reused. Contract and rollout: [PUBLIC-BRIDGE-V1](PUBLIC-BRIDGE-V1.md).
+No auth/CORS/proxy/migration/endorsement changes. Authoring, self-service import
+proof/transport, trust and notifications remain unfinished. Devlogs remain deferred.
+
+P05b checks: 190 full PostgreSQL tests passed, 27 targeted public/hosted checks;
+Ruff/format, 51-root build, JS syntax and P00 protocol passed. Installed-wheel HTTPS
+browser checks passed on hosted, full iframe and static-parent picker, including
+stale responses/failure recovery, safe text, current selection metadata, Escape,
+CSP/source/channel/cookie boundaries and 390px/1440px visual inspection. Local
+Chromium fixture alone grants its localhost origin loopback-network permission;
+production/browser policies are unchanged. Real Neocities publication remains
+unverified. No schema/service configuration or production write was performed.
