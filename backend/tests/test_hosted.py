@@ -309,3 +309,19 @@ def test_custom_home_blocks_and_scoped_links_for_all_entrances(hosted, pg_databa
     assert f'href="/embed/v1/{active.site_id}/?p=skills-ru&amp;open=skills-ru"' in embedded.text
     assert client.put(EMBED + f"/api/v1/sites/{active.site_id}/home", json={}).status_code == 404
     assert client.get("/sites/home.js").status_code == 200
+
+
+def test_setup_and_all_copies_link_to_configured_management(hosted):
+    _app, client, active, _pending = hosted
+    for path in ("/", "/setup/", "/about/", f"/sites/{active.site_id}/"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "wiki.geno-dice.com/account/" not in response.text
+        assert 'href="/sites/"' in response.text or f'href="{ORIGIN}/sites/"' in response.text
+        assert 'href="/account/"' in response.text or f'href="{ORIGIN}/account/"' in response.text
+        assert 'href="/setup/"' in response.text
+    embedded = client.get(f"{EMBED}/embed/v1/{active.site_id}/")
+    assert embedded.status_code == 200
+    assert f'href="{ORIGIN}/sites/"' in embedded.text
+    assert f'href="{ORIGIN}/setup/"' in embedded.text
+    assert "режим" in client.get("/setup/").text.lower()

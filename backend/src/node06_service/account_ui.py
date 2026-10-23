@@ -21,7 +21,8 @@ PAGE = """<!doctype html>
 <link rel="manifest" href="/site.webmanifest">
 <script src="/account/client.js" defer></script></head><body><main>
 <nav><a href="/">Вики</a> · <a href="/sites/">Мои сайты</a>
-· <a href="/editor/">Мои точки / создать</a></nav>
+· <a href="/editor/">Мои точки / создать</a>
+· <a href="/community/">Подписки и уведомления</a></nav>
 <h1>Аккаунт NODE06</h1><p>Одна учётная запись для всей сети сайтов.</p>
 <p id="status" role="status" aria-live="polite">Проверяем сессию…</p>
 <section id="recovery-result" hidden><h2>Сохраните аварийный код</h2>

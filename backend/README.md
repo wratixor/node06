@@ -4,7 +4,8 @@ This directory contains P01, the P02 site registry, P03a shared account sessions
 and P03b authenticated site management. It exposes account routes and the
 first-party `/account/` page, health/meta, public active-site read and owner-only
 create/list/manage/renew/verify/settings routes. `/sites/` is the first-party owner UI.
-Imports, reactions, trust and production deployment are not implemented yet.
+Operator Git publication, authoring and social v1 are implemented in source;
+authenticated embeds, signed reactions and federation remain future work.
 
 Account setup, HTTPS/cookie/CSRF boundary, recovery and configurable limits:
 [docs/AUTH-V1.md](../docs/AUTH-V1.md). Set `NODE06_MANAGEMENT_ORIGIN` to the exact
@@ -106,3 +107,12 @@ for its Unicode backfill; generated offline SQL deliberately fails at this step.
 
 Point authoring and editor: [contract](../docs/POINT-AUTHORING-V1.md), migration
 `0009_point_authoring`. Links are not support; proposal voting is a later packet.
+
+Social v1: [SOCIAL-V1](../docs/SOCIAL-V1.md), migration `0010_social_versions`.
+A configured database starts the bounded background worker in the application;
+no separate root service/timer is required. Subscriptions, explicit revision
+ballots, trust, private inbox and Git source changelog are implemented in source.
+Apply online migrations and restart through the operator pipeline after review.
+Connection/deployment modes for site owners: [SELF-HOSTING](../docs/SELF-HOSTING.md),
+built into the public `/setup/` page. Static menu links use connection.json;
+hosted pages use the configured management origin, never a parent login form.

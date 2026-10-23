@@ -50,6 +50,7 @@ def preview(body):
 class PublicPoints:
     def __init__(self, database, *, roots=(), build_revision="dev"):
         self.database = database
+        self.build_revision = build_revision
         self.core = {}
         for root in roots:
             value = dict(root)
@@ -144,8 +145,9 @@ class PublicPoints:
                 "repository_url": row["repository_url"],
                 "commit_sha": row["commit_sha"],
             }
-        if row["authored_lang"] is not None and row["origin"] == "user":
+        if row["authored_lang"] is not None and not row["source_valid"]:
             lang = row["authored_lang"]
+        if row["authored_lang"] is not None and row["origin"] == "user":
             source = {"kind": "user", "author_user_id": row["author_user_id"]}
         body = row["body"]
         refs = row["declared_links"]

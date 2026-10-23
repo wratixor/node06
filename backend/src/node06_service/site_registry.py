@@ -10,6 +10,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from .db import Database
+from .graph_writes import lock_graph
 from .home_page import HomePage, HomeSource, resolve_home
 from .models import (
     edge_claims,
@@ -144,6 +145,7 @@ class SiteRegistry:
         """P02 test/bootstrap helper. P03 replaces this with authenticated account creation."""
         user_id = new_user_id()
         with self.database.begin() as connection:
+            lock_graph(connection)
             connection.execute(insert(users).values(id=user_id, handle=handle, state="active"))
         return user_id
 
@@ -166,6 +168,7 @@ class SiteRegistry:
 
         try:
             with self.database.begin() as connection:
+                lock_graph(connection)
                 self._authorize(connection, owner_user_id)
                 owner = connection.execute(
                     select(users.c.id)
@@ -278,6 +281,7 @@ class SiteRegistry:
         # Phase 1 commits the attempt counter before the network request. A failed
         # proof cannot erase its attempt by rolling back the activation transaction.
         with self.database.begin() as connection:
+            lock_graph(connection)
             self._authorize(connection, actor_user_id)
             site = (
                 connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
@@ -326,6 +330,7 @@ class SiteRegistry:
         # Phase 2 locks and rechecks the same claim, then publishes the site atomically.
         try:
             with self.database.begin() as connection:
+                lock_graph(connection)
                 self._authorize(connection, actor_user_id)
                 site = (
                     connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
@@ -439,11 +444,13 @@ class SiteRegistry:
 
     def managed_site(self, site_id: str, actor_user_id: str) -> dict:
         with self.database.begin() as connection:
+            lock_graph(connection)
             self._authorize(connection, actor_user_id)
             return self._managed_site(connection, site_id, actor_user_id)
 
     def list_owned(self, actor_user_id: str, *, after: str = "", limit: int = 30) -> list[dict]:
         with self.database.begin() as connection:
+            lock_graph(connection)
             self._authorize(connection, actor_user_id)
             ids = (
                 connection.execute(
@@ -510,6 +517,7 @@ class SiteRegistry:
         material = issue_claim(site_id, now)
         claim_id = new_claim_id()
         with self.database.begin() as connection:
+            lock_graph(connection)
             self._authorize(connection, actor_user_id)
             site = self._managed_site(connection, site_id, actor_user_id)
             if site["state"] != "pending" or site["claim_id"] != expected_claim_id:
@@ -557,6 +565,7 @@ class SiteRegistry:
         welcome_body: str,
     ) -> dict:
         with self.database.begin() as connection:
+            lock_graph(connection)
             self._authorize(connection, actor_user_id)
             site = self._managed_site(connection, site_id, actor_user_id)
             if (
@@ -572,6 +581,12 @@ class SiteRegistry:
             now = self.clock()
             revision_id = site["welcome_revision_id"]
             if body_changed:
+                from .social_common import active_support
+
+                if connection.scalar(select(active_support(site_id))):
+                    raise SiteConflictError(
+                        "PROPOSAL_REQUIRED: subscribed welcome text needs a vote."
+                    )
                 revision_id = new_revision_id()
                 connection.execute(
                     insert(point_revisions).values(
@@ -630,6 +645,7 @@ class SiteRegistry:
         if preference not in ("auto", "git", "ui", "welcome"):
             raise ValueError("Invalid home source")
         with self.database.begin() as connection:
+            lock_graph(connection)
             self._authorize(connection, actor_user_id)
             site = self._managed_site(connection, site_id, actor_user_id)
             if site["settings_revision"] != expected_settings_revision:

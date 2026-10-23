@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .config import get_settings
 from .db import Database
+from .graph_writes import lock_graph
 from .models import (
     edge_claims,
     events,
@@ -51,6 +52,7 @@ def publish(
         raise RootImportError("OPERATOR_WELCOME_REQUIRED")
     now = datetime.now(UTC)
     with database.begin() as connection:
+        lock_graph(connection)
         site = (
             connection.execute(
                 select(sites).where(sites.c.id == candidate.site_id).with_for_update()
@@ -189,11 +191,26 @@ def publish(
                         point_id=point.id, site_id=candidate.site_id, **entry
                     )
                 )
+            from .social import git_update
+
+            git_update(
+                connection, point.id, revision, point.content_digest, candidate.commit_sha, now=now
+            )
         for pid in retired:
             connection.execute(
                 update(points)
                 .where(points.c.id == pid)
                 .values(lifecycle="retired", content_updated_at=now)
+            )
+            from .social_common import event
+
+            event(
+                connection,
+                "git-source-retired",
+                pid,
+                public=True,
+                now=now,
+                payload={"commit": candidate.commit_sha},
             )
         # Release only this source's claims. Other claims/points/revisions survive.
         connection.execute(

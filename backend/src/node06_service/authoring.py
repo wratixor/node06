@@ -5,6 +5,7 @@ from uuid import uuid4
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from .graph_writes import lock_graph
 from .models import (
     authored_points,
     authored_revisions,
@@ -52,6 +53,7 @@ class Authoring:
         validate_content(payload)
         request_digest = digest({"point_id": point_id, **payload})
         with self.database.begin() as c:
+            lock_graph(c)
             # Serializes this actor's receipts and rechecks revocation inside the write.
             self.authorize(c, actor)
             receipt = (
@@ -156,6 +158,10 @@ class Authoring:
                     }
                     self._receipt(c, actor, key, request_digest, result)
                     return result
+                from .social_common import active_support
+
+                if c.scalar(select(active_support(pid))):
+                    raise AuthoringError("PROPOSAL_REQUIRED", 409)
             else:
                 c.execute(insert(points).values(id=pid, origin="user", author_user_id=actor))
                 c.execute(insert(authored_points).values(point_id=pid, lang=payload["lang"]))

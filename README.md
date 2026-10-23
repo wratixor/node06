@@ -2,9 +2,13 @@
 
 NODE06 is an experimental static knowledge field and the first public surface of a rethought concept engine.
 
-The first version is intentionally backend-free: root points are Markdown files, reciprocal `md://` links form the graph, `build.py` validates and renders the field, and the generated `dist/` directory is deployed to Neocities.
+The static frontend works without a backend: root points are Markdown files, reciprocal `md://` links form the graph, `build.py` validates and renders the field, and the generated `dist/` directory is deployed to Neocities.
 
 NODE06 is based on [Hexrelatum](https://github.com/wratixor/hexrelatum). See [LICENSES.md](LICENSES.md) and [NOTICE.md](NOTICE.md).
+
+Self-hosting and connection modes: [installation guide](docs/SELF-HOSTING.md), also published at `/setup/`.
+Accounts, site management and community links in static copies use `serviceOrigin`
+from `static/connection.json`; hosted copies use their configured management origin.
 
 ## Repository structure
 
@@ -62,17 +66,18 @@ The script builds locally, stages source changes, commits, and pushes. GitHub Ac
 
 For the first GitHub push from the current repository state, read [docs/FIRST-PUSH.md](docs/FIRST-PUSH.md).
 
-## Planned social layer
+## Shared service and social layer
 
 The baseline backend/API design is recorded in [docs/API-V1.md](docs/API-V1.md).
 The detailed implementation sequence, open decisions and agent handoff are in
 [docs/IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) (Russian).
 
-The planned service uses one shared database, graph and user identity across
+The service uses one shared database, graph and user identity across
 independent sites. Each site has its own welcome point and can import additional
 Markdown roots from a registered GitHub fork. Public lore joins the same graph.
-Authors can edit their points; revision-aware support and change notifications
-are proposed to prevent silent changes to endorsed meaning. Optional word links
+Authors edit unsubscribed points directly; subscribed text changes through
+revision proposals and explicit influence-weighted votes. Durable notifications
+prevent a supported meaning from changing unnoticed. Optional word links
 let authors choose precise definitions through search.
 
 Amsterdam is intended to serve the backend and the common hosted frontend.
@@ -80,10 +85,10 @@ Neocities Free integration uses a small iframe bridge for a local interface or
 a full embedded wiki. See [embedding contract](docs/EMBED-V1.md) and
 [Git root import contract](docs/ROOT-IMPORT-V1.md). Direct external API requests
 are blocked by the current Neocities CSP; external frames are allowed, but the
-chosen transport still needs a browser prototype and real-origin validation.
+implemented transport is tested with local HTTPS origins; real-origin acceptance
+remains a separate deployment check.
 P01/P02, first-party accounts/site management UI, hosted public graph and a
-read-only full iframe are implemented locally. Backend deployment and scoped
-embed auth remain unfinished. See [hosted wiki setup](docs/HOSTED-WIKI-V1.md).
+read-only full iframe are implemented locally. Scoped embed auth remains future work; deployment state must be verified separately. See [hosted wiki setup](docs/HOSTED-WIKI-V1.md).
 Current setup and validation are in [backend/README.md](backend/README.md), with
 implemented payloads in [AUTH-V1](docs/AUTH-V1.md) and
 [SITE-MANAGEMENT-V1](docs/SITE-MANAGEMENT-V1.md). The static root field remains
@@ -92,6 +97,10 @@ the Neocities frontend.
 A local two-origin transport prototype is available in
 [`prototypes/embed-p00/`](prototypes/embed-p00/). It is a CSP and iframe protocol
 check with synthetic data, not a backend or deployable embed SDK.
+
+Implemented subscriptions, trust and influence-weighted revision ballots:
+[SOCIAL-V1](docs/SOCIAL-V1.md). This source packet is separate from deployment;
+read-only embedding does not grant authenticated write access.
 
 ## Navigation model
 

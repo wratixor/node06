@@ -239,8 +239,8 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await frame.locator('#point-picker-query').fill('skill');
     await frame.locator('#point-picker-results button').first().waitFor();
     await frame.getByRole('button', { name: /^skills-ru ·/ }).click();
-    await frame.locator('#point-picker-detail a').waitFor();
-    assert((await frame.locator('#point-picker-detail a').getAttribute('href')).includes('/embed/v1/'));
+    await frame.locator('#point-picker-detail a').first().waitFor();
+    assert((await frame.locator('#point-picker-detail a').first().getAttribute('href')).includes('/embed/v1/'));
     await frame.locator('#point-picker-query').press('Escape');
     assert.equal(await frame.locator('#point-picker').isVisible(), false);
     assert.equal(await frame.locator('#point-panel').isVisible(), false);
@@ -303,7 +303,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.evaluate(() => openNode06Picker({ onSelect: point => { window.pickedPoint = point; } }));
     await page.locator('#point-picker-query').fill(active);
     await page.locator('#point-picker-results button').first().click();
-    await page.locator('#point-picker-detail a').waitFor();
+    await page.locator('#point-picker-detail a').first().waitFor();
     assert((await page.locator('.picker-body').textContent()).includes('<script>'));
     assert.equal(await page.evaluate(() => window.stolen), undefined);
     await page.getByRole('button', { name: 'Выбрать / Select', exact: true }).click();
@@ -339,6 +339,42 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       await page.waitForFunction(before => document.querySelectorAll('#point-picker-results li').length > before, before);
     }
     await page.getByRole('button', { name: 'Закрыть результаты / Close results', exact: true }).click();
+    // Authenticated social actions stay first-party; a separate fixture point
+    // keeps earlier editor tests and the site's source ownership independent.
+    const socialSession = await (await page.request.get(base + '/api/v1/me')).json();
+    const socialTarget = await (await page.request.get(base + '/api/v1/points/skills-ru')).json();
+    const createdSocial = await page.request.post(base + '/api/v1/points', {
+      headers: { Origin: base, 'X-CSRF-Token': socialSession.csrf_token, 'Idempotency-Key': 'browser-social-point' },
+      data: { body: 'Browser social old text', lang: 'en', links: [{ id: socialTarget.id, revision_id: socialTarget.revision_id, content_digest: socialTarget.content_digest }] }
+    });
+    assert.equal(createdSocial.status(), 201);
+    const socialPoint = (await createdSocial.json()).id;
+    await page.goto(base + '/community/?p=' + socialPoint);
+    await page.locator('#support-point').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => !document.querySelector('#choose-point').disabled);
+    await page.locator('#support-point').click();
+    await page.waitForFunction(() => document.querySelector('#support-status').textContent.includes('основную'));
+    await page.locator('#proposal-body').fill('Browser social new text <script>unsafe()</script>');
+    await page.locator('#submit-proposal').click();
+    await page.getByRole('button', { name: 'Голос за новую', exact: true }).waitFor();
+    assert((await page.locator('#point-current').textContent()).includes('old text'));
+    await page.getByRole('button', { name: 'Голос за новую', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('#point-current').textContent.includes('new text'));
+    assert.equal(await page.locator('#selected-point script').count(), 0, 'Comparison uses plain text');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({ path: '/tmp/node06-community-mobile.png', fullPage: true });
+    const inboxDeadline = Date.now() + 45000;
+    while (Date.now() < inboxDeadline) {
+      await page.locator('#community-refresh').click();
+      await page.waitForFunction(() => !document.querySelector('#community-refresh').disabled);
+      if ((await page.locator('#inbox').textContent()).includes('proposal-adopted')) break;
+      await page.waitForTimeout(1000);
+    }
+    assert((await page.locator('#inbox').textContent()).includes('proposal-adopted'), 'Background outbox delivers without operator commands');
+    await page.goto(base + '/community/?p=skills-ru');
+    await page.waitForFunction(() => !document.querySelector('#choose-point').disabled);
+    assert.equal(await page.locator('#proposal-form').isVisible(), false, 'Git point proposals are protected');
+    assert((await page.locator('#protection').textContent()).includes('Защищённая'));
     // A Neocities-style static page ships its own SDK/config and does not fetch
     // the remote API directly. The local HTTPS fixture is the registered parent.
     await page.route(base + '/assets/connection.json', route => route.fulfill({
@@ -369,12 +405,12 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert(await page.locator('#point-picker-results button').count(),
       'Static picker: ' + await page.locator('#point-picker-status').textContent());
     await page.locator('#point-picker-results button').first().click();
-    await page.locator('#point-picker-detail a').waitFor();
-    const destination = new URL(await page.locator('#point-picker-detail a').getAttribute('href'));
+    await page.locator('#point-picker-detail a').first().waitFor();
+    const destination = new URL(await page.locator('#point-picker-detail a').first().getAttribute('href'));
     assert((await page.locator('#point-picker-detail').boundingBox()).y < 844, 'Selected detail must be in view');
     assert.equal(destination.origin, base);
     assert.equal(destination.pathname, `/sites/${active}/`);
-    assert.equal(await page.locator('#point-picker-detail a').getAttribute('target'), '_blank');
+    assert.equal(await page.locator('#point-picker-detail a').first().getAttribute('target'), '_blank');
     assert(page.frames().some(frame => frame.url().startsWith(embed + '/bridge/v1/')));
     assert.equal(await page.evaluate(async embed => {
       try { await fetch(embed + '/api/v1/meta'); return true; } catch { return false; }
