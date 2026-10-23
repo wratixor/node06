@@ -1,13 +1,16 @@
 "use strict";
 (() => {
+  const external=document.body.dataset.externalEditor==='true';
+  const parentOrigin=external?document.body.dataset.parentOrigin:location.origin;
+  let publishWindow=null,publishChannel=null,externalReceipt=null;
   const el = id => document.getElementById(id);
-  let pid = new URLSearchParams(location.search).get("p"), revision = null, csrf, language = "und";
+  let pid = new URLSearchParams(location.search).get("p"), revision = null, csrf, loadedActor=null, language = "und";
   const requestedReturn = new URLSearchParams(location.search).get("return_to") || "/";
   const returnPath = /^(?:\/|\/sites\/s_[0-9a-f]{32}\/)$/.test(requestedReturn) ? requestedReturn : "/";
   const editorChannel=new URLSearchParams(location.search).get("editor_channel");
   const overlay=parent!==window&&/^[0-9a-f]{32}$/.test(editorChannel||"");
   if(overlay)document.querySelectorAll(".site-header nav a").forEach(a=>{if(!a.target)a.target="_top";});
-  function notify(kind,extra={}){parent.postMessage({protocol:"node06-editor/1",channel:editorChannel,kind,...extra},location.origin);}
+  function notify(kind,extra={}){parent.postMessage({protocol:"node06-editor/1",channel:editorChannel,kind,...extra},parentOrigin);}
   const from = new URLSearchParams(location.search).get("from");
   let favorites = new Map();
   let links = new Map(), receipt = null, busy = false, dirty = false, selection, historyCursor, mineCursor;
@@ -27,6 +30,10 @@
     AUTH_RATE_LIMITED: "Слишком много запросов. Повторите позже.",
   };
   async function api(path, options = {}) {
+    if(external) {
+      if(options.method||!/^\/points\/[a-z0-9][a-z0-9_-]{0,95}$/.test(path))throw new Error('AUTH_REQUIRED');
+      return window.readNode06Public('point.read',{point_id:path.slice(8)});
+    }
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
     try {
       const response = await fetch("/api/v1" + path, { ...options, credentials: "same-origin", cache: "no-store", signal: controller.signal });
@@ -57,7 +64,7 @@
       star.title = favorites.has(pin.id) ? "Убрать из избранного" : "Сохранить тег";
       star.disabled = busy || Boolean(receipt);
       star.addEventListener("click", () => saveFavorite(pin.id, !favorites.has(pin.id)));
-      li.append(" ", star, remove); el("point-links").append(li);
+      li.append(" ", ...(external?[]:[star]), remove); el("point-links").append(li);
     }
   }
   function selectPin(pin) {
@@ -145,6 +152,18 @@
   el("editor-form").addEventListener("input", () => { receipt = null; dirty = true; });
   el("editor-form").addEventListener("submit", async event => {
     event.preventDefault(); if (busy) return;
+    if(external){
+      if(!links.size){status('Выберите хотя бы одну связь.');return;}
+      externalReceipt ||= {payload:{body:el('point-body').value,lang:'und',links:[...links.values()].map(({id,revision_id,content_digest})=>({id,revision_id,content_digest}))},key:crypto.randomUUID()};
+      publishChannel ||= crypto.randomUUID().replaceAll('-','');
+      const url=new URL(`/editor/confirm/${document.body.dataset.searchSite}/`,document.body.dataset.managementOrigin);
+      url.searchParams.set('channel',publishChannel);
+      if(!publishWindow||publishWindow.closed)publishWindow=window.open(url.href,'node06-publish-'+publishChannel,'popup,width=760,height=850');
+      if(!publishWindow){if(!receipt){externalReceipt=null;publishChannel=null;}status('Разрешите окно подтверждения и повторите. Текст сохранён.');return;}
+      publishWindow.focus();
+      receipt=externalReceipt;el('point-body').readOnly=true;el('link-word').disabled=true;renderLinks();
+      status('Подтвердите публикацию в окне вики. Текст сохранён здесь.');return;
+    }
     let attemptedWrite = false;
     busy = true; el("publish").disabled = true; el("link-word").disabled = true;
     renderFavorites(); el("point-body").readOnly = true; renderLinks();
@@ -152,6 +171,7 @@
       // Refresh CSRF after login in another tab, without discarding an uncertain receipt.
       const session = await api("/me");
       csrf = session.csrf_token;
+      if(loadedActor&&loadedActor!==session.user_id)throw new Error("ACCOUNT_CHANGED");
       if (receipt && receipt.actor !== session.user_id) throw new Error("ACCOUNT_CHANGED");
       const payload = { body: el("point-body").value, lang: language, links: [...links.values()].map(({id, revision_id, content_digest}) => ({id, revision_id, content_digest})) };
       if (pid) payload.expected_revision_id = revision;
@@ -172,7 +192,12 @@
   el("retry-login").addEventListener("click", () => location.reload());
   (async () => {
     try {
-      const me = await api("/me"); csrf = me.csrf_token;
+      if(external){
+        document.querySelector('.site-header').hidden=true;
+        document.querySelector('.editor-meta').hidden=true;
+      }
+      const me = external?null:await api('/me');
+      if(me){csrf=me.csrf_token;loadedActor=me.user_id;}
       if (pid) {
         if (!/^p_[0-9a-f]{32}$/.test(pid)) throw new Error("POINT_EDIT_FORBIDDEN");
         const point = await api("/points/" + pid);
@@ -189,19 +214,36 @@
         links.set(source.id, {id:source.id,preview:source.preview,revision_id:source.revision_id,content_digest:source.content_digest});
         renderLinks();
       }
-      el("editor-form").hidden = false; el("tag-tools").hidden = false; status("Вы вошли: " + me.handle);
-      try { await refreshFavorites(); } catch (_) { status("Редактор готов. Избранное временно недоступно."); }
-      try { await mine(); } catch (_) { status("Редактор готов. Список ваших точек временно недоступен."); }
+      el("editor-form").hidden = false; el("tag-tools").hidden = false; status(external?"Новая связанная точка":"Вы вошли: " + me.handle);
+      if(!external)try { await refreshFavorites(); } catch (_) { status("Редактор готов. Избранное временно недоступно."); }
+      if(!external)try { await mine(); } catch (_) { status("Редактор готов. Список ваших точек временно недоступен."); }
       el("editor-form").dataset.ready = "true";
     } catch(error) { failure(error); el("retry-login").hidden = false; }
   })();
   window.addEventListener("message",event=>{
     const message=event.data;
-    if(!overlay||event.source!==parent||event.origin!==location.origin||message?.protocol!=="node06-editor/1"||message.channel!==editorChannel||message.kind!=="close-request")return;
+    if(!overlay||event.source!==parent||event.origin!==parentOrigin||message?.protocol!=="node06-editor/1"||message.channel!==editorChannel||!["close-request",...(external?["close-discard"]:[])].includes(message.kind))return;
     notify("close-pending");
-    if(busy){notify("close-cancel");return;}
+    if(busy||externalReceipt&&publishWindow&&!publishWindow.closed){notify("close-cancel");return;}
+    if(external){
+      if((dirty||receipt)&&message.kind!=='close-discard'){notify('close-dirty');return;}
+      dirty=false;receipt=null;externalReceipt=null;notify('closed');return;
+    }
     if((dirty||receipt)&&!confirm(receipt?"Результат публикации неизвестен. Закрыть редактор и потерять локальный текст?":"Закрыть редактор без сохранения текста?")){notify("close-cancel");return;}
     dirty=false;receipt=null;notify("closed");
+  });
+  if(external)window.addEventListener('message',event=>{
+    const m=event.data;
+    if(event.source!==publishWindow||event.origin!==document.body.dataset.managementOrigin||m?.protocol!=='node06-publish/1'||m.channel!==publishChannel||!externalReceipt)return;
+    if(m.kind==='ready')publishWindow.postMessage({protocol:'node06-publish/1',channel:publishChannel,kind:'draft',site:document.body.dataset.searchSite,...externalReceipt},document.body.dataset.managementOrigin);
+    if(m.kind==='published'&&/^p_[0-9a-f]{32}$/.test(m.id||'')){
+      dirty=false;receipt=null;externalReceipt=null;publishWindow.close();notify('published',{id:m.id});
+    }
+    if(m.kind==='rejected'){
+      receipt=null;externalReceipt=null;publishChannel=null;publishWindow.close();publishWindow=null;
+      el('point-body').readOnly=false;el('link-word').disabled=false;renderLinks();
+      status(errors[m.code]||'Публикация отклонена. Исправьте текст и повторите.');
+    }
   });
   window.addEventListener("beforeunload", event => { if (dirty || receipt) { event.preventDefault(); } });
 })();

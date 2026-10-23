@@ -5,6 +5,41 @@
   if(!res.ok) throw new Error('Field unavailable ('+res.status+'). Reload to retry.');
   const all=await res.json();
   const byId=new Map(all.map(p=>[p.id,p]));
+  // Static copies hydrate a requested public point through the anonymous bridge.
+  // This also makes a freshly published post addressable without a static rebuild.
+  const dynamicRequested=new URLSearchParams(location.search).get('p')||new URLSearchParams(location.search).get('open');
+  function safeRemoteHtml(html){
+    const template=document.createElement('template');template.innerHTML=html;
+    const allowed=new Set(['P','BR','EM','STRONG','CODE','PRE','A','UL','OL','LI','BLOCKQUOTE','H1','H2','H3','H4','HR']);
+    function copy(source){
+      if(source.nodeType===Node.TEXT_NODE)return document.createTextNode(source.textContent);
+      if(source.nodeType!==Node.ELEMENT_NODE||!allowed.has(source.tagName))return document.createTextNode(source.textContent||'');
+      const node=document.createElement(source.tagName);
+      if(source.tagName==='A'){
+        const pid=source.dataset.pointId;
+        if(/^[a-z0-9][a-z0-9_-]{0,95}$/.test(pid||'')){
+          node.dataset.pointId=pid;node.className='point-link';node.href=(body.dataset.fieldPath||'/')+'?'+new URLSearchParams({p:pid,open:pid});
+        }else{try{const url=new URL(source.getAttribute('href'));if(['https:','http:'].includes(url.protocol)){node.href=url.href;node.target='_blank';node.rel='noopener noreferrer';}}catch{ /* Plain text for unsupported links. */ }}
+      }
+      node.append(...[...source.childNodes].map(copy));return node;
+    }
+    const box=document.createElement('div');box.append(...[...template.content.childNodes].map(copy));return box.innerHTML;
+  }
+  function mergePublic(point){
+    if(!/^[a-z0-9][a-z0-9_-]{0,95}$/.test(point.id)||typeof point.html!=='string'||!Array.isArray(point.links))throw new Error('INVALID_POINT');
+    const current=byId.get(point.id), value={coordinates:null,coordinate_source:'display-only',...current,...point,html:safeRemoteHtml(point.html),degree:point.degree??point.links.length};
+    if(current)Object.assign(current,value);else{all.push(value);byId.set(point.id,value);}
+  }
+  if(body.dataset.hosted!=='true'&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(dynamicRequested||'')&&window.readNode06Public){
+    try{
+      const root=await window.readNode06Public('point.read',{point_id:dynamicRequested});mergePublic(root);
+      const missing=root.links.filter(id=>!byId.has(id)).slice(0,50);
+      for(let at=0;at<missing.length;at+=4){
+        const results=await Promise.allSettled(missing.slice(at,at+4).map(point_id=>window.readNode06Public('point.read',{point_id})));
+        for(const result of results)if(result.status==='fulfilled')mergePublic(result.value);else byId.get(root.id).neighbors_unavailable=true;
+      }
+    }catch{body.dataset.publicReadUnavailable='true';}
+  }
   const geometryFallback=new Map(all.map(p=>[p.id,{coordinates:p.coordinates,coordinate_source:p.coordinate_source}]));
   let visibleSignature='';
   window.applyNode06Geometry = records => {
@@ -51,6 +86,9 @@
   const panelClose=document.getElementById('point-panel-close');
   const controls=document.getElementById('field-controls');
   const shell=document.querySelector('.field-workspace');
+  if(body.dataset.publicReadUnavailable==='true'&&byId.has(dynamicRequested)){
+    const notice=document.createElement('p');notice.className='meta';notice.setAttribute('role','status');notice.textContent='Live data unavailable; showing saved roots.';shell.before(notice);
+  }
 
   let center=byId.get(requested);
   if(!center) center=[...local].sort((a,b)=>b.degree-a.degree)[0];
@@ -133,6 +171,7 @@
           return target?`<li><a class="point-link" href="${fieldPath}?p=${encodeURIComponent(target.id)}&open=${encodeURIComponent(target.id)}" data-point-id="${escapeHtml(target.id)}">${escapeHtml(target.preview)}</a></li>`:'';
         }).join('')}</ul>
       </section>
+      ${point.links_truncated?'<p class="meta">Only the first 50 links are shown.</p>':''}${point.neighbors_unavailable?'<p class="meta">Some linked points are unavailable.</p>':''}
       <p class="meta">created ${point.created_at.slice(0,10)} · last interaction ${point.last_interaction_at.slice(0,10)} · ${point.degree} links</p>`;
     document.querySelectorAll('.site-header nav a').forEach(link=>{
       const url=new URL(link.href);if(url.pathname==='/community/'){url.search=new URLSearchParams({p:point.id});link.href=url.href;}

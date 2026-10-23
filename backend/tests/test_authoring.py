@@ -288,3 +288,65 @@ def test_author_attribution_stays_with_original_creator(manager, static_bundle):
     summary = client.get(f"/api/v1/points/{created['id']}/social-summary").json()
     assert summary["author"] == {"kind": "user", "name": identity["handle"]}
     assert "id" not in summary["author"]
+
+
+def test_compose_receipt_is_bound_to_actor_site_and_exact_content(
+    manager, static_bundle, pg_database
+):
+    from node06_service.models import compose_receipts
+    from node06_service.site_registry import SiteRegistry
+
+    attach(manager, static_bundle)
+    registry = SiteRegistry(pg_database)
+    site = registry.create_pending_site(
+        owner_user_id=manager.user, origin="https://compose.example", welcome_body="Compose"
+    )
+    registry.verify_site(
+        site.site_id,
+        actor_user_id=manager.user,
+        proof_fetcher=lambda _: site.proof_document.encode(),
+    )
+    url = f"/editor/confirm/{site.site_id}/"
+    content = payload(manager.client)
+    key = "compose-global-replay-key"
+    first = manager.client.post(url, json=content, headers={"Idempotency-Key": key})
+    assert first.status_code == 201, first.text
+    assert first.headers["cache-control"] == "no-store"
+    replay = manager.client.post(url, json=content, headers={"Idempotency-Key": key})
+    assert replay.json() == first.json()
+    changed = manager.client.post(
+        url, json={**content, "body": "Different"}, headers={"Idempotency-Key": key}
+    )
+    assert changed.status_code == 409
+    assert changed.json()["code"] == "IDEMPOTENCY_CONFLICT"
+    second_site = registry.create_pending_site(
+        owner_user_id=manager.user, origin="https://compose-second.example", welcome_body="Second"
+    )
+    registry.verify_site(
+        second_site.site_id,
+        actor_user_id=manager.user,
+        proof_fetcher=lambda _: second_site.proof_document.encode(),
+    )
+    wrong_site = manager.client.post(
+        f"/editor/confirm/{second_site.site_id}/", json=content, headers={"Idempotency-Key": key}
+    )
+    assert wrong_site.status_code == 409
+    assert wrong_site.json()["code"] == "IDEMPOTENCY_CONFLICT"
+    manager.auth.register("compose-bob", PASSWORD, "bob")
+    with TestClient(manager.app, base_url=ORIGIN, headers={"Origin": ORIGIN}) as bob:
+        login = bob.post("/api/v1/auth/login", json={"handle": "compose-bob", "password": PASSWORD})
+        other = bob.post(
+            url,
+            json=content,
+            headers={"Idempotency-Key": key, "X-CSRF-Token": login.json()["csrf_token"]},
+        )
+        assert other.status_code == 409
+        assert other.json()["code"] == "IDEMPOTENCY_CONFLICT"
+    with pg_database.connect() as c:
+        assert c.scalar(select(func.count()).select_from(compose_receipts)) == 1
+        assert (
+            c.scalar(select(func.count()).select_from(points).where(points.c.origin == "user")) == 1
+        )
+    denied = manager.client.post(url, json=content, headers={"Origin": "https://evil.example"})
+    assert denied.status_code == 403
+    assert manager.client.post(url, content="x" * 65537).status_code == 413

@@ -26,6 +26,7 @@ from .models import (
     users,
 )
 from .point_api import service as public_service
+from .public_points import PublicPointError
 from .site_api import manager
 from .social import Social, SocialError
 
@@ -211,6 +212,13 @@ def proposal(proposal_id: ProposalID, request: Request, response: Response):
         return public_proposal(q)
 
 
+def reaction_preview(public, connection, row):
+    try:
+        return {**dict(row), "preview": public.raw_on(connection, row["point_id"])["preview"]}
+    except PublicPointError:
+        return {**dict(row), "preview": "", "unavailable": True}
+
+
 @router.get("/me/social")
 def own(
     request: Request, after: PointID | None = None, limit: Annotated[int, Query(ge=1, le=30)] = 20
@@ -241,8 +249,9 @@ def own(
                 .limit(100)
             ).mappings()
         ]
+        items = [reaction_preview(public, c, row) for row in rows[:limit]]
     return {
-        "items": [dict(row) for row in rows[:limit]],
+        "items": items,
         "next_cursor": rows[limit - 1]["point_id"] if len(rows) > limit else None,
         "trust": trust,
         "ballots": choices,
@@ -458,6 +467,7 @@ def own_blocks(
     request: Request, after: PointID | None = None, limit: Annotated[int, Query(ge=1, le=50)] = 30
 ):
     _, _, actor = manager(request, mutation=False)
+    public = public_service(request, {"after", "limit"})
     with request.app.state.database.connect() as c:
         rows = (
             c.execute(
@@ -471,7 +481,8 @@ def own_blocks(
             .mappings()
             .all()
         )
+        items = [reaction_preview(public, c, row) for row in rows[:limit]]
     return {
-        "items": [dict(row) for row in rows[:limit]],
+        "items": items,
         "next_cursor": rows[limit - 1]["point_id"] if len(rows) > limit else None,
     }

@@ -414,3 +414,41 @@ def test_site_source_author_is_public_owner_and_directory_is_system(hosted):
     assert directory["author"] == {"kind": "system", "name": "System"}
     root = client.get("/api/v1/points/skills-ru").json()
     assert root["author"] == {"kind": "source", "name": "Git source"}
+
+
+def test_embedded_draft_is_anonymous_scoped_and_confirmation_unframeable(hosted, pg_database):
+    _, client, active, pending = hosted
+    draft = f"/compose/v1/{active.site_id}/"
+    response = client.get(EMBED + draft)
+    assert response.status_code == 200
+    assert 'data-external-editor="true"' in response.text
+    assert 'data-search-site="' + active.site_id in response.text
+    assert "/compose/assets/client.js" in response.text
+    assert (
+        "frame-ancestors https://garden.example https://embed.example"
+        in response.headers["content-security-policy"]
+    )
+    assert "set-cookie" not in response.headers
+    assert client.get(draft).status_code == 404
+    assert client.get(EMBED + f"/compose/v1/{pending.site_id}/").status_code == 404
+    assert (
+        client.get(EMBED + draft, params={"parent_origin": "https://evil.example"}).status_code
+        == 403
+    )
+    assert client.get(EMBED + draft, params={"parent_origin": EMBED}).status_code == 200
+    for path in ("/compose/assets/client.js", "/compose/assets/style.css"):
+        assert client.get(EMBED + path).status_code == 200
+    approval = f"/editor/confirm/{active.site_id}/"
+    confirmation = client.get(approval)
+    assert confirmation.status_code == 200
+    assert confirmation.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in confirmation.headers["content-security-policy"]
+    assert client.get(EMBED + approval).status_code == 404
+    assert client.get(EMBED + "/api/v1/me").status_code == 404
+    assert client.post(EMBED + "/api/v1/points", json={}).status_code == 404
+    with pg_database.begin() as connection:
+        connection.execute(
+            update(sites).where(sites.c.id == active.site_id).values(state="inactive")
+        )
+    assert client.get(EMBED + draft).status_code == 404
+    assert client.get(approval).status_code == 404

@@ -8,13 +8,13 @@ nav{flex-wrap:wrap}nav a{overflow-wrap:anywhere}.field-head>div:first-child{min-
 /* Header search: one input and magnifier; results stay beside the page. */
 .site-header nav{flex-wrap:wrap;align-items:center;min-width:0}
 .point-search{display:flex;align-items:center;position:relative;flex:1 1 220px;width:280px;max-width:340px;min-width:180px;margin:0}
-.point-search #point-picker-query{display:block;width:100%;min-width:0;max-width:100%;height:38px;margin:0;padding:7px 42px 7px 14px;border:1px solid var(--muted);border-radius:0;color:var(--ink);background:var(--panel);font:inherit;line-height:1.4;outline:none}
-.point-search #point-picker-query::placeholder{color:var(--muted);opacity:1}
-.point-search:focus-within #point-picker-query{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.point-search #point-picker-open{display:grid;place-items:center;position:absolute;right:3px;top:3px;width:34px;height:32px;margin:0;padding:7px;border:0;border-radius:0;background:transparent;color:var(--accent);cursor:pointer}
-.point-search #point-picker-open:hover{background:var(--bg)}
+.point-search input[type=search]{display:block;width:100%;min-width:0;max-width:100%;height:38px;margin:0;padding:7px 42px 7px 14px;border:1px solid var(--muted);border-radius:0;color:var(--ink);background:var(--panel);font:inherit;line-height:1.4;outline:none}
+.point-search input[type=search]::placeholder{color:var(--muted);opacity:1}
+.point-search:focus-within input[type=search]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.point-search button[type=submit]{display:grid;place-items:center;position:absolute;right:3px;top:3px;width:34px;height:32px;margin:0;padding:7px;border:0;border-radius:0;background:transparent;color:var(--accent);cursor:pointer}
+.point-search button[type=submit]:hover{background:var(--bg)}
 .point-search svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
-.point-search #point-picker-open:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.point-search button[type=submit]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 #point-picker[hidden]{display:none!important}
 #point-picker{position:fixed;left:16px;top:64px;z-index:40;box-sizing:border-box;width:min(720px,calc(100vw - 32px));max-height:65vh;max-height:65dvh;overflow:auto;overscroll-behavior:contain;padding:16px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 36px #0008}
 #point-picker .picker-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -54,3 +54,6 @@ max-height:calc(100vh - 24px);padding:0;border:1px solid var(--line);background:
 border-bottom:1px solid var(--line)}
 .editor-overlay-heading button{font-size:24px;line-height:1;padding:2px 8px}
 #point-editor-overlay iframe{width:100%;flex:1;min-height:0;border:0}
+.editor-discard{padding:12px;border:1px solid var(--line);background:var(--panel)}
+.editor-discard p{margin:0 0 8px;font-size:13px}
+.editor-discard button{margin-right:8px}

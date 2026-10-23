@@ -9,12 +9,14 @@ from .graph_writes import lock_graph
 from .models import (
     authored_points,
     authored_revisions,
+    compose_receipts,
     edge_claims,
     events,
     point_edges,
     point_operations,
     point_revisions,
     points,
+    sites,
 )
 from .public_points import PublicPointError
 from .root_import import LINK, digest, prose_lines
@@ -49,13 +51,44 @@ class Authoring:
         self.database = public.database
         self.authorize = authorize
 
-    def save(self, actor, key, payload, point_id=None):
+    def save(self, actor, key, payload, point_id=None, *, compose_site=None):
         validate_content(payload)
         request_digest = digest({"point_id": point_id, **payload})
         with self.database.begin() as c:
             lock_graph(c)
             # Serializes this actor's receipts and rechecks revocation inside the write.
             self.authorize(c, actor)
+            if compose_site is not None:
+                active_site = c.scalar(
+                    select(sites.c.id).where(
+                        sites.c.id == compose_site,
+                        sites.c.state == "active",
+                        sites.c.primary_origin.is_not(None),
+                    )
+                )
+                if not active_site:
+                    raise AuthoringError("SITE_NOT_FOUND", 404)
+                # Global key binding prevents replay as a different actor after
+                # a popup reload/close or login change. Same actor retries use
+                # the existing atomic publication receipt below.
+                c.execute(
+                    pg_insert(compose_receipts)
+                    .values(
+                        key=key, user_id=actor, site_id=compose_site, request_digest=request_digest
+                    )
+                    .on_conflict_do_nothing()
+                )
+                binding = (
+                    c.execute(select(compose_receipts).where(compose_receipts.c.key == key))
+                    .mappings()
+                    .one()
+                )
+                if (binding["user_id"], binding["site_id"], binding["request_digest"]) != (
+                    actor,
+                    compose_site,
+                    request_digest,
+                ):
+                    raise AuthoringError("IDEMPOTENCY_CONFLICT", 409)
             receipt = (
                 c.execute(
                     select(point_operations).where(

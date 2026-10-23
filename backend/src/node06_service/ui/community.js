@@ -2,7 +2,7 @@
 (() => {
   const el = id => document.getElementById(id);
   let me = null, point = null, social = null, ownPin = null, ownFavorite = false, links = new Map();
-  let blocksCursor, colorCoordinates = [128,128,128,128,128,128];
+  let blocksCursor, pointsCursor, colorCoordinates = [128,128,128,128,128,128];
   let subsCursor, inboxCursor, newsCursor, busy = false, draftDirty = false, mutationConfirmed = false;
   // Retain uncertain intent across network retries; switching accounts cannot replay it.
   const receipts = new Map();
@@ -31,6 +31,54 @@
     const value = node("button", text, parent); value.type = "button"; value.dataset.requiresAuth = "true"; value.disabled = !me || busy;
     value.addEventListener("click", () => act(handler)); return value;
   }
+  const tabs=[['points','Мои точки'],['subscriptions','Подписки'],['blocks','Блокировки'],['favorites','Избранное'],['inbox','Лента'],['trust','Доверие'],['news','Git']];
+  function showTab(name){
+    for(const panel of document.querySelectorAll('[data-profile-panel]'))panel.hidden=panel.dataset.profilePanel!==name;
+    for(const b of el('profile-tabs').children){const active=b.dataset.tab===name;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;}
+  }
+  el('profile-tabs').setAttribute('role','tablist');
+  for(const [name,title] of tabs){
+    const b=node('button',title,el('profile-tabs'));b.type='button';b.dataset.tab=name;b.id='profile-tab-'+name;b.setAttribute('role','tab');b.setAttribute('aria-controls','profile-panel-'+name);
+    const panel=document.querySelector(`[data-profile-panel=${name}]`);panel.id='profile-panel-'+name;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',b.id);
+    b.addEventListener('click',()=>showTab(name));
+  }
+  el('profile-tabs').addEventListener('keydown',event=>{
+    const current=tabs.findIndex(([name])=>name===event.target.dataset.tab);
+    if(current<0||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+    event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(current+(event.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length;
+    showTab(tabs[next][0]);el('profile-tabs').children[next].focus();
+  });
+  showTab('subscriptions');
+  function filterProfile(){
+    const query=el('profile-query').value.trim().toLocaleLowerCase();
+    for(const row of document.querySelectorAll('[data-profile-panel] ul > li'))row.hidden=Boolean(query&&!row.textContent.toLocaleLowerCase().includes(query));
+  }
+  el('profile-query').addEventListener('input',filterProfile);
+  el('profile-filter').addEventListener('submit',event=>{event.preventDefault();filterProfile();});
+  const profileObserver=new MutationObserver(filterProfile);
+  for(const panel of document.querySelectorAll('[data-profile-panel]'))profileObserver.observe(panel,{childList:true,subtree:true,characterData:true});
+  async function refreshPoints(append=false){
+    if(!me)return;
+    if(!append){pointsCursor=null;el('profile-points').replaceChildren();}
+    const page=await api('/me/points?'+new URLSearchParams(pointsCursor?{after:pointsCursor}:{}));
+    for(const row of page.items){
+      const li=node('li','',el('profile-points'));
+      const a=node('a',row.preview||row.id,li);a.className='profile-point';a.href='/?'+new URLSearchParams({p:row.id,open:row.id});
+      const edit=node('a','Изменить',li);edit.href='/editor/?'+new URLSearchParams({p:row.id});
+    }
+    pointsCursor=page.next_cursor;el('more-points').hidden=!pointsCursor;
+  }
+  el('more-points').addEventListener('click',()=>act(()=>refreshPoints(true)));
+  async function refreshFavorites(){
+    el('profile-favorites').replaceChildren();if(!me)return;
+    const page=await api('/me/favorites');
+    for(const row of page.items){
+      const li=node('li','',el('profile-favorites'));
+      const a=node('a',row.preview||row.id,li);a.className='profile-point';a.href='/?'+new URLSearchParams({p:row.id,open:row.id});
+      button('×',li,async()=>{await write('/me/favorites/'+row.id,{active:false});await refreshFavorites();}).setAttribute('aria-label','Убрать из избранного');
+    }
+    if(!page.items.length)node('li','Пока пусто',el('profile-favorites'));
+  }
   function failure(error) { status(messages[error.message] || "Действие не завершено. Текст сохранён; повторите попытку."); }
   async function api(path, options = {}) {
     const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 15000);
@@ -43,6 +91,7 @@
   }
   async function write(path, payload) {
     const session = await api("/me");
+    if(me&&session.user_id!==me.user_id)throw new Error("ACCOUNT_CHANGED");
     const body = JSON.stringify(payload), previous = receipts.get(path);
     if (previous && (previous.body !== body || previous.user !== session.user_id)) throw new Error(previous.user !== session.user_id ? "ACCOUNT_CHANGED" : "PENDING_REQUEST");
     const receipt = previous || { body, user: session.user_id, key: crypto.randomUUID() };
@@ -179,13 +228,15 @@
     if(!me)return;
     const profile=await api("/me/geometry");colorCoordinates=profile.coordinates;
     for(const [pair,id] of ["color-r","color-g","color-b"].entries()) el(id).value=Math.max(1,Math.min(255,Math.round(256*colorCoordinates[pair*2]/(colorCoordinates[pair*2]+colorCoordinates[pair*2+1]))));
-    previewColor();el("my-color").hidden=false;if(location.hash==="#my-color")el("my-color").open=true;
+    previewColor();el("my-color").hidden=false;if(location.hash==="#my-color"){el("my-color").open=true;showTab("trust");}
   }
   async function refreshBlocks(append=false) {
     if(!me)return;
     if(!append){blocksCursor=null;el("my-blocks").replaceChildren();}
     const page=await api("/me/blocks?"+new URLSearchParams(blocksCursor?{after:blocksCursor}:{}));
-    for(const row of page.items){const li=node("li",row.point_id+" ",el("my-blocks"));button("Снять блокировку",li,async()=>{
+    for(const row of page.items){const li=node("li",'',el("my-blocks"));
+      const a=node('a',row.preview||row.point_id,li);a.className='profile-point';a.href='/?'+new URLSearchParams({p:row.point_id,open:row.point_id});
+      button("Снять блокировку",li,async()=>{
       await write(`/points/${row.point_id}/block`,{revision_id:row.revision_id,content_digest:row.content_digest,active:false});
       await refreshBlocks();await refreshMine();if(point?.id===row.point_id)await load(point.id,false);
     });}
@@ -213,7 +264,13 @@
     if (!append) {subsCursor=null;el("my-subscriptions").replaceChildren();el("my-trust").replaceChildren();}
     const own=await api("/me/social?"+new URLSearchParams(subsCursor?{after:subsCursor}:{}));
     for (const row of own.items) {
-      const li=node("li","",el("my-subscriptions"));button(row.point_id,li,async()=>{await load(row.point_id);});
+      const li=node("li","",el("my-subscriptions"));
+      const a=node('a',row.preview||row.point_id,li);a.className='profile-point';a.href='/?'+new URLSearchParams({p:row.point_id,open:row.point_id});
+      button('Версии',li,async()=>{await load(row.point_id);});
+      button('×',li,async()=>{
+        await write(`/points/${row.point_id}/subscription`,{revision_id:row.revision_id,content_digest:row.content_digest,active:false});
+        await refreshMine();if(point?.id===row.point_id)await load(point.id,false);
+      }).setAttribute('aria-label','Отписаться');
     }
     subsCursor=own.next_cursor;el("more-subscriptions").hidden=!subsCursor;
     if (!append) for (const target of own.trust) {
@@ -251,7 +308,7 @@
   });});
   el("community-refresh").addEventListener("click",()=>act(async()=>{
     if(point)await load(point.id,false);
-    await refreshMine();await refreshBlocks();await refreshInbox();await refreshNews();
+    await refreshMine();await refreshBlocks();await refreshPoints();await refreshFavorites();await refreshInbox();await refreshNews();
     status("Обновлено.");
   }));
   window.addEventListener("beforeunload",event=>{if(draftDirty||receipts.size)event.preventDefault();});
@@ -260,7 +317,7 @@
     try {me=await api("/me");status("Вы вошли: "+me.handle);} catch(error){status(error.status === 401 ? "Просмотр доступен всем. Для подписки и голосования войдите через Аккаунт." : "Не удалось проверить сессию. Обновите страницу, когда сервер будет доступен.");}
     try {
       const pid=new URLSearchParams(location.search).get("p");if(pid&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(pid))await load(pid);
-      await refreshColor();await refreshMine();await refreshBlocks();await refreshInbox();await refreshNews();
+      await refreshColor();await refreshMine();await refreshBlocks();await refreshPoints();await refreshFavorites();await refreshInbox();await refreshNews();
     } catch(error){failure(error);}
     finally {
       busy=false;

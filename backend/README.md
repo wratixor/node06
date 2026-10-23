@@ -128,3 +128,12 @@ HTML now permits SAMEORIGIN framing; account pages and the external embed host
 remain isolated. External authenticated embedding is still not implemented.
 Browser acceptance must follow pytest rather than run alongside it: both fixtures
 rebuild the shared `dist/` directory.
+
+
+Embedded creation uses anonymous `/compose/v1/{site_id}/` frames and top-level
+`/editor/confirm/{site_id}/` review. Public bridge remains read-only. Apply0013
+`compose_receipts` before enabling this application version: exact operation keys
+are globally bound to actor/site/content for safe popup reload/account-change
+retries. The configured application deploy performs the normal backup/migration
+sequence; no new proxy/API exposure or third-party cookie is required. See
+[embedded drafting contract](../docs/EMBEDDED-DRAFTS-V1.md).

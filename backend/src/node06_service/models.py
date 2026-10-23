@@ -445,3 +445,14 @@ point_blocks = Table(
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
 Index("ix_point_blocks_point", point_blocks.c.point_id)
+
+# Global binding for trusted embedded-publication receipts. Never a login credential.
+compose_receipts = Table(
+    "compose_receipts",
+    metadata,
+    Column("key", String(80), primary_key=True),
+    Column("user_id", String(34), ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("site_id", String(34), ForeignKey("sites.id", ondelete="CASCADE"), nullable=False),
+    Column("request_digest", String(64), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now(), nullable=False),
+)
