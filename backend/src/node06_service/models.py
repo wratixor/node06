@@ -257,3 +257,27 @@ root_entries = Table(
     Column("content_digest", String(64), nullable=False),
 )
 Index("ix_root_entries_site", root_entries.c.site_id)
+
+# Explicit publication registry: legacy origin=user rows are not automatically public.
+authored_points = Table(
+    "authored_points",
+    metadata,
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), primary_key=True),
+    Column("lang", String(35), nullable=False),
+)
+authored_revisions = Table(
+    "authored_revisions",
+    metadata,
+    Column("revision_id", ForeignKey("point_revisions.id", ondelete="CASCADE"), primary_key=True),
+    Column("lang", String(35), nullable=False),
+    Column("citations", JSON, nullable=False),
+)
+point_operations = Table(
+    "point_operations",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("key", String(80), primary_key=True),
+    Column("request_digest", String(64), nullable=False),
+    Column("response", JSON, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)

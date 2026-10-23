@@ -929,8 +929,8 @@ import queue fairness/memory и диск. Это цели исследовани
 | D13 | Fork Markdown roots | Включено по запросу; manifest/proof/preview/id namespace предложены в ROOT-IMPORT-V1 |
 | D14 | Open lore | Решено: свой entry в shared space, не отдельный world; editing ACL independent |
 | D15 | Donation/tariffs | Позже wallet link; quotas сейчас как architecture, цены и billing отдельно |
-| D16 | Правки и уведомление поддержавших | Требование принято; version endorsement/pending/held бюджет — предложение для утверждения до P05/P06 |
-| D17 | Ссылка на слово-смысл | Поиск/ручной выбор нужны; separate support action предложен, автоматический голос не утверждён |
+| D16 | Правки и уведомление поддержавших | 23.10 владелец подтвердил: поддержка версии, новая требует подтверждения; старый вес не переносится. Уведомления/held budget ещё не реализованы |
+| D17 | Ссылка на слово-смысл | 23.10 подтверждено: ссылка и поддержка — разные действия; автоматического голоса нет |
 | D18 | Географическая модерация | Идея владельца на потом; MVP авторство/явные роли, без proximity ACL |
 | D19 | Свой коренной набор/старт каждого входа | Требование 22.10: облако/индекс/карта из собственных Git-корней; профиль входа предложен, общий граф не разделяется |
 | D20 | Авторство без собственного сайта | Требование 22.10: аккаунт одной БД пишет/голосует во всех её входах; site ownership не gate, один общий голос |
@@ -1258,3 +1258,32 @@ CSP/source/channel/cookie boundaries and 390px/1440px visual inspection. Local
 Chromium fixture alone grants its localhost origin loopback-network permission;
 production/browser policies are unchanged. Real Neocities publication remains
 unverified. No schema/service configuration or production write was performed.
+
+
+P05c, 23.10.2026 (source): first-party `/editor/`, authenticated own-point create/
+edit, explicit publication registry, version/digest-pinned semantic links, immutable
+published history, actor-scoped idempotency and reciprocal shared graph projection.
+Users need no site. Core stays honest (null revision + stored static snapshot).
+See [complete contract and social continuation](POINT-AUTHORING-V1.md).
+
+New owner direction: anyone may propose one replacement in a rolling 24 hours
+across the instance; notify subscribers and their feed, compare old/new versions,
+allow new subscribers to support a candidate, adopt after a majority. Only roots
+that describe the system are protected. This is not implemented by authoring;
+новые участники сначала подписываются на старую версию и могут выбрать новую;
+в конце голосования new > old принимает правку, ничья оставляет старую;
+пределы срока 24 часа–7 дней, пустая точка без автопринятия. Do not conflate graph
+links, revision support and proposal acceptance. Git roots need a baseline/overlay
+contract before community adoption; do not silently overwrite imported content.
+
+Подробная следующая постановка: [подписки, правки и уведомления](REVISION-PROPOSALS-PLAN.md).
+
+P05c validation: 197 full disposable PostgreSQL tests passed (no skips), plus seven
+repeated authoring/ACL/race/history cases after final header changes. Ruff/format,
+static build 51 roots, protocol, JS syntax, offline SQL and documentation links
+passed. Installed-wheel HTTPS Chromium passed creation without a site, selected-
+word pinning, reciprocal graph visibility, lost-response retry without duplicate,
+reload/edit and conflict draft retention, mobile layout, plus existing auth/sites/
+bridge checks. Only pre-existing TestClient deprecation warnings remain. Live GET
+verified deployed main `6b1b25e` (picker), not this new authoring branch. New migration
+0009 must run through normal application deploy after owner review/main merge.

@@ -1,7 +1,7 @@
 /* Shared public point picker. No sessions, votes or writes. */
 "use strict";
 (() => {
-  if (document.body.dataset.page !== "field") return;
+  if (document.body.dataset.page !== "field" && document.body.dataset.pointPicker !== "true") return;
   const body = document.body;
   const idPattern = /^[a-z0-9][a-z0-9_-]{0,95}$/;
   function element(tag, text, parent) {

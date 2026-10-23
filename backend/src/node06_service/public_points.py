@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from sqlalchemy import and_, case, exists, func, literal_column, or_, select
 
 from .models import (
+    authored_points,
     edge_claims,
     point_edges,
     point_revisions,
@@ -95,6 +96,8 @@ class PublicPoints:
             select(
                 points.c.id,
                 points.c.origin,
+                points.c.author_user_id,
+                authored_points.c.lang.label("authored_lang"),
                 points.c.created_at,
                 points.c.last_interaction_at,
                 points.c.current_revision_id,
@@ -109,6 +112,7 @@ class PublicPoints:
             )
             .select_from(
                 points.join(point_revisions, points.c.current_revision_id == point_revisions.c.id)
+                .outerjoin(authored_points, authored_points.c.point_id == points.c.id)
                 .outerjoin(root_entries, root_entries.c.point_id == points.c.id)
                 .outerjoin(root_sources, root_sources.c.site_id == root_entries.c.site_id)
                 .outerjoin(self.source_site, self.source_site.c.id == root_sources.c.site_id)
@@ -116,7 +120,12 @@ class PublicPoints:
             )
             .where(
                 points.c.lifecycle == "active",
-                or_(points.c.id == ALL_SITES_ID, self.site_valid, self.source_valid),
+                or_(
+                    points.c.id == ALL_SITES_ID,
+                    self.site_valid,
+                    self.source_valid,
+                    and_(points.c.origin == "user", authored_points.c.point_id.is_not(None)),
+                ),
             )
         )
 
@@ -135,6 +144,9 @@ class PublicPoints:
                 "repository_url": row["repository_url"],
                 "commit_sha": row["commit_sha"],
             }
+        if row["authored_lang"] is not None and row["origin"] == "user":
+            lang = row["authored_lang"]
+            source = {"kind": "user", "author_user_id": row["author_user_id"]}
         body = row["body"]
         refs = row["declared_links"]
         result = {
@@ -158,7 +170,7 @@ class PublicPoints:
             result["body"] = body
             result["html"] = (
                 render_root(body, row["site_id"])
-                if row["source_valid"]
+                if row["source_valid"] or row["authored_lang"] is not None
                 else "<p>" + html.escape(body).replace("\n", "<br>") + "</p>"
             )
         return result
@@ -168,11 +180,17 @@ class PublicPoints:
         if point_id in self.core:
             return {k: v for k, v in self.core[point_id].items() if not k.startswith("_")}
         with self.database.connect() as connection:
-            row = (
-                connection.execute(self._query().where(points.c.id == point_id))
-                .mappings()
-                .one_or_none()
-            )
+            return self.raw_on(connection, point_id)
+
+    def raw_on(self, connection, point_id):
+        """Read current visibility on a caller's transaction, after its row locks."""
+        if point_id in self.core:
+            return {k: v for k, v in self.core[point_id].items() if not k.startswith("_")}
+        row = (
+            connection.execute(self._query().where(points.c.id == point_id))
+            .mappings()
+            .one_or_none()
+        )
         if row is None:
             raise PublicPointError("POINT_NOT_FOUND")
         return self._convert(row)

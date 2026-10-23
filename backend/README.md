@@ -103,3 +103,6 @@ Per-site home blocks, owner editor and migration 0006: [HOME-BLOCKS-V1](../docs/
 Public current-point reads, bounded full-body prefix search and migration 0008:
 [PUBLIC-POINTS-V1](../docs/PUBLIC-POINTS-V1.md). Online Alembic upgrade is required
 for its Unicode backfill; generated offline SQL deliberately fails at this step.
+
+Point authoring and editor: [contract](../docs/POINT-AUTHORING-V1.md), migration
+`0009_point_authoring`. Links are not support; proposal voting is a later packet.

@@ -7,14 +7,16 @@ release. It provides anonymous reads on the configured management/wiki origin:
 - `GET /api/v1/points/search?q=...&limit=20&after=...`: brief matching points.
 - `GET /api/v1/points/{id}/neighbors?limit=50&after=...`: brief adjacent points.
 
-No login is needed. No mutation, support, vote, influence calculation, revision
-history or point-creation UI is implemented by this slice. Arbitrary query keys
+No login is needed for reads. Later P05c adds separate first-party
+[authoring and published user history](POINT-AUTHORING-V1.md); support, voting
+and influence remain unimplemented. Arbitrary query keys
 and duplicate parameters are rejected. `/search` is a reserved route.
 
 ## Visibility and identity
 
 Reads combine the built static core and the same instance's current DB content:
-all-sites, active verified site welcomes, and active accepted operator Git roots.
+all-sites, active verified site welcomes, active accepted operator Git roots and
+explicitly published active user points (not bare legacy `origin=user` rows).
 An imported root must still match the source's owner/origin and accepted revision.
 Retired/inactive roots, pending sites, unpublished rows and historical drafts do
 not become public through search. Hosted graph reads enforce the same accepted
@@ -23,8 +25,8 @@ root revision guard. Core points remain public even if no site references them.
 DB results carry their real `revision_id`, a content digest and source metadata.
 Static core is not yet persisted as immutable DB revisions: its `revision_id` is
 **null**, with a deterministic digest and static-root/build provenance. A digest
-is not a revision pin. Do not invent `v_` IDs or offer historic core citation until
-core persistence is implemented. `lang` describes a point, never a language route.
+is not a persisted revision ID. Do not invent `v_` IDs. The authoring contract
+records a static citation snapshot without claiming persisted core history. `lang` describes a point, never a language route.
 
 A point response includes body, rendered HTML, declared links, current visible
 links (first 50), `links_truncated` and `neighbors_cursor`. Declared links describe

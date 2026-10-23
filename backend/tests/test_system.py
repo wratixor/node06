@@ -33,7 +33,8 @@ def test_meta_marks_future_domains_as_unimplemented() -> None:
     response = get("/api/v1/meta")
     assert response.status_code == 200
     assert response.json()["build_revision"] == "test"
-    assert "points" in response.json()["not_implemented"]
+    assert "point_reactions" in response.json()["not_implemented"]
+    assert "point_authoring" in response.json()["implemented"]
     assert "public_site_read" in response.json()["implemented"]
     assert "site_management" in response.json()["implemented"]
     assert "embed_auth" in response.json()["not_implemented"]
