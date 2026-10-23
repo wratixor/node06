@@ -20,7 +20,7 @@
     PROPOSAL_STALE: "Основной текст изменился. Эта правка больше не применяется.",
     BALLOT_SWITCH_REQUIRED: "Во время голосования смените версию явным голосом за старую или новую.",
     AUTH_RATE_LIMITED: "Слишком много действий. Повторите позже.",
-    INVALID_INPUT: "Проверьте текст, язык и ссылки.",
+    INVALID_INPUT: "Проверьте текст и ссылки.",
   };
   function node(tag, text, parent) {
     const value = document.createElement(tag); if (text) value.textContent = text;
@@ -54,7 +54,7 @@
   async function act(action) {
     if (busy) return; busy = true; mutationConfirmed = false;
     document.querySelectorAll("button").forEach(b => { if (b.id !== "point-picker-open") b.disabled = true; });
-    el("proposal-body").readOnly = true; el("proposal-lang").readOnly = true;
+    el("proposal-body").readOnly = true;
     try { await action(); } catch (error) {
       if (mutationConfirmed) status("Действие сохранено сервером. Не удалось обновить отображение; нажмите Обновить.");
       else failure(error);
@@ -63,7 +63,7 @@
       busy = false;
       document.querySelectorAll("button").forEach(b => { b.disabled = !me && b.dataset.requiresAuth === "true"; });
       const unresolved = point && receipts.has(`/points/${point.id}/proposals`);
-      el("proposal-body").readOnly = Boolean(unresolved); el("proposal-lang").readOnly = Boolean(unresolved);
+      el("proposal-body").readOnly = Boolean(unresolved);
       el("proposal-link").disabled = Boolean(unresolved);
       if (unresolved) status("Ответ о предложении не получен. Повторите Предложить версию для безопасной проверки; текст защищён от изменения.");
       if (social) { renderProposals(); applyBudget(); }
@@ -95,7 +95,7 @@
     const open = social.proposals.find(q => q.state === "open");
     el("proposal-form").hidden = !me || social.protected || Boolean(open);
     if (resetDraft) {
-      el("proposal-body").value = point.body; el("proposal-lang").value = point.lang;
+      el("proposal-body").value = point.body;
       links = new Map();
       for (const id of (point.declared_links || []).slice(0,16)) {
         try { const target = await api("/points/" + id); links.set(id, { id, revision_id: target.revision_id, content_digest: target.content_digest }); }
@@ -158,7 +158,7 @@
   });
   el("proposal-form").addEventListener("input",()=>{draftDirty=true;});
   el("proposal-form").addEventListener("submit",event=>{event.preventDefault();act(async()=>{
-    await write(`/points/${point.id}/proposals`,{body:el("proposal-body").value,lang:el("proposal-lang").value,links:[...links.values()],expected_revision_id:point.revision_id,expected_digest:point.content_digest});
+    await write(`/points/${point.id}/proposals`,{body:el("proposal-body").value,lang:point.lang || "und",links:[...links.values()],expected_revision_id:point.revision_id,expected_digest:point.content_digest});
     draftDirty=false;status("Предложение опубликовано. Для поддержки новой версии нажмите явный голос.");await load(point.id,false);
   });});
   async function refreshMine(append=false) {
