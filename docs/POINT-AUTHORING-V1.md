@@ -114,13 +114,18 @@ Owner confirmed in this chat on 23 October:
    domain configuration is a separate owner authority.
 4. Notify subscribers durably and include proposals in their feed. Show old/new
    text (side by side or escaped diff). Anyone may support the proposed version,
-   including newly arriving subscribers. New arrivals initially endorse the old
-   base version and may then explicitly switch. At voting close, adopt if new
-   votes exceed old votes; ties retain the base. Default is 72 hours. Immediate
-   early adoption is allowed when every current active subscriber explicitly
-   supports the new version, with at least one subscriber and no waiting period.
+   including newly arriving subscribers. Initial subscription to the old base
+   is not a ballot. Only explicit old/new votes during the proposal count;
+   nonvoters contribute to neither total. A vote atomically switches subscription
+   to the chosen version. At voting close, adopt if new influence exceeds old
+   influence; equal influence retains the base. Default is 72 hours. Immediate
+   early adoption requires explicit new-version ballots covering 100% of all
+   current eligible subscribers' influence, with positive total influence.
+   Silent subscribers are absent from the normal tally but their uncast positive
+   influence prevents early completion. Zero-weight accounts do not block it.
    Scheduled configurable bounds are 24 hours–7 days; empty points cannot
-   auto-adopt. Activity-based duration is future policy.
+   auto-adopt. Zero-total influence never auto-adopts. Activity-based duration is
+   future policy.
 
 Not yet implemented: subscriptions/support, proposal voting, inbox/feed delivery,
 majority/expiry processing, trust/mass, authenticated embed, self-service Git
@@ -131,7 +136,7 @@ no automatic adoption is enabled in P05c.
 Next packet should add revision subscriptions, proposals tied to a base revision,
 private durable inbox plus feed, and explicit protected-point policy. Every
 adoption must atomically recheck base revision, pinned target revisions, protection,
-unique user support and the approved close-time old-versus-new count/time rule.
+unique user support and the approved weighted old-versus-new influence/time rule.
 Stale proposals need rebasing rather than overwriting newer text. Author writes
 and source changes must preserve revision consistency. Imported content needs a recorded
 Git authority and automatic support-transfer/changelog contract. Git points do
@@ -147,3 +152,9 @@ publication/receipt/citation registry; use backup/review instead of treating it 
 lossless rollback after real authored content exists.
 
 Detailed next packet: [revision proposals](REVISION-PROPOSALS-PLAN.md).
+
+
+Influence correction, 23 October: subscription counts are not voting weights.
+Binding adoption depends on authoritative versioned influence snapshots; do not
+use headcount as an interim implementation. The existing T1 formula is still a
+candidate, not approved by this correction.
