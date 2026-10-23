@@ -15,39 +15,54 @@
     node.type = "button";
     return node;
   }
-  const launch = button("ПОИСК / SEARCH", document.querySelector(".site-header nav"));
-  launch.id = "point-picker-open";
-  const dialog = element("dialog", "", body);
-  dialog.id = "point-picker";
-  dialog.setAttribute("aria-labelledby", "point-picker-title");
-  const heading = element("div", "", dialog);
-  heading.className = "picker-heading";
-  element("h2", "Точки / Points", heading).id = "point-picker-title";
-  const close = button("Закрыть / Close", heading);
-  const form = element("form", "", dialog);
-  form.className = "picker-form";
-  const label = element("label", "Слово или смысл / Word or meaning", form);
-  label.htmlFor = "point-picker-query";
+  const header = document.querySelector(".site-header");
+  const form = element("form", "", header.querySelector("nav"));
+  form.className = "point-search";
+  form.setAttribute("role", "search");
   const input = element("input", "", form);
   input.id = "point-picker-query";
   input.type = "search";
   input.maxLength = 128;
   input.autocomplete = "off";
-  const submit = element("button", "Найти / Search", form);
+  input.placeholder = "Поиск / Search";
+  input.setAttribute("aria-label", "Поиск точек / Search points");
+  input.setAttribute("aria-controls", "point-picker");
+  input.setAttribute("aria-expanded", "false");
+  const submit = element("button", "", form);
+  submit.id = "point-picker-open";
   submit.type = "submit";
-  const status = element("p", "", dialog);
+  submit.setAttribute("aria-label", "Найти / Search");
+  submit.title = "Найти / Search";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const circle = document.createElementNS(svg.namespaceURI, "circle");
+  circle.setAttribute("cx", "10.5"); circle.setAttribute("cy", "10.5"); circle.setAttribute("r", "6.5");
+  const line = document.createElementNS(svg.namespaceURI, "path");
+  line.setAttribute("d", "m16 16 5 5");
+  svg.append(circle, line); submit.append(svg);
+  const panel = element("section", "", body);
+  panel.id = "point-picker";
+  panel.hidden = true;
+  panel.setAttribute("role", "region");
+  panel.setAttribute("aria-labelledby", "point-picker-title");
+  const heading = element("div", "", panel);
+  heading.className = "picker-heading";
+  element("h2", "Результаты / Results", heading).id = "point-picker-title";
+  const close = button("×", heading);
+  close.setAttribute("aria-label", "Закрыть результаты / Close results");
+  const status = element("p", "", panel);
   status.id = "point-picker-status";
   status.setAttribute("role", "status");
-  const results = element("ul", "", dialog);
-  results.id = "point-picker-results";
-  const more = button("Ещё / More", dialog);
-  more.id = "point-picker-more";
-  more.hidden = true;
-  const detail = element("section", "", dialog);
+  const detail = element("section", "", panel);
   detail.id = "point-picker-detail";
   detail.hidden = true;
   detail.tabIndex = -1;
-  dialog.insertBefore(detail, results);
+  const results = element("ul", "", panel);
+  results.id = "point-picker-results";
+  const more = button("Ещё / More", panel);
+  more.id = "point-picker-more";
+  more.hidden = true;
   let transportPromise, bridge, transportConfig;
   let generation = 0, detailGeneration = 0, debounce, cursor = null, query = "";
   let seen = new Set(), selected = null, onSelect = null;
@@ -131,7 +146,7 @@
     detail.textContent = "Загрузка / Loading…";
     try {
       const point = await request("point.read", { point_id: id });
-      if (current !== detailGeneration || !dialog.open) return;
+      if (current !== detailGeneration || panel.hidden) return;
       selected = { id: point.id, lang: point.lang, revision_id: point.revision_id,
         content_digest: point.content_digest, preview: point.preview, href: href(point.id) };
       detail.replaceChildren();
@@ -160,12 +175,12 @@
         if (!selected) return;
         const value = { ...selected };
         const callback = onSelect;
-        dialog.close();
+        closePanel();
         callback(value);
       });
-      detail.scrollIntoView({ block: "start" });
+      panel.scrollTop = 0;
       detail.focus({ preventScroll: true });
-    } catch (error) { if (current === detailGeneration && dialog.open) detail.textContent = failure(error); }
+    } catch (error) { if (current === detailGeneration && !panel.hidden) detail.textContent = failure(error); }
   }
   async function search(append = false) {
     clearTimeout(debounce);
@@ -176,11 +191,16 @@
       results.replaceChildren(); seen = new Set(); cursor = null; query = value;
     }
     more.hidden = true;
-    if (!value) { status.textContent = "Введите слово / Enter a word."; return; }
+    if (!value) {
+      if (onSelect) { openPanel(); status.textContent = "Введите слово / Enter a word."; }
+      else closePanel();
+      input.focus(); return;
+    }
+    openPanel();
     status.textContent = "Поиск / Searching…";
     try {
       const page = await request("points.searchPage", { query, after: append ? cursor : "", limit: 10 });
-      if (current !== generation || !dialog.open) return;
+      if (current !== generation || panel.hidden) return;
       for (const point of page.items) {
         if (!idPattern.test(point.id) || seen.has(point.id) || seen.size >= 50) continue;
         seen.add(point.id);
@@ -194,32 +214,78 @@
       status.textContent = seen.size ? `${seen.size} · ${cursor && seen.size >= 50
         ? "Уточните запрос / Refine the query" : "Найдено / Found"}` : "Ничего не найдено / No matches.";
     } catch (error) {
-      if (current === generation && dialog.open) {
+      if (current === generation && !panel.hidden) {
         status.textContent = failure(error);
         more.hidden = !(append && cursor);
       }
     }
   }
+  function positionPanel() {
+    if (panel.hidden) return;
+    const anchor = form.getBoundingClientRect();
+    const width = panel.getBoundingClientRect().width;
+    const left = Math.max(12, Math.min(anchor.left, innerWidth - width - 12));
+    const top = Math.max(8, Math.min(anchor.bottom + 8, innerHeight - 120));
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+    panel.style.maxHeight = `${Math.min(innerHeight * .65, innerHeight - top - 12)}px`;
+  }
+  function openPanel() {
+    panel.hidden = false;
+    positionPanel();
+    input.setAttribute("aria-expanded", "true");
+  }
+  function closePanel(focus = false) {
+    panel.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    ++generation; ++detailGeneration;
+    clearTimeout(debounce); onSelect = null;
+    if (focus) input.focus();
+  }
   window.openNode06Picker = (options = {}) => {
     onSelect = typeof options.onSelect === "function" ? options.onSelect : null;
-    if (!dialog.open) dialog.showModal();
-    input.focus();
-    // Details must be re-read to capture a current revision for each selection.
+    // Details must be re-read for every editor selection.
     ++detailGeneration; selected = null; detail.hidden = true;
+    openPanel(); input.focus(); form.scrollIntoView({ block: "start", behavior: "instant" }); positionPanel();
+    if (input.value.trim()) search();
+    else status.textContent = "Введите слово / Enter a word.";
   };
-  launch.addEventListener("click", () => window.openNode06Picker());
-  close.addEventListener("click", () => dialog.close());
-  dialog.addEventListener("keydown", event => {
-    if (event.key === "Escape") {
-      event.preventDefault(); event.stopPropagation(); dialog.close();
+  close.addEventListener("click", () => closePanel(true));
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !panel.hidden) {
+      event.preventDefault(); event.stopImmediatePropagation(); closePanel(true);
     }
   });
-  dialog.addEventListener("close", () => { ++generation; ++detailGeneration; clearTimeout(debounce); onSelect = null; });
+  document.addEventListener("pointerdown", event => {
+    if (!panel.hidden && !panel.contains(event.target) && !form.contains(event.target)) closePanel();
+  });
+  document.addEventListener("focusin", event => {
+    if (!panel.hidden && !panel.contains(event.target) && !form.contains(event.target)) closePanel();
+  });
   form.addEventListener("submit", event => { event.preventDefault(); search(); });
   input.addEventListener("input", () => {
     ++generation; ++detailGeneration; selected = null; detail.hidden = true; more.hidden = true;
-    clearTimeout(debounce); debounce = setTimeout(() => search(), 350);
+    clearTimeout(debounce);
+    if (!input.value.trim()) {
+      results.replaceChildren();
+      if (onSelect) { openPanel(); status.textContent = "Введите слово / Enter a word."; }
+      else { closePanel(); status.textContent = ""; }
+      return;
+    }
+    openPanel();
+    debounce = setTimeout(() => search(), 350);
+  });
+  input.addEventListener("focus", () => {
+    if (input.value.trim() && panel.hidden) { openPanel(); search(); }
+  });
+  input.addEventListener("keydown", event => {
+    if (event.key === "ArrowDown" && !panel.hidden) {
+      const first = results.querySelector("button");
+      if (first) { event.preventDefault(); event.stopPropagation(); first.focus(); }
+    }
   });
   more.addEventListener("click", () => search(true));
+  window.addEventListener("resize", positionPanel);
+  window.addEventListener("scroll", positionPanel, { passive: true });
   window.addEventListener("pagehide", () => bridge?.close());
 })();

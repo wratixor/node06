@@ -1287,3 +1287,17 @@ reload/edit and conflict draft retention, mobile layout, plus existing auth/site
 bridge checks. Only pre-existing TestClient deprecation warnings remain. Live GET
 verified deployed main `6b1b25e` (picker), not this new authoring branch. New migration
 0009 must run through normal application deploy after owner review/main merge.
+
+Header search UX, 23.10.2026: owner requested a simple JoyReactor-like input with
+magnifier. Replaced the launch button/modal with an always-visible rounded search
+field and anchored non-modal result dropdown. Enter/icon submit; typing debounces;
+Escape/outside click dismiss results, preserving query/page. Arrow Down enters
+results; semantic editor selection still returns current pins. Fits 390px/1440px,
+including full embed and static iframe transport. CSS/scripts carry content-hash
+query versions in static/hosted pages and the first-party editor, reducing stale
+CSS/script mismatches after publication. No new API, schema, auth or deployment
+configuration. 25 targeted PostgreSQL/hosted/authoring checks, installed-wheel
+HTTPS browser flows (three transports, mobile bounds, inline field/magnifier,
+keyboard/dismissal, failures and editor), build 51, lint/format, JS syntax and
+P00 protocol passed. Screenshots inspected. Source feature only; no production
+publication claimed by this change.
