@@ -54,12 +54,29 @@ checks application capability; it does not migrate or import. The real release
 backs up the DB before migration/publication and runs the publisher with the
 private environment through systemd. No secrets are shell-sourced or printed.
 
-With content enabled, the deployment does not take the app-SHA shortcut: it also
-processes content updates when application code is unchanged. It writes the
+With content enabled, app SHA alone never decides whether publication is needed:
+content updates are processed even when application code is unchanged. It writes the
 existing site ID into generated `build.env` as the default hosted entrance,
 restarts only NODE06 and verifies accepted content SHA in the public graph before
 recording success. The iframe IDs/URLs remain unchanged. Removing the opt-in file
 does not remove published points or unbind the source.
+
+The deployment toolkit's opt-in autodeploy extension adds a combined successful
+release receipt (engine/content SHAs, source binding and configuration/environment
+hashes). With that reviewed toolkit installed, unchanged releases only check public
+readiness/build/embed/content and repair runtime modes; they do not backup, build,
+publish or restart. Changed inputs/missing receipt/inactive service take the normal
+backup-first path. Before that extension is installed, content opt-in still forces
+the full release on each run. The first receipt requires one successful full release.
+
+`node06-deploy.timer` is installed disabled and, after explicit owner activation,
+polls main of the configured engine and content sources five minutes after each
+run. It uses the same host lock; no webhook secret or public inbound deploy endpoint
+is required. It never updates the root toolkit itself. Review/promotion/install,
+activation, journal checks and stop/recovery steps belong to the deployment
+repository's `docs/NODE06_DEPLOYMENT.md`. This application documentation does not
+confirm installation or activation on production. Future devlogs follow this
+operator contract rather than encouraging manual edits to installed scripts.
 
 On failure before commit the prior graph remains intact. A failed health check
 after commit may leave the new content installed; rerun safely or publish a
