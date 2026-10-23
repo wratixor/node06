@@ -9,9 +9,21 @@ mean deployment or a live Neocities check.
 A local active account has six positive integer coordinates, each `1..65535`.
 The default is `[128,128,128,128,128,128]`. These are chosen coordinates, not
 measured personality traits. Account settings at `/community/#my-color` expose
-three color sliders. Each slider sets one pair to `[v,256-v]`, `v=1..255`.
-The API can store all six independent integers. Loading a profile does not
-silently rewrite its values into slider proportions.
+six independent numeric coordinate fields in the root coordinate order: Body,
+Spirit, Onslaught, Composure, Reaction, Technique (internal mapping only).
+The public form shows six colored markers matching the field rays, without stat
+names or semantic axis labels. Accessible names identify colors, not stats.
+Every field accepts the full existing
+API range, `1..65535`, with integer steps. The old fragment stays compatible.
+
+Color is a read-only projection of these stats. Changing one stat never sets its
+opposite to `256-v`, and loading/saving never reconstructs coordinates from RGB
+or silently normalizes raw values. Empty, fractional or out-of-range fields block
+submission and clear the preview until corrected. This replaces the earlier
+three-slider RGB interface, not the geometry/T1 calculation or stored profiles.
+
+The component marker order is red `#ee484a`, cyan `#00d2dc`, green `#3ece70`,
+magenta `#d646d6`, blue `#4170ee`, yellow `#f0cd2c`, matching the renderer.
 
 Normalize each user's vector to a sum of `10^12` by exact integer division and
 largest remainder, breaking ties by component index. Scaling all six raw values
@@ -22,9 +34,9 @@ The existing renderer order is authoritative:
 
 | Components | Positive direction | Opposite direction | Color channel |
 |---|---|---|---|
-| 0,1 | +x, red | -x, cyan | R = 255 A/(A+B) |
-| 2,3 | +y, green | -y, magenta | G = 255 C/(C+D) |
-| 4,5 | +z, blue | -z, yellow | B = 255 E/(E+F) |
+| 0,1 — Body, Spirit | +x, red | -x, cyan | R = 255 A/(A+B) |
+| 2,3 — Onslaught, Composure | +y, green | -y, magenta | G = 255 C/(C+D) |
+| 4,5 — Reaction, Technique | +z, blue | -z, yellow | B = 255 E/(E+F) |
 
 Channels round half up to integers. Color is a projection of coordinates, not
 additional influence. The local relative axis remains

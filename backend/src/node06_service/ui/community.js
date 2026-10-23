@@ -2,7 +2,7 @@
 (() => {
   const el = id => document.getElementById(id);
   let me = null, point = null, social = null, ownPin = null, ownFavorite = false, links = new Map();
-  let blocksCursor, pointsCursor, colorCoordinates = [128,128,128,128,128,128];
+  let blocksCursor, pointsCursor;
   let subsCursor, inboxCursor, newsCursor, busy = false, draftDirty = false, mutationConfirmed = false;
   // Retain uncertain intent across network retries; switching accounts cannot replay it.
   const receipts = new Map();
@@ -214,21 +214,35 @@
     await write(`/points/${point.id}/block`,{revision_id:pin.revision_id,content_digest:pin.content_digest,active});
     await load(point.id,false);await refreshMine();await refreshBlocks();status(active?"Блокировка записана. Это не голос за старую версию.":"Блокировка снята.");
   }));
+  // Same order as the root seed and the six-coordinate API. No pair is
+  // reconstructed from RGB, and changing one stat never changes its opposite.
+  const statOrder=[0,1,2,3,4,5];
+  function readStats(){
+    const values=statOrder.map(stat=>el('coordinate-'+stat).valueAsNumber);
+    return values.every(value=>Number.isInteger(value)&&value>=1&&value<=65535)?values:null;
+  }
   function previewColor() {
-    const hex=[0,2,4].map(j=>Math.round(255*colorCoordinates[j]/(colorCoordinates[j]+colorCoordinates[j+1])).toString(16).padStart(2,"0")).join("");
+    const values=readStats();
+    if(!values){el('color-preview').textContent='';return;}
+    const hex=[0,2,4].map(j=>Math.round(255*values[j]/(values[j]+values[j+1])).toString(16).padStart(2,"0")).join("");
     el("color-preview").textContent="#"+hex;el("color-preview").style.backgroundColor="#"+hex;
   }
-  for(const [pair,id] of ["color-r","color-g","color-b"].entries()) el(id).addEventListener("input",()=>{
-    colorCoordinates[pair*2]=Number(el(id).value);colorCoordinates[pair*2+1]=256-Number(el(id).value);previewColor();
+  function showStats(values){
+    statOrder.forEach((stat,index)=>{el('coordinate-'+stat).value=String(values[index]);});
+    previewColor();
+  }
+  for(const stat of statOrder)el('coordinate-'+stat).addEventListener('input',previewColor);
+  el("color-form").addEventListener("submit",event=>{
+    event.preventDefault();const values=readStats();if(!values){el('color-form').reportValidity();return;}
+    act(async()=>{
+      const saved=await write("/me/geometry",{coordinates:values});showStats(saved.coordinates);
+      status("Координаты сохранены. Позиции обновятся после пересчёта влияния.");
+    });
   });
-  el("color-form").addEventListener("submit",event=>{event.preventDefault();act(async()=>{
-    const saved=await write("/me/geometry",{coordinates:colorCoordinates});colorCoordinates=saved.coordinates;previewColor();status("Цвет сохранён. Позиции обновятся после пересчёта влияния.");
-  });});
   async function refreshColor() {
     if(!me)return;
-    const profile=await api("/me/geometry");colorCoordinates=profile.coordinates;
-    for(const [pair,id] of ["color-r","color-g","color-b"].entries()) el(id).value=Math.max(1,Math.min(255,Math.round(256*colorCoordinates[pair*2]/(colorCoordinates[pair*2]+colorCoordinates[pair*2+1]))));
-    previewColor();el("my-color").hidden=false;if(location.hash==="#my-color"){el("my-color").open=true;showTab("trust");}
+    const profile=await api("/me/geometry");showStats(profile.coordinates);
+    el("my-color").hidden=false;if(location.hash==="#my-color"){el("my-color").open=true;showTab("trust");}
   }
   async function refreshBlocks(append=false) {
     if(!me)return;

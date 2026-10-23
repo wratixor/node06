@@ -1417,3 +1417,36 @@ self-service Git source proof/preview/accept, semantic/diff UI refinement, devlo
 and remote profile/subscription sync remain subsequent packets. This creation
 flow intentionally leaves public bridge read-only and account pages unframeable.
 Publication requires normal owner review/main deployment and migration0013.
+
+
+### Stat profile correction — 23 October 2026
+
+Owner corrected the RGB-only profile editor: six independent positive coordinates
+replace the three complementary sliders. The canonical root order is Body,
+Spirit, Onslaught, Composure, Reaction, Technique internally; the public controls
+show colors only, without naming the stats. Color is derived preview,
+not an input or a new budget. Raw stored values and the existing1..65535 API
+range are preserved; changing one component does not rewrite its opposite.
+No new migration, coordinate model, influence or voting rule. See
+[SOCIAL-GEOMETRY-V1](SOCIAL-GEOMETRY-V1.md).
+
+The planned external own-point/favorite library extension remains next; no
+implementation of that separate packet is claimed by this profile correction.
+
+
+### Hosted wiki corner link — 23 October 2026
+
+Standalone field pages always link their upper-left brand to the instance root
+`/`, including when visiting another site's entrance. The title comes from the
+configured default entrance's effective home page (Git manifest `home_page.title`
+under Git/Auto), then its display name, then the operator title. An unrelated
+tenant cannot replace the instance brand. Full iframe corners keep their own
+entrance, and the Neocities static root keeps NODE06. Content home priorities,
+points, languages and graph coordinates are unchanged; no migration.
+
+Validation for the stat/corner correction:33 targeted PostgreSQL hosted/geometry
+checks passed. Packaged-wheel HTTPS Chromium passed, including full-range raw
+profile load/save, independent components, rejection of invalid values, color-only
+markers, derived preview/social geometry, instance-root corner navigation and
+unchanged static/full-frame corners. Ruff/format,51-root build, JS syntax,
+protocol and diff checks passed. No migration or production write performed.

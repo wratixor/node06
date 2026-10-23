@@ -401,15 +401,49 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       await page.waitForTimeout(1000);
     }
     assert((await page.locator('#inbox').textContent()).includes('proposal-adopted'), 'Background outbox delivers without operator commands');
+    // Six raw stats survive loading/saving. No RGB slider may reconstruct the
+    // opposite stat or erase large values accepted by the coordinate API.
+    const statOrder=['body','spirit','onslaught','composure','reaction','technique'];
+    assert.deepEqual(require('../content/root-coordinates-v1.json').coordinate_order,statOrder);
+    const largeStats=[65535,2,3500,7,64000,9];
+    assert.equal((await page.request.post(base+'/api/v1/me/geometry',{
+      headers:{Origin:base,'X-CSRF-Token':socialSession.csrf_token,'Idempotency-Key':'browser-full-stats'},
+      data:{coordinates:largeStats}
+    })).status(),200);
+    await page.reload();
+    await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
     await page.locator('#my-color summary').click();
-    await page.locator('#color-r').fill('220');
-    await page.locator('#color-g').fill('64');
-    await page.locator('#color-b').fill('180');
+    assert.equal(await page.locator('#color-form input[type=range]').count(),0);
+    assert.equal(await page.locator('#color-r,#color-g,#color-b').count(),0);
+    assert(!/Тело|Дух|Натиск|Самообладание|Реакция|Техника/.test(await page.locator('#color-form').textContent()));
+    assert.deepEqual(await page.locator('.profile-stats input').evaluateAll(inputs=>inputs.map(i=>Number(i.dataset.coordinate))),[0,1,2,3,4,5]);
+    for(const [index,stat] of statOrder.entries())assert.equal(await page.locator('#coordinate-'+index).inputValue(),String(largeStats[index]));
     await page.locator('#color-form button').click();
-    await page.waitForFunction(()=>document.querySelector('#community-status').textContent.includes('Цвет сохранён'));
-    assert.equal((await (await page.request.get(base+'/api/v1/me/geometry')).json()).color,'#db40b3');
-    await page.screenshot({path:'/tmp/node06-color-mobile.png',fullPage:true});
-    await waitGeometry(socialPoint,'#db40b3');
+    await page.waitForFunction(()=>document.querySelector('#community-status').textContent.includes('Координаты сохранены'));
+    assert.deepEqual((await (await page.request.get(base+'/api/v1/me/geometry')).json()).coordinates,largeStats);
+    await page.locator('#coordinate-0').fill('90');
+    assert.equal(await page.locator('#coordinate-1').inputValue(),'2','Changing Body must not rewrite Spirit');
+    const stats=[90,10,40,60,20,80];
+    for(const [index,stat] of statOrder.entries())await page.locator('#coordinate-'+index).fill(String(stats[index]));
+    assert.equal(await page.locator('#color-preview').textContent(),'#e66633');
+    let invalidStatWrites=0;
+    const statRequest=r=>{if(r.method()==='POST'&&r.url()===base+'/api/v1/me/geometry')invalidStatWrites++;};
+    page.on('request',statRequest);
+    for(const invalid of ['','0','65536','1.5']){
+      await page.locator('#coordinate-0').fill(invalid);
+      assert.equal(await page.locator('#color-form').evaluate(form=>form.checkValidity()),false);
+      await page.locator('#color-form button').click();
+    }
+    assert.equal(invalidStatWrites,0,'Invalid stats never reach the API');
+    page.off('request',statRequest);
+    await page.locator('#coordinate-0').fill('90');
+    await page.locator('#color-form button').click();
+    await page.waitForFunction(()=>!document.querySelector('#color-form button').disabled);
+    const savedStats=await (await page.request.get(base+'/api/v1/me/geometry')).json();
+    assert.deepEqual(savedStats.coordinates,stats);assert.equal(savedStats.color,'#e66633');
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:'/tmp/node06-stats-mobile.png',fullPage:true});
+    await waitGeometry(socialPoint,'#e66633');
     await page.goto(base+'/?p='+socialPoint+'&open='+socialPoint);
     const actions=page.locator('#point-panel-body .point-actions');
     await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='true');
@@ -427,15 +461,16 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=favorite]')?.getAttribute('aria-pressed')==='true');
     await favorite.click();
     await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=favorite]')?.getAttribute('aria-pressed')==='false');
-    await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.color==='#db40b3',socialPoint,{timeout:45000});
+    await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.color==='#e66633',socialPoint,{timeout:45000});
     assert((await page.locator('#point-panel-body > .eyebrow').textContent()).includes('SOCIAL GEOMETRY'));
     await page.screenshot({path:'/tmp/node06-colored-field-mobile.png',fullPage:true});
     await actions.locator('[data-action=block]').click();
     await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=block]')?.getAttribute('aria-pressed')==='true');
     assert.equal(await actions.locator('[data-action=support]').getAttribute('aria-pressed'),'false');
-    await waitGeometry(socialPoint,'#24bf4c');
+    // Q12 normalization places the mirrored red channel just below the half-unit tie.
+    await waitGeometry(socialPoint,'#1999cc');
     await page.locator('.field-geometry-status button').click();
-    await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.color==='#24bf4c',socialPoint);
+    await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.color==='#1999cc',socialPoint);
     await actions.locator('[data-action=block]').click();
     await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=block]')?.getAttribute('aria-pressed')==='false');
     await waitGeometry(socialPoint,null);
@@ -618,6 +653,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       return route.abort();
     });
     await staticPage.goto('https://garden.localhost/picker-parent?p=point-ru&open=point-ru');
+    assert.equal(await staticPage.locator('.site-header nav a').first().textContent(),'NODE06');
     await staticPage.locator('.point-create-related').waitFor();
     const pagesBefore=context.pages().length;
     await staticPage.locator('.point-create-related').click();
@@ -659,6 +695,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await staticPage.screenshot({path:'/tmp/node06-embedded-published-mobile.png',fullPage:true});
     await staticPage.goto('https://garden.localhost/full-parent');
     const fullWiki=staticPage.frameLocator('#wiki');
+    assert.equal(await fullWiki.locator('.site-home-link').getAttribute('href'),`/embed/v1/${active}/`);
     await fullWiki.locator('.point-create-related').click();
     const nestedEditor=fullWiki.frameLocator('#point-editor-overlay iframe');
     await nestedEditor.locator('#editor-form[data-ready=true]').waitFor();
@@ -666,6 +703,10 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await fullWiki.locator('#point-editor-overlay .editor-overlay-heading button').click();
     await fullWiki.getByRole('button',{name:'Discard draft',exact:true}).click();
     await fullWiki.locator('#point-editor-overlay').waitFor({state:'detached'});
+    await page.goto(base+`/sites/${active}/?p=point-ru&open=point-ru`);
+    assert.equal(await page.locator('.site-home-link').getAttribute('href'),'/');
+    await page.locator('.site-home-link').click();
+    await page.waitForURL(url=>url.pathname==='/'&&!url.search);
     // Compact profile panels keep unrelated lists collapsed and unsubscribe direct.
     await page.goto(base+'/community/');
     await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);

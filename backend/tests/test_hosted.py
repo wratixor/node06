@@ -452,3 +452,58 @@ def test_embedded_draft_is_anonymous_scoped_and_confirmation_unframeable(hosted,
         )
     assert client.get(EMBED + draft).status_code == 404
     assert client.get(approval).status_code == 404
+
+
+def test_hosted_corner_uses_instance_git_home_not_current_tenant(hosted, pg_database):
+    import re
+
+    app, client, current, _ = hosted
+    registry = SiteRegistry(pg_database)
+    owner = registry.create_placeholder_user("wiki-home-owner")
+    home = registry.create_pending_site(
+        owner_user_id=owner,
+        origin="https://lore.example",
+        display_name="Lore",
+        welcome_body="Wiki welcome",
+    )
+    registry.verify_site(
+        home.site_id, actor_user_id=owner, proof_fetcher=lambda _: home.proof_document.encode()
+    )
+    app.state.settings.default_site_id = home.site_id
+    with pg_database.begin() as c:
+        c.execute(
+            update(sites)
+            .where(sites.c.id == home.site_id)
+            .values(
+                git_home_page={"title": "Geno-Dice: Wiki <safe>", "blocks": []},
+                home_page_source="git",
+            )
+        )
+        c.execute(
+            update(sites)
+            .where(sites.c.id == current.site_id)
+            .values(home_page={"title": "Other tenant", "blocks": []}, home_page_source="ui")
+        )
+    for path in ("/", f"/sites/{current.site_id}/", f"/sites/{current.site_id}/?p=point-ru"):
+        response = client.get(path)
+        assert response.status_code == 200
+        corner = re.search(r'<a class="site-home-link" href="([^"]*)">(.*?)</a>', response.text)
+        assert corner.groups() == ("/", "Geno-Dice: Wiki &lt;safe&gt;")
+    tenant = client.get(f"/sites/{current.site_id}/").text
+    assert "<h1>Other tenant</h1>" in tenant
+    frame = client.get(EMBED + f"/embed/v1/{current.site_id}/").text
+    corner = re.search(r'<a class="site-home-link" href="([^"]*)">(.*?)</a>', frame)
+    assert corner.group(1) == f"/embed/v1/{current.site_id}/"
+    assert "Geno-Dice: Wiki" not in corner.group(2)
+    with pg_database.begin() as c:
+        c.execute(
+            update(sites)
+            .where(sites.c.id == home.site_id)
+            .values(git_home_page={"title": "Updated Wiki", "blocks": []})
+        )
+    assert ">Updated Wiki</a>" in client.get(f"/sites/{current.site_id}/").text
+    # Without a default home, the operator title remains the local fallback.
+    app.state.settings.default_site_id = None
+    assert (
+        f">{app.state.settings.hosted_title}</a>" in client.get(f"/sites/{current.site_id}/").text
+    )
