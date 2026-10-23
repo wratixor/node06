@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 
 from .account_ui import CSS, HEADERS
+from .personal_ui import navigation
 
 router = APIRouter(prefix="/sites")
 
@@ -12,7 +13,10 @@ router = APIRouter(prefix="/sites")
 def sites_page(request: Request):
     # The address is read separately by JS, never interpolated into executable code.
     return HTMLResponse(
-        files("node06_service").joinpath("ui/sites.html").read_text(encoding="utf-8"),
+        files("node06_service")
+        .joinpath("ui/sites.html")
+        .read_text(encoding="utf-8")
+        .replace("{personal_navigation}", navigation("sites")),
         headers={
             **HEADERS,
             "Content-Security-Policy": HEADERS["Content-Security-Policy"]

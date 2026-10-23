@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 
 from .account_ui import CSS, HEADERS
+from .personal_ui import navigation
 
 router = APIRouter(prefix="/community")
 PAGE = """<!doctype html>
@@ -23,16 +24,10 @@ PAGE = """<!doctype html>
 </script>
 </head>
 <body data-page="community" data-hosted="true" data-point-picker="true">
-<header class="site-header">
-<nav>
-<a href="/">Вики</a>
-<a href="/editor/">Мои точки</a>
-<a href="/account/">Аккаунт</a>
-</nav>
-</header>
+{personal_navigation}
 <main>
-<h1>Профиль</h1>
-<button id="community-refresh" type="button">Обновить</button>
+<div class="profile-heading"><h1>Профиль</h1>
+<button id="community-refresh" type="button">Обновить</button></div>
 <p id="community-status" role="status">Проверяем вход…</p>
 <nav id="profile-tabs" aria-label="Разделы профиля"></nav>
 <form id="profile-filter" class="point-search" role="search">
@@ -42,7 +37,8 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path>
 </svg></button></form>
 <button id="choose-point" type="button">Выбрать точку</button>
-<details id="my-color" hidden>
+<section data-profile-panel="color" hidden>
+<details id="my-color" open hidden>
 <summary>Мой цвет</summary>
 <form id="color-form">
 <div class="profile-stats">
@@ -68,10 +64,9 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <output id="color-preview" aria-label="Итоговый цвет">#808080</output>
 <button type="submit" data-requires-auth="true">Сохранить</button>
 </form>
-</details>
-<section id="selected-point" hidden>
-<h2 id="point-name">
-</h2>
+</details></section>
+<details id="selected-point" hidden>
+<summary id="point-name"></summary>
 <p id="point-origin">
 </p>
 <p>
@@ -100,7 +95,7 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 </label>
 <button id="submit-proposal" type="submit">Предложить версию</button>
 </form>
-</section>
+</details>
 <section data-profile-panel="subscriptions">
 <h2>Подписки</h2>
 <ul id="my-subscriptions">
@@ -143,7 +138,7 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <noscript>Для этого интерфейса нужен JavaScript.</noscript>
 </main>
 </body>
-</html>"""
+</html>""".replace("{personal_navigation}", navigation("profile"))
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -185,6 +180,9 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #profile-tabs{display:flex;gap:5px;flex-wrap:wrap;margin:12px 0}
 #profile-tabs button[aria-selected=true]{border-color:var(--text);background:var(--panel)}
 #profile-tabs button{margin:0}
+.profile-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#selected-point{border:1px solid var(--line);padding:10px;margin:12px 0}
+#selected-point>summary{cursor:pointer;overflow-wrap:anywhere;font-size:16px}
 #choose-point,#community-refresh{font-size:13px}
 #community-status{font-size:13px;color:var(--muted);margin:6px 0}
 [data-profile-panel]{border-top:1px solid var(--line);padding:8px 0}

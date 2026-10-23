@@ -9,7 +9,7 @@
   const status = message => { el("community-status").textContent = message; };
   const messages = {
     PENDING_REQUEST: "Сначала повторите прежнее действие, чтобы проверить его результат. Текст сохранён.",
-    AUTH_REQUIRED: "Войдите через Аккаунт. Текст на этой странице сохранён.",
+    AUTH_REQUIRED: "Откройте «Вход и безопасность». Текст на этой странице сохранён.",
     ACCOUNT_CHANGED: "Аккаунт сменился. Вернитесь в исходный аккаунт для проверки предыдущего действия.",
     POINT_PROTECTED: "Эта точка управляется через Git или системой и защищена от голосований.",
     PROPOSAL_ALREADY_OPEN: "Для этой точки уже есть открытое предложение.",
@@ -31,8 +31,13 @@
     const value = node("button", text, parent); value.type = "button"; value.dataset.requiresAuth = "true"; value.disabled = !me || busy;
     value.addEventListener("click", () => act(handler)); return value;
   }
-  const tabs=[['points','Мои точки'],['subscriptions','Подписки'],['blocks','Блокировки'],['favorites','Избранное'],['inbox','Лента'],['trust','Доверие'],['news','Git']];
-  function showTab(name){
+  const tabs=[['points','Мои точки'],['subscriptions','Подписки'],['blocks','Блокировки'],['favorites','Избранное'],['inbox','Лента'],['trust','Доверие'],['news','Обновления'],['color','Мой цвет']];
+  function showTab(name, remember=true){
+    if(!tabs.some(([key])=>key===name))name='subscriptions';
+    el('profile-filter').hidden=['color','trust'].includes(name);
+    el('choose-point').hidden=['color','trust'].includes(name);
+    el('selected-point').open=false;
+    if(remember&&location.hash!==('#'+name))history.pushState(null,'','#'+name);
     for(const panel of document.querySelectorAll('[data-profile-panel]'))panel.hidden=panel.dataset.profilePanel!==name;
     for(const b of el('profile-tabs').children){const active=b.dataset.tab===name;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;}
   }
@@ -48,7 +53,13 @@
     event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(current+(event.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length;
     showTab(tabs[next][0]);el('profile-tabs').children[next].focus();
   });
-  showTab('subscriptions');
+  function routeTab(){
+    const name=location.hash.slice(1);
+    showTab(name==='my-color'?'color':name,false);
+  }
+  window.addEventListener('hashchange',routeTab);
+  window.addEventListener('popstate',routeTab);
+  routeTab();
   function filterProfile(){
     const query=el('profile-query').value.trim().toLocaleLowerCase();
     for(const row of document.querySelectorAll('[data-profile-panel] ul > li'))row.hidden=Boolean(query&&!row.textContent.toLocaleLowerCase().includes(query));
@@ -135,8 +146,8 @@
     }
     social = await api(`/points/${pid}/social`); point = social.point;
     ownPin = me ? await api(`/me/subscriptions/${pid}`) : null;
-    history.replaceState(null, "", "/community/?" + new URLSearchParams({ p: pid, ...(new URLSearchParams(location.search).has("intent")?{intent:new URLSearchParams(location.search).get("intent")}:{}) }));
-    el("selected-point").hidden = false; el("point-name").textContent = point.preview || point.id;
+    history.replaceState(null, "", "/community/?" + new URLSearchParams({ p: pid, ...(new URLSearchParams(location.search).has("intent")?{intent:new URLSearchParams(location.search).get("intent")}:{}) }) + location.hash);
+    el("selected-point").hidden = false; el("selected-point").open = true; el("point-name").textContent = point.preview || point.id;
     el("point-origin").textContent = point.lang + " · " + point.source.kind;
     el("point-current").textContent = point.body;
     el("point-address").href = "/?" + new URLSearchParams({ p: pid, open: pid });
@@ -242,7 +253,7 @@
   async function refreshColor() {
     if(!me)return;
     const profile=await api("/me/geometry");showStats(profile.coordinates);
-    el("my-color").hidden=false;if(location.hash==="#my-color"){el("my-color").open=true;showTab("trust");}
+    el("my-color").hidden=false;
   }
   async function refreshBlocks(append=false) {
     if(!me)return;
@@ -328,7 +339,7 @@
   window.addEventListener("beforeunload",event=>{if(draftDirty||receipts.size)event.preventDefault();});
   (async()=>{
     busy=true;el("choose-point").disabled=true;
-    try {me=await api("/me");status("Вы вошли: "+me.handle);} catch(error){status(error.status === 401 ? "Просмотр доступен всем. Для подписки и голосования войдите через Аккаунт." : "Не удалось проверить сессию. Обновите страницу, когда сервер будет доступен.");}
+    try {me=await api("/me");status("Вы вошли: "+me.handle);} catch(error){status(error.status === 401 ? "Просмотр доступен всем. Для подписки и голосования откройте «Вход и безопасность»." : "Не удалось проверить сессию. Обновите страницу, когда сервер будет доступен.");}
     try {
       const pid=new URLSearchParams(location.search).get("p");if(pid&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(pid))await load(pid);
       await refreshColor();await refreshMine();await refreshBlocks();await refreshPoints();await refreshFavorites();await refreshInbox();await refreshNews();

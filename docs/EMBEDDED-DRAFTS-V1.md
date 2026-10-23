@@ -68,11 +68,26 @@ not a full server graph. Failure retains static roots and labels unavailable rea
 ## Compact social profile
 
 `/community/` groups own points, subscriptions, blocks, favorites, inbox, trust and Git news
-in keyboard-operable tabs, with a filter over the currently loaded rows. Only one list is shown at a time; old/new version
-comparison remains separate when a point is selected. Subscriptions have direct
+in keyboard-operable tabs, with a filter over the currently loaded rows. Color is
+a separate tab with six color-only inputs. Only one panel is shown at a time;
+old/new version comparison opens in a separate collapsible block when a point
+is selected. Tab URLs use fragments (`#points`, `#subscriptions`, `#blocks`,
+`#favorites`, `#inbox`, `#trust`, `#news`, `#color`); reload and browser Back/Forward
+restore the panel. The old `#my-color` link remains an alias. Filtering is hidden
+for color/trust, where it would not describe the form. Subscriptions have direct
 unsubscribe, blocks have unblock, favorites have remove. Neutral unsubscribe and
 explicit negative block retain their distinct semantics. Reaction list previews
 are additive private API fields; unavailable points remain identifiable.
+
+Account, profile, sites and first-party editor share one server-rendered menu:
+wiki, profile, sites, new point, sign-in/security. The current page is marked with
+`aria-current`; links navigate in the same tab except editor sign-in, which
+keeps a separate tab to preserve the draft (other map editor links still target
+the trusted top-level page when framed). Header styles and link definitions live in
+`personal_ui.py`, so these pages cannot drift independently. The account page
+retains its one-time recovery code and session controls; authentication and
+private APIs remain first-party only. The anonymous compose frame continues to
+hide the header; this navigation adds no embed authentication capability.
 
 ## Acceptance and release
 
