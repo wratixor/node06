@@ -103,18 +103,24 @@ request so removing claims cannot leave phantom links in the process cache.
 Owner confirmed in this chat on 23 October:
 
 1. A link and support are separate actions.
-2. Support endorses a version. A changed version needs explicit reconfirmation;
-   previous support remains historical and does not count toward new text.
+2. For user content, support endorses a version; changed text requires explicit
+   reconfirmation. Later clarification exempts Git-owned points: an accepted Git
+   update automatically carries active support forward with historical provenance.
 3. Anyone registered on the instance may propose a replacement for any one point,
-   at most once in a rolling 24 hours across the server. The system's own protected
-   roots cannot be replaced through community voting.
+   at most once in a rolling 24 hours across the server. All Git-owned points
+   are protected from community voting, including game/lore roots. An author
+   with active subscribers also uses voting; direct edits are for zero-subscriber
+   non-Git author points only, including UI-owned site welcome text. Site theme/
+   domain configuration is a separate owner authority.
 4. Notify subscribers durably and include proposals in their feed. Show old/new
    text (side by side or escaped diff). Anyone may support the proposed version,
    including newly arriving subscribers. New arrivals initially endorse the old
    base version and may then explicitly switch. At voting close, adopt if new
-   votes exceed old votes; ties retain the base. Approved timing bounds are
-   24 hours–7 days; empty points cannot auto-adopt. Activity-based duration is
-   future policy, not an invented adaptive formula.
+   votes exceed old votes; ties retain the base. Default is 72 hours. Immediate
+   early adoption is allowed when every current active subscriber explicitly
+   supports the new version, with at least one subscriber and no waiting period.
+   Scheduled configurable bounds are 24 hours–7 days; empty points cannot
+   auto-adopt. Activity-based duration is future policy.
 
 Not yet implemented: subscriptions/support, proposal voting, inbox/feed delivery,
 majority/expiry processing, trust/mass, authenticated embed, self-service Git
@@ -126,10 +132,11 @@ Next packet should add revision subscriptions, proposals tied to a base revision
 private durable inbox plus feed, and explicit protected-point policy. Every
 adoption must atomically recheck base revision, pinned target revisions, protection,
 unique user support and the approved close-time old-versus-new count/time rule.
-Stale proposals need rebasing rather than overwriting newer text. Author writes and operator imports
-must follow the same revision invalidation rule. Imported content needs a recorded
-Git-baseline versus adopted-overlay contract; do not overwrite Git-managed rows
-and thereby break accepted-source visibility or let the next deploy erase votes.
+Stale proposals need rebasing rather than overwriting newer text. Author writes
+and source changes must preserve revision consistency. Imported content needs a recorded
+Git authority and automatic support-transfer/changelog contract. Git points do
+not receive community overlays; accepted repository updates become current
+without a community vote, under the existing source authority checks.
 Add rollback/race/expiry and new-user-majority tests before enabling that packet.
 
 Until that packet exists, direct author edits are the original author-only

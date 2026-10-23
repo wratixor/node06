@@ -262,8 +262,12 @@ Onboarding: создать аккаунт на trusted hosted domain → зая�
 SDK → скопировать snippet → выполнить диагностику. GitHub fork — дополнительный
 путь, не обязательное условие использования сервиса.
 
-**Права:** site owner меняет своё приветствие, источники и theme; автор меняет
-допустимое им содержимое; operator осуществляет общую abuse moderation. Владение
+**Права (с уточнением владельца 23.10):** site owner меняет своё приветствие,
+источники и theme в рамках их source authority; автор напрямую меняет свою
+не-Git точку только без активных подписчиков, иначе — через голосование.
+Все Git-owned точки защищены от предложений сообщества; accepted Git update
+напрямую меняет текст и автоматически переносит активную поддержку с записью
+истории переноса и публичного ченжлога; operator осуществляет общую abuse moderation. Владение
 сайтом не даёт контроля над соседними точками и чужими реакциями. Сайт может
 курировать отображение своей оболочки без удаления объектов общего графа.
 Уход/блокировка сайта не удаляет чужие точки; каталог хранит inactive tombstone,
@@ -1268,13 +1272,15 @@ See [complete contract and social continuation](POINT-AUTHORING-V1.md).
 
 New owner direction: anyone may propose one replacement in a rolling 24 hours
 across the instance; notify subscribers and their feed, compare old/new versions,
-allow new subscribers to support a candidate, adopt after a majority. Only roots
-that describe the system are protected. This is not implemented by authoring;
+allow new subscribers to support a candidate, adopt after a majority. Later owner
+clarification protects ALL Git-owned points, not only descriptions of the system. This is not implemented by authoring;
 новые участники сначала подписываются на старую версию и могут выбрать новую;
 в конце голосования new > old принимает правку, ничья оставляет старую;
 пределы срока 24 часа–7 дней, пустая точка без автопринятия. Do not conflate graph
-links, revision support and proposal acceptance. Git roots need a baseline/overlay
-contract before community adoption; do not silently overwrite imported content.
+links, revision support and proposal acceptance. The earlier Git/community-overlay
+proposal is superseded: Git publication directly replaces its protected content,
+automatically transfers active support and records a changelog/history. Community
+voting applies to non-Git user points.
 
 Подробная следующая постановка: [подписки, правки и уведомления](REVISION-PROPOSALS-PLAN.md).
 
@@ -1301,3 +1307,17 @@ HTTPS browser flows (three transports, mobile bounds, inline field/magnifier,
 keyboard/dismissal, failures and editor), build 51, lint/format, JS syntax and
 P00 protocol passed. Screenshots inspected. Source feature only; no production
 publication claimed by this change.
+
+
+Governance clarification, 23.10.2026 (accepted design, not runtime): default vote
+72 hours; one active proposal per user point. Author edits with active subscribers
+also use voting. All Git-owned points (including game/lore and Git welcome) are
+protected; authorized Git updates replace text directly, automatically transfer
+active support and leave historical provenance plus changelog/news. No community
+overlay on Git roots. User-version support still requires explicit confirmation.
+Unanimous support of all current active subscribers permits immediate adoption,
+even before 24 hours; zero subscribers never adopt automatically. One subscriber
+can be unanimous; no new quorum was approved. Scheduled range 24h–7d remains for
+future configurable duration. Implement membership/choice/finalize races and
+Git support transfer atomically; do not treat source updates as fresh user votes.
+Canonical next packet: [REVISION-PROPOSALS-PLAN](REVISION-PROPOSALS-PLAN.md).
