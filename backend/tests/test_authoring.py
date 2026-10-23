@@ -254,10 +254,37 @@ def test_editor_and_management_boundary(manager, static_bundle):
     response = manager.client.get("/editor/")
     assert (
         response.status_code == 200
-        and "frame-ancestors 'none'" in response.headers["content-security-policy"]
+        and "frame-ancestors 'self'" in response.headers["content-security-policy"]
+        and response.headers["x-frame-options"] == "SAMEORIGIN"
     )
     assert manager.client.get("/editor/client.js").status_code == 200
     assert manager.client.get("/editor/style.css").status_code == 200
     manager.app.state.settings.embed_origin = "https://embed.example"
     assert manager.client.get("https://embed.example/editor/").status_code == 404
     assert post(manager.client, payload(manager.client), "boundary-test").status_code == 201
+
+
+def test_author_attribution_stays_with_original_creator(manager, static_bundle):
+    attach(manager, static_bundle)
+    client = manager.client
+    created = post(client, payload(client)).json()
+    current = client.get("/api/v1/points/" + created["id"]).json()
+    identity = client.get("/api/v1/me").json()
+    assert current["author"] == {
+        "kind": "user",
+        "id": identity["user_id"],
+        "name": identity["handle"],
+    }
+    edited = client.patch(
+        "/api/v1/points/" + created["id"],
+        json={
+            **payload(client, body="Updated meaning"),
+            "expected_revision_id": created["revision_id"],
+        },
+        headers={"Idempotency-Key": uuid4().hex},
+    )
+    assert edited.status_code == 200
+    assert client.get("/api/v1/points/" + created["id"]).json()["author"] == current["author"]
+    summary = client.get(f"/api/v1/points/{created['id']}/social-summary").json()
+    assert summary["author"] == {"kind": "user", "name": identity["handle"]}
+    assert "id" not in summary["author"]

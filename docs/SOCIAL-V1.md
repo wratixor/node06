@@ -42,27 +42,28 @@ active users. Solve `w' = 0.5 * 1 + 0.5 * transpose(T) * w` in sorted ID order.
 Maximum 128 iterations, L1 residual <= `1e-12 * max(1,N)`; check total error <=
 `1e-9 * max(1,N)`. No headcount fallback on calculation/capacity failure.
 
-Version `t1-v1-d0.5-q12`, scale `10^12`: normalize converged half weights and
+Version `t1-v2-d0.5-q12-signed-slots` (formerly `t1-v1-d0.5-q12`), scale `10^12`: normalize converged half weights and
 quantize by largest remainder (fractional part, then stable user ID). Twice that
 integer half is effective influence; the two half budgets are exactly equal.
-Split the point half across distinct active public subscriptions, integer
+Split the point half across distinct active public subscription and block slots, integer
 quotient/remainder by point ID. Pending/old pins reserve their share instead of
-duplicating it. No subscriptions means idle point budget. Exactly:
+duplicating it. No active reaction slots means idle point budget. Exactly:
 
 - `sum(effective weights) = N * scale`
 - `people budget = N * scale / 2`
-- `confirmed point mass + held pending + idle = N * scale / 2`
+- `confirmed positive + confirmed blocked + held pending + idle = N * scale / 2`
 
 Ballots use that user's allocated share for THIS point, never full user weight
 again. Both sides use the same transactionally computed snapshot. Decimal strings
 cross the API; browsers do not supply weights. Adoption stores snapshot ID/model
-and exact totals. Positive support only; signed opposition and semantic geometry
-are not implemented by this packet.
+and exact totals. Only positive subscription allocations vote. Explicit blocks contribute opposite-pair
+geometry and share the same finite point budget; they do not vote. See
+[SOCIAL-GEOMETRY-V1](SOCIAL-GEOMETRY-V1.md) for the current extension.
 
 Input digest includes event cutoff, enabled users, trust and version pins. Keep
 last good published snapshot; reads explicitly say pending when social input has
 changed. A fresh authoritative snapshot is recomputed at a binding decision.
-Current alpha caps: 10,000 active users, 100,000 trust edges, 100,000 subscriptions.
+Current alpha caps: 10,000 active users, 100,000 trust edges, 100,000 combined active subscriptions and blocks.
 These are safety guards, not tested production capacity promises. Snapshot/history
 retention, Sybil defenses and performance at these ceilings remain operational work.
 
@@ -177,3 +178,18 @@ unavailable message without blocking text. Core builder pins use the same
 canonical digest as public reads. Updated frontend/dist and backend should ship
 from the same reviewed revision through normal deployment. No extra service,
 privileged timer, or migration is introduced by this packet.
+
+## Geometry extension
+
+Migration 0012 and the selected opposite-pair geometry supersede earlier
+"geometry unchanged/not implemented" progress notes above. Their historical
+validation counts are not claims about this extension. Profiles, block APIs,
+version behavior, public batches, fallback, conservation and rollout are
+maintained in [SOCIAL-GEOMETRY-V1](SOCIAL-GEOMETRY-V1.md). Public point summaries
+also expose decimal `blocked` and `blocked_held` aggregates; pending values are
+null. Subscriber identity and individual reactions remain private.
+
+The former field support/status text panel is replaced by the compact four-icon
+action toolbar with author attribution. Public summary APIs remain supported;
+normal explanatory paragraphs/mass figures are no longer inserted before the
+point text. Details: SOCIAL-GEOMETRY-V1 and POINT-AUTHORING-V1.

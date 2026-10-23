@@ -114,5 +114,17 @@ no separate root service/timer is required. Subscriptions, explicit revision
 ballots, trust, private inbox and Git source changelog are implemented in source.
 Apply online migrations and restart through the operator pipeline after review.
 Connection/deployment modes for site owners: [SELF-HOSTING](../docs/SELF-HOSTING.md),
-built into the public `/setup/` page. Static menu links use connection.json;
+built into `/setup/` (Russian) and `/setup/en/` (English). Static menu links use connection.json;
 hosted pages use the configured management origin, never a parent login form.
+
+Social geometry: migration `0012_social_geometry` adds private user coordinate
+profiles and version-pinned blocks. See [geometry contract](../docs/SOCIAL-GEOMETRY-V1.md)
+for finite T1 budgets, anonymous API/iframe batches, UI, freshness and rollback.
+Use `/community/#my-color` for your color. A block swaps opposite components;
+unsubscribe is neutral. Online migrations and disposable DB tests are required.
+
+The management-host map can open `/editor/` in a same-origin modal. Only editor
+HTML now permits SAMEORIGIN framing; account pages and the external embed host
+remain isolated. External authenticated embedding is still not implemented.
+Browser acceptance must follow pytest rather than run alongside it: both fixtures
+rebuild the shared `dist/` directory.

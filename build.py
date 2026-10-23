@@ -263,24 +263,23 @@ def service_origin() -> str:
     return origin.rstrip("/")
 
 
-def service_navigation() -> str:
+def service_navigation(lang="en") -> str:
     origin = html.escape(service_origin(), quote=True)
     if not origin:
         return ""
     return '<!--service-nav-->' + ''.join(
         f'<a href="{origin}{path}" target="_blank" rel="noopener noreferrer">{label} ↗</a>'
-        for path, label in (("/account/", "ACCOUNT"), ("/sites/", "MY SITES"),
-                            ("/community/", "COMMUNITY"), ("/editor/", "NEW POINT"))
+        for path, label in (("/account/", "АККАУНТ" if lang == "ru" else "ACCOUNT"), ("/sites/", "МОИ САЙТЫ" if lang == "ru" else "MY SITES"),
+                            ("/community/", "СООБЩЕСТВО" if lang == "ru" else "COMMUNITY"), ("/editor/", "НОВАЯ ТОЧКА" if lang == "ru" else "NEW POINT"))
     ) + '<!--/service-nav-->'
 
 
 def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") -> str:
     nav = (
         '<a href="/">NODE06</a>'
-        '<a href="/recent/">RECENT</a>'
-        '<a href="/about/">ABOUT</a>'
-        '<a href="/setup/">SETUP / УСТАНОВКА</a>'
-        + service_navigation()
+        + ('<a href="/recent/">НЕДАВНЕЕ</a><a href="/about/">О ПРОЕКТЕ</a><a href="/setup/">УСТАНОВКА</a>'
+           if lang == "ru" else '<a href="/recent/">RECENT</a><a href="/about/">ABOUT</a><a href="/setup/en/">SETUP</a>')
+        + service_navigation(lang)
     )
     return f'''<!doctype html>
 <html lang="{lang}">
@@ -300,6 +299,8 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <script src="{asset_url("node06-client.js")}" defer></script>
 <script src="{asset_url("point-picker.js")}" defer></script>
 <script src="{asset_url("field-social.js")}" defer></script>
+<script src="{asset_url("field-geometry.js")}" defer></script>
+<script src="{asset_url("editor-overlay.js")}" defer></script>
 </body>
 </html>'''
 
@@ -350,6 +351,7 @@ def build() -> None:
             "body": p.text,
             "html": render_markdown(p.text, set(points)),
             "origin": "root",
+            "author": {"kind": "source", "name": "Git source"},
             "revision_id": None,
             "content_digest": hashlib.sha256(json.dumps({
                 "id": p.id, "lang": p.lang, "body": p.text, "links": sorted(neighbors),
@@ -397,7 +399,7 @@ def build() -> None:
 <p>NODE06 is based on <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. NODE06 source code and its licensing map are published in the <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">repository</a>.</p></section>'''
     # Bilingual entrance. Languages are separate points, not localization identities.
     welcome = '''<section id="start-page" class="start-page"><div class="eyebrow">NODE06 / ROOT ERA</div><h1>NODE06</h1>
-<div class="welcome-links"><a href="https://neocities.org/site/node06" target="_blank" rel="noopener noreferrer">Neocities · профиль / profile ↗</a></div>
+<div class="welcome-links"><a href="https://neocities.org/site/node06" target="_blank" rel="noopener noreferrer">Neocities profile ↗</a></div>
 <div class="welcome-grid">
 <section class="welcome-card" lang="en"><h2>Welcome to the field.</h2><p>NODE06 is an experimental graph of points. A point may be a word, a thought, a link or a longer text. The map comes first; texts are opened from inside it. Roots are published from Git. Shared accounts, support and revision proposals use the connected service.</p><div class="welcome-links"><a href="/?p=node06-en&open=node06-en">NODE06</a><a href="/?p=point-en&open=point-en">POINT</a><a href="/?p=field-en&open=field-en">FIELD</a><a href="/?p=root-era-en&open=root-era-en">ROOT ERA</a></div></section>
 <section class="welcome-card" lang="ru"><h2>Добро пожаловать в поле.</h2><p>NODE06 — экспериментальный граф точек. Точкой может быть слово, мысль, ссылка или длинный текст. Карта первична, тексты открываются из неё. Корни публикуются из Git. Общие аккаунты, подписки и голосования работают через подключённый сервер.</p><div class="welcome-links"><a href="/?p=node06-ru&open=node06-ru">NODE06</a><a href="/?p=point-ru&open=point-ru">ТОЧКА</a><a href="/?p=field-ru&open=field-ru">ПОЛЕ</a><a href="/?p=root-era-ru&open=root-era-ru">КОРНЕВАЯ ЭПОХА</a></div></section>
@@ -408,10 +410,18 @@ def build() -> None:
         f'<li><time>{p.updated_at[:10]}</time><a href="/?p={p.id}&open={p.id}">{html.escape(preview(p.text, 150))}</a><span>{len(p.links)} links</span></li>'
         for p in sorted(points.values(), key=lambda p: p.updated_at, reverse=True)
     )
-    guide = (ROOT / "docs/SELF-HOSTING.md").read_text(encoding="utf-8")
-    write(DIST / "setup/index.html", shell("Setup / Установка",
-          '<section class="prose"><h1>Установка / Setup</h1>' + render_markdown(guide, set()) + '</section>',
-          "ru", "setup"))
+    for language, source, destination, heading, alternate, alternate_label in (
+        ("ru", "SELF-HOSTING.md", "setup", "Установка", "/setup/en/", "English"),
+        ("en", "SELF-HOSTING-EN.md", "setup/en", "Setup", "/setup/", "Русский"),
+    ):
+        guide = (ROOT / "docs" / source).read_text(encoding="utf-8")
+        rendered = render_markdown(guide, set())
+        rendered = re.sub(r"<p>(#{1,2}) (.*?)</p>",
+                          lambda m: f"<h{len(m[1])}>{m[2]}</h{len(m[1])}>", rendered)
+        rendered = re.sub(r'<p><a[^>]*href="https://node06.neocities.org/setup/(?:en/)?"[^>]*>.*?</a></p>', "", rendered)
+        write(DIST / destination / "index.html", shell(heading,
+              f'<section class="prose"><a href="{alternate}" lang="{ "en" if language == "ru" else "ru" }">{alternate_label}</a>'
+              + rendered + '</section>', language, "setup"))
     write(DIST / "recent" / "index.html", shell("RECENT", f'<section class="recent"><h1>RECENT</h1><ul>{all_rows}</ul></section>', "en", "recent"))
     write(DIST / "about" / "index.html", shell("ABOUT", about_ru + about_en, "en", "about"))
     print(f"Built {len(points)} points into {DIST}")

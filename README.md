@@ -6,7 +6,7 @@ The static frontend works without a backend: root points are Markdown files, rec
 
 NODE06 is based on [Hexrelatum](https://github.com/wratixor/hexrelatum). See [LICENSES.md](LICENSES.md) and [NOTICE.md](NOTICE.md).
 
-Self-hosting and connection modes: [installation guide](docs/SELF-HOSTING.md), also published at `/setup/`.
+Self-hosting and connection modes: [English installation guide](docs/SELF-HOSTING-EN.md), published at `/setup/en/`. [Русская инструкция](docs/SELF-HOSTING.md) — `/setup/`.
 Accounts, site management and community links in static copies use `serviceOrigin`
 from `static/connection.json`; hosted copies use their configured management origin.
 

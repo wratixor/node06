@@ -17,6 +17,7 @@ from .models import (
     favorite_points,
     inbox,
     influence_runs,
+    point_blocks,
     point_edges,
     point_operations,
     point_revisions,
@@ -30,6 +31,7 @@ from .models import (
     subscription_intervals,
     subscriptions,
     support_history,
+    user_geometry,
     user_trust,
     users,
 )
@@ -110,6 +112,140 @@ class Social:
             )
         return {"point_id": pid, "active": payload["active"]}
 
+    def _coordinates(self, c, actor, target, payload):
+        from .geometry import color, normalized
+
+        values = payload["coordinates"]
+        normalized(values)
+        old = c.scalar(select(user_geometry.c.coordinates).where(user_geometry.c.user_id == actor))
+        if old != values:
+            c.execute(
+                pg_insert(user_geometry)
+                .values(
+                    user_id=actor,
+                    coordinates=values,
+                    updated_at=self.clock(),
+                )
+                .on_conflict_do_update(
+                    index_elements=[user_geometry.c.user_id],
+                    set_={"coordinates": values, "updated_at": self.clock()},
+                )
+            )
+            event(c, "coordinates-changed", actor=actor, now=self.clock())
+        return {"coordinates": values, "color": color(values)}
+
+    def _remove_block(self, c, actor, pid, reason="explicit-unblock"):
+        where = (point_blocks.c.user_id == actor) & (point_blocks.c.point_id == pid)
+        old = c.execute(select(point_blocks).where(where)).mappings().one_or_none()
+        if old:
+            c.execute(delete(point_blocks).where(where))
+            seq = event(
+                c, "block-changed", pid, actor=actor, payload={"active": False}, now=self.clock()
+            )
+            c.execute(
+                insert(support_history).values(
+                    event_seq=seq,
+                    user_id=actor,
+                    point_id=pid,
+                    previous_revision_id=old["revision_id"],
+                    previous_digest=old["content_digest"],
+                    revision_id=old["revision_id"],
+                    content_digest=old["content_digest"],
+                    reason=reason,
+                )
+            )
+
+    def _block(self, c, actor, pid, payload):
+        if not payload["active"]:
+            self._remove_block(c, actor, pid)
+            self._reevaluate(c, pid)
+            return {"point_id": pid, "blocked": False}
+        point = self.pinned(c, pid, payload)
+        pin = self.pin(point)
+        if point["revision_id"] is None:
+            c.execute(
+                pg_insert(core_publications)
+                .values(
+                    point_id=pid,
+                    content_digest=point["content_digest"],
+                    body=point["body"],
+                    build_revision=point["source"]["build_revision"],
+                )
+                .on_conflict_do_nothing()
+            )
+        old = (
+            c.execute(
+                select(point_blocks).where(
+                    point_blocks.c.user_id == actor, point_blocks.c.point_id == pid
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if old and self.pin(old) == pin:
+            return {"point_id": pid, "blocked": True, **pin}
+        choices = (
+            c.execute(
+                select(ballots.c.proposal_id)
+                .join(proposals, proposals.c.id == ballots.c.proposal_id)
+                .where(
+                    ballots.c.user_id == actor,
+                    proposals.c.point_id == pid,
+                    proposals.c.state == "open",
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for qid in choices:
+            c.execute(
+                delete(ballots).where(ballots.c.user_id == actor, ballots.c.proposal_id == qid)
+            )
+            event(
+                c,
+                "ballot-withdrawn",
+                pid,
+                actor=actor,
+                proposal=qid,
+                payload={"reason": "block"},
+                now=self.clock(),
+            )
+        self._set_support(c, actor, pid, pin, active=False, reason="switch-to-block")
+        seq = event(
+            c, "block-changed", pid, actor=actor, payload={"active": True, **pin}, now=self.clock()
+        )
+        c.execute(
+            pg_insert(point_blocks)
+            .values(
+                user_id=actor,
+                point_id=pid,
+                **pin,
+                static_body=point.get("body") if point["revision_id"] is None else None,
+                updated_at=self.clock(),
+            )
+            .on_conflict_do_update(
+                index_elements=[point_blocks.c.user_id, point_blocks.c.point_id],
+                set_={
+                    **pin,
+                    "static_body": point.get("body") if point["revision_id"] is None else None,
+                    "updated_at": self.clock(),
+                },
+            )
+        )
+        c.execute(
+            insert(support_history).values(
+                event_seq=seq,
+                user_id=actor,
+                point_id=pid,
+                previous_revision_id=old["revision_id"] if old else None,
+                previous_digest=old["content_digest"] if old else None,
+                **pin,
+                reason="explicit-block",
+            )
+        )
+        self._reevaluate(c, pid)
+        return {"point_id": pid, "blocked": True, **pin}
+
     def _subscription(self, c, actor, pid, payload):
         point = self.pinned(c, pid, payload)
         q = (
@@ -167,6 +303,8 @@ class Social:
     def _set_support(
         self, c, actor, pid, pin, *, active=True, static_body=None, reason="explicit-support"
     ):
+        if active:
+            self._remove_block(c, actor, pid, "switch-to-support")
         old = (
             c.execute(
                 select(subscriptions).where(
@@ -444,9 +582,19 @@ class Social:
             .mappings()
             .all()
         )
-        if len(rows) > 100000:
+        blocked = (
+            c.execute(
+                select(point_blocks)
+                .join(users, users.c.id == point_blocks.c.user_id)
+                .where(users.c.state == "active")
+                .limit(100001)
+            )
+            .mappings()
+            .all()
+        )
+        if len(rows) + len(blocked) > 100000:
             raise InfluenceUnavailable("INFLUENCE_CAPACITY_EXCEEDED")
-        for row in rows:
+        for row in [*rows, *blocked]:
             pid = row["point_id"]
             if pid not in current:
                 try:
@@ -456,44 +604,82 @@ class Social:
             if current[pid] is not None:
                 active.append((row["user_id"], pid))
         data = calculate(ids, trust, active)
-        mass, held = 0, 0
+        all_allocations = data["allocations"]
+        data["allocations"], data["block_allocations"] = {}, {}
+        confirmed_support, confirmed_blocks = {}, {}
+        mass = held = negative = 0
         point_mass = {}
-        for row in rows:
-            units = data["allocations"].get(row["user_id"], {}).get(row["point_id"], 0)
-            point = current[row["point_id"]]
-            if point:
-                entry = point_mass.setdefault(
-                    row["point_id"],
-                    {
-                        **self.pin(point),
-                        "current": 0,
-                        "held": 0,
-                        "subscribed": 0,
-                    },
+        for kind, entries in (("support", rows), ("block", blocked)):
+            for row in entries:
+                actor, pid = row["user_id"], row["point_id"]
+                units = all_allocations.get(actor, {}).get(pid, 0)
+                point = current[pid]
+                allocations = data["allocations" if kind == "support" else "block_allocations"]
+                if point:
+                    allocations.setdefault(actor, {})[pid] = units
+                    entry = point_mass.setdefault(
+                        pid,
+                        {
+                            **self.pin(point),
+                            "current": 0,
+                            "held": 0,
+                            "subscribed": 0,
+                            "blocked": 0,
+                            "blocked_held": 0,
+                        },
+                    )
+                    if kind == "support":
+                        entry["subscribed"] += units
+                confirmed = bool(point and self.pin(point) == self.pin(row))
+                if confirmed and kind == "support":
+                    mass += units
+                    entry["current"] += units
+                    confirmed_support.setdefault(actor, {})[pid] = units
+                elif confirmed:
+                    negative += units
+                    entry["blocked"] += units
+                    confirmed_blocks.setdefault(actor, {})[pid] = units
+                else:
+                    held += units
+                    if point:
+                        entry["held" if kind == "support" else "blocked_held"] += units
+        from .geometry import DEFAULT
+        from .geometry import calculate as geometry_calculate
+
+        profiles = dict(
+            c.execute(
+                select(user_geometry.c.user_id, user_geometry.c.coordinates).where(
+                    user_geometry.c.user_id.in_(ids)
                 )
-                entry["subscribed"] += units
-            confirmed = bool(
-                point
-                and point["content_digest"] == row["content_digest"]
-                and point["revision_id"] == row["revision_id"]
-            )
-            if confirmed:
-                mass += units
-            else:
-                held += units
-            if point:
-                entry["current" if confirmed else "held"] += units
+            ).all()
+        )
+        profiles = {actor: profiles.get(actor, DEFAULT) for actor in ids}
+        geometry = geometry_calculate(profiles, confirmed_support, confirmed_blocks)
+        for pid, result in geometry.items():
+            result.update(self.pin(current[pid]))
         data.update(
             point_mass=point_mass,
             mass_units=mass,
+            blocked_units=negative,
             held_units=held,
+            geometry=geometry,
             cutoff_seq=c.scalar(select(func.max(social_events.c.seq))) or 0,
         )
-        if mass + held + data["idle_units"] != len(ids) * data["scale"] // 2:
+        if mass + negative + held + data["idle_units"] != len(ids) * data["scale"] // 2:
             raise InfluenceUnavailable("MASS_CONSERVATION_FAILED")
         identity = digest(
             {
-                "projection": "point-mass/1",
+                "projection": "point-mass/2-geometry/1",
+                "profiles": profiles,
+                "blocks": [
+                    dict(
+                        user_id=r["user_id"],
+                        point_id=r["point_id"],
+                        digest=r["content_digest"],
+                        revision=r["revision_id"],
+                    )
+                    for r in sorted(blocked, key=lambda r: (r["user_id"], r["point_id"]))
+                ],
                 "cutoff_seq": data["cutoff_seq"],
                 "users": ids,
                 "trust": sorted(trust),
@@ -859,6 +1045,41 @@ def git_update(c, pid, revision, content_digest, commit, *, static_body=None, no
     c.execute(
         update(subscriptions)
         .where(subscriptions.c.point_id == pid, subscriptions.c.active.is_(True))
+        .values(
+            revision_id=revision,
+            content_digest=content_digest,
+            static_body=static_body,
+            updated_at=now or datetime.now(UTC),
+        )
+    )
+
+    c.execute(
+        insert(support_history).from_select(
+            [
+                "event_seq",
+                "user_id",
+                "point_id",
+                "previous_revision_id",
+                "previous_digest",
+                "revision_id",
+                "content_digest",
+                "reason",
+            ],
+            select(
+                func.cast(seq, social_events.c.seq.type),
+                point_blocks.c.user_id,
+                point_blocks.c.point_id,
+                point_blocks.c.revision_id,
+                point_blocks.c.content_digest,
+                func.cast(revision, point_revisions.c.id.type),
+                func.cast(content_digest, point_blocks.c.content_digest.type),
+                func.cast("git-source-update-block", support_history.c.reason.type),
+            ).where(point_blocks.c.point_id == pid),
+        )
+    )
+    c.execute(
+        update(point_blocks)
+        .where(point_blocks.c.point_id == pid)
         .values(
             revision_id=revision,
             content_digest=content_digest,

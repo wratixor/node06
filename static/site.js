@@ -2,9 +2,26 @@
   const body=document.body;
   if(!body||body.dataset.page!=='field') return;
   const res=await fetch('/data/points.json');
-  if(!res.ok) throw new Error('Field unavailable ('+res.status+'). Reload to retry. / Поле недоступно. Обновите страницу.');
+  if(!res.ok) throw new Error('Field unavailable ('+res.status+'). Reload to retry.');
   const all=await res.json();
   const byId=new Map(all.map(p=>[p.id,p]));
+  const geometryFallback=new Map(all.map(p=>[p.id,{coordinates:p.coordinates,coordinate_source:p.coordinate_source}]));
+  let visibleSignature='';
+  window.applyNode06Geometry = records => {
+    for(const record of records){
+      const point=byId.get(record.id);
+      if(!point || record.revision_id!==point.revision_id || record.content_digest!==point.content_digest)continue;
+      const valid=Array.isArray(record.coordinates)&&record.coordinates.length===6&&record.coordinates.every(v=>Number.isFinite(v)&&v>0)&&/^#[0-9a-f]{6}$/.test(record.color);
+      if(record.coordinates!==null&&!valid)continue;
+      Object.assign(point, valid?{coordinates:record.coordinates,coordinate_source:'opposite-pairs-v1',color:record.color}: {...geometryFallback.get(point.id),color:null});
+      point.geometry_pending=record.pending;
+    }
+    if(openPoint){
+      const heading=document.querySelector('#point-panel-body > .eyebrow');
+      if(heading)heading.textContent=pointHeading(openPoint);
+    }
+    renderMap();
+  };
 
   const params=new URLSearchParams(location.search);
   const fieldPath=body.dataset.fieldPath||'/';
@@ -44,7 +61,7 @@
     const hasPoint=byId.has(requested);
     startPage.hidden=hasPoint;rootField.hidden=!hasPoint;
     if(!hasPoint){
-      if(requested){const error=document.createElement('p');error.textContent='Point unavailable / Точка недоступна: '+requested;startPage.prepend(error);}
+      if(requested){const error=document.createElement('p');error.textContent='Point unavailable: '+requested;startPage.prepend(error);}
       return;
     }
   }
@@ -99,12 +116,15 @@
     panelBody.innerHTML='<div class="panel-empty"><div class="eyebrow">POINT</div><p>Select a sphere. Reading mode opens its text here; Explore keeps the field text-free.</p></div>';
   }
 
+  function pointHeading(point){
+    return `${(point.origin||'root').toUpperCase()} POINT · ${point.id}${point.coordinate_source==='display-only'?' · DISPLAY LAYOUT ONLY':point.coordinate_source==='opposite-pairs-v1'?' · SOCIAL GEOMETRY':''}${point.geometry_pending?' · RECALCULATION PENDING':''}`;
+  }
   function showPoint(point,push=true){
     if(!point) return;
     openPoint=point;
     panel.hidden=false;
     panelBody.innerHTML=`
-      <div class="eyebrow">${escapeHtml((point.origin||'root').toUpperCase())} POINT · ${escapeHtml(point.id)}${point.coordinate_source==='display-only'?' · DISPLAY LAYOUT ONLY':''}</div>
+      <div class="eyebrow">${escapeHtml(pointHeading(point))}</div>
       <div class="point-text" lang="${escapeHtml(point.lang||'und')}">${point.html}</div>
       <section>
         <h2>LINKS</h2>
@@ -114,18 +134,13 @@
         }).join('')}</ul>
       </section>
       <p class="meta">created ${point.created_at.slice(0,10)} · last interaction ${point.last_interaction_at.slice(0,10)} · ${point.degree} links</p>`;
-    const origin=document.body.dataset.managementOrigin || (document.body.dataset.hosted==='true'?location.origin:'');
-    if(origin){
-      const action=document.createElement('a');
-      action.className='point-create-related'; action.textContent='Добавить связанную точку / Add related point';
-      action.href=new URL('/editor/?'+new URLSearchParams({from:point.id}),origin).href;
-      action.target='_blank'; action.rel='noopener noreferrer';
-      panelBody.querySelector('.point-text').before(action);
-    }
+    document.querySelectorAll('.site-header nav a').forEach(link=>{
+      const url=new URL(link.href);if(url.pathname==='/community/'){url.search=new URLSearchParams({p:point.id});link.href=url.href;}
+    });
     body.dataset.currentPoint = point.id;
     body.dataset.currentRevision = point.revision_id || "";
     body.dataset.currentDigest = point.content_digest || "";
-    window.dispatchEvent(new CustomEvent('node06:point', {detail:{id:point.id, revision_id:point.revision_id, content_digest:point.content_digest}}));
+    window.dispatchEvent(new CustomEvent('node06:point', {detail:{id:point.id, revision_id:point.revision_id, content_digest:point.content_digest,author:point.author}}));
     if(push) updateUrl();
   }
 
@@ -235,7 +250,7 @@
     // Local six-dimensional magnitude only modulates distance within each band.
     const magnitude=clamp(unit.length/1.45,0,1);
     const r=depth===1 ? 0.30+0.62*magnitude : 1.12+0.38*magnitude;
-    return {x:unit.x*r,y:unit.y*r,z:unit.z*r,depth};
+    return {x:unit.x*r,y:unit.y*r,z:unit.z*r,depth,displayFallback:unit.length<1e-9};
   }
 
   function rotate(v){
@@ -386,9 +401,18 @@
       const P=projected.get(p.id),g=document.createElementNS(svgNS,'g');
       const depth=basePos.get(p.id)?.depth||0;
       g.setAttribute('class','node depth-'+depth+(p.id===center.id?' center':''));
-      g.dataset.id=p.id;
+      g.dataset.id=p.id;g.dataset.coordinateSource=p.coordinate_source||'seed';g.dataset.displayFallback=String(Boolean(basePos.get(p.id)?.displayFallback));g.dataset.geometryPending=String(Boolean(p.geometry_pending));
       const c=document.createElementNS(svgNS,'circle');
       c.setAttribute('cx',P.x);c.setAttribute('cy',P.y);c.setAttribute('r',radius(p)*clamp(P.scale*2.5,.72,1.35));
+      if(/^#[0-9a-f]{6}$/.test(p.color||'')){
+        const gradient=document.createElementNS(svgNS,'radialGradient'), gid='social-'+p.id;
+        gradient.id=gid;gradient.setAttribute('cx','35%');gradient.setAttribute('cy','30%');gradient.setAttribute('r','70%');
+        for(const [offset,color] of [['0%','#ffffff'],['38%',p.color],['100%','#101820']]){
+          const stop=document.createElementNS(svgNS,'stop');stop.setAttribute('offset',offset);stop.setAttribute('stop-color',color);gradient.append(stop);
+        }
+        defs.append(gradient);c.style.fill=`url(#${gid})`;g.dataset.color=p.color;
+      }
+      const title=document.createElementNS(svgNS,'title');title.textContent=`${p.id} · ${p.coordinate_source||'seed'}${basePos.get(p.id)?.displayFallback?' · display direction fallback':''}${p.geometry_pending?' · recalculation pending':''}`;g.append(title);
       g.appendChild(c);
       g.addEventListener('mouseenter',()=>{card.hidden=false;card.innerHTML=`${escapeHtml(p.preview)}<span class="id">${escapeHtml(p.id)} · ${p.degree} links</span>`;});
       g.addEventListener('mousemove',e=>{const r=host.getBoundingClientRect();card.style.left=Math.min(e.clientX-r.left+16,r.width-360)+'px';card.style.top=Math.max(8,e.clientY-r.top+16)+'px';});
@@ -397,6 +421,8 @@
     });
     host.replaceChildren(svg);
     document.getElementById('field-center-id').textContent=center.id;
+    const signature=center.id+'|'+visible.map(p=>p.id).sort().join(',');
+    if(signature!==visibleSignature){visibleSignature=signature;window.dispatchEvent(new CustomEvent('node06:field',{detail:{ids:visible.map(p=>p.id)}}));}
   }
 
   let pointerTargetId=null;
@@ -470,6 +496,6 @@
   });
 })().catch(error=>{
   const message=document.createElement('p');message.setAttribute('role','alert');
-  message.textContent=error.message||'Field unavailable / Поле недоступно';
+  message.textContent=error.message||'Field unavailable';
   (document.querySelector('main')||document.body).prepend(message);
 });

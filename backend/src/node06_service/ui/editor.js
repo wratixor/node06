@@ -2,6 +2,12 @@
 (() => {
   const el = id => document.getElementById(id);
   let pid = new URLSearchParams(location.search).get("p"), revision = null, csrf, language = "und";
+  const requestedReturn = new URLSearchParams(location.search).get("return_to") || "/";
+  const returnPath = /^(?:\/|\/sites\/s_[0-9a-f]{32}\/)$/.test(requestedReturn) ? requestedReturn : "/";
+  const editorChannel=new URLSearchParams(location.search).get("editor_channel");
+  const overlay=parent!==window&&/^[0-9a-f]{32}$/.test(editorChannel||"");
+  if(overlay)document.querySelectorAll(".site-header nav a").forEach(a=>{if(!a.target)a.target="_top";});
+  function notify(kind,extra={}){parent.postMessage({protocol:"node06-editor/1",channel:editorChannel,kind,...extra},location.origin);}
   const from = new URLSearchParams(location.search).get("from");
   let favorites = new Map();
   let links = new Map(), receipt = null, busy = false, dirty = false, selection, historyCursor, mineCursor;
@@ -12,7 +18,7 @@
     TARGET_NOT_PUBLIC: "Одна из связанных точек недоступна. Выберите другую.",
     AUTH_REQUIRED: "Войдите через Аккаунт, затем повторите публикацию. Ваш текст здесь сохранён.",
     CSRF_REQUIRED: "Сессия изменилась. Войдите через Аккаунт и повторите публикацию.",
-    PROPOSAL_REQUIRED: "У точки есть подписчики: предложите новую версию через раздел Подписки / Versions.",
+    PROPOSAL_REQUIRED: "У точки есть подписчики: предложите новую версию через раздел поддержки.",
     FAVORITES_LIMIT: "Можно сохранить до 64 избранных тегов. Уберите ненужные.",
     POINT_EDIT_FORBIDDEN: "Изменять напрямую можно только свою пользовательскую точку.",
     UNDECLARED_POINT_LINK: "В тексте есть смысловая ссылка, которой нет в списке связей. Выберите её через поиск или уберите ссылку.",
@@ -130,12 +136,12 @@
     const page = await api("/me/points?" + new URLSearchParams(mineCursor ? { after: mineCursor } : {}));
     for (const row of page.items) {
       const li = document.createElement("li"), a = document.createElement("a");
-      a.textContent = row.preview || row.id; a.href = "/editor/?" + new URLSearchParams({ p: row.id }); li.append(a); el("my-points").querySelector("ul").append(li);
+      a.textContent = row.preview || row.id; a.href = "/editor/?" + new URLSearchParams({ p: row.id, return_to: returnPath, ...(overlay?{editor_channel:editorChannel}:{}) }); li.append(a); el("my-points").querySelector("ul").append(li);
     }
     mineCursor = page.next_cursor; el("more-mine").hidden = !mineCursor;
   }
   el("more-mine").addEventListener("click", async () => { el("more-mine").disabled = true; try { await mine(); } catch(e) { failure(e); } finally { el("more-mine").disabled = false; } });
-  function openPoint() { el("open-point").hidden = false; el("open-point").href = "/?" + new URLSearchParams({ p: pid, open: pid }); }
+  function openPoint() { if(overlay)el("open-point").target="_top"; el("open-point").hidden = false; el("open-point").href = returnPath+"?" + new URLSearchParams({ p: pid, open: pid }); }
   el("editor-form").addEventListener("input", () => { receipt = null; dirty = true; });
   el("editor-form").addEventListener("submit", async event => {
     event.preventDefault(); if (busy) return;
@@ -154,10 +160,8 @@
       attemptedWrite = true;
       const result = await api(pid ? "/points/" + pid : "/points", { method: pid ? "PATCH" : "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf, "Idempotency-Key": receipt.key }, body: receipt.body });
       pid = result.id; revision = result.revision_id; receipt = null; dirty = false;
-      window.history.replaceState(null, "", "/editor/?" + new URLSearchParams({ p: pid }));
-      el("title").textContent = "Изменить точку"; openPoint(); status(result.changed ? "Опубликовано." : "Изменений нет.");
-      // A failed history read must not misreport a committed publication as failed.
-      try { await history(true); } catch (_) { status("Опубликовано. Историю сейчас загрузить не удалось; текст сохранён."); }
+      openPoint();
+      if(overlay)notify("published",{id:pid});else location.assign(el("open-point").href);
     } catch (error) {
       if (error.definite && attemptedWrite) receipt = null;
       failure(error);
@@ -191,5 +195,13 @@
       el("editor-form").dataset.ready = "true";
     } catch(error) { failure(error); el("retry-login").hidden = false; }
   })();
+  window.addEventListener("message",event=>{
+    const message=event.data;
+    if(!overlay||event.source!==parent||event.origin!==location.origin||message?.protocol!=="node06-editor/1"||message.channel!==editorChannel||message.kind!=="close-request")return;
+    notify("close-pending");
+    if(busy){notify("close-cancel");return;}
+    if((dirty||receipt)&&!confirm(receipt?"Результат публикации неизвестен. Закрыть редактор и потерять локальный текст?":"Закрыть редактор без сохранения текста?")){notify("close-cancel");return;}
+    dirty=false;receipt=null;notify("closed");
+  });
   window.addEventListener("beforeunload", event => { if (dirty || receipt) { event.preventDefault(); } });
 })();

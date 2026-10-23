@@ -56,8 +56,9 @@ NODE06 — переосмысленный движок концептов, из 
 - При написании автор выбирает слово/фразу и через быстрый поиск связывает её
   с конкретным смыслом, в том числе лорным; можно оставить обычным текстом.
 - Эта часть фиксирует исходное планирование 13.09. Текущее состояние реализации
-  смотреть в Progress: сервер и public bridge уже существуют, importer и
-  пользовательские социальные записи ещё впереди.
+  смотреть в Progress: сервер, public bridge, операторская публикация Git,
+  пользовательские точки и голосование реализованы. Самостоятельный importer
+  и межсерверная синхронизация остаются следующими этапами.
 
 Авторитет канонических текстов определяется **правами редактирования и
 происхождением**, а не отдельным миром и не голосованием. Обычная пользовательская
@@ -72,8 +73,10 @@ NODE06 — переосмысленный движок концептов, из 
 Первый публичный результат: два независимых сайта входят в один граф со своих
 приветствий; публикация на A видна по ссылке на B и hosted-версии, один голос
 не дублируется между сайтами. Оба способа встраивания работают на реальном Free.
-Социальная геометрия остаётся обязательной целью движка, поставляется после
-надёжного сохранения/объяснения raw событий и массы.
+Социальная геометрия v1 теперь реализована поверх сохранённых событий и T1:
+нормированные пользовательские координаты, подписки и противоположные пары
+для блокировок. Контракт: SOCIAL-GEOMETRY-V1; исходный код и production-публикация
+проверяются отдельно.
 
 ## 2. Проверенная исходная точка
 
@@ -519,17 +522,19 @@ block/reactivate, remove trust, remove final point support, одинаковый
 
 ### Публикация вычислений
 
-Одна job фиксирует repeatable input на cutoff, считает trust→mass→geometry,
-проверяет инварианты, пишет новый run и атомарно меняет published_run_id.
-Читатель использует один run ID во всех derived полях. Error/crash оставляет
-последний хороший run с отметкой устаревания. Proposal cadence 60 секунд,
-degraded-after 5 минут; уточнить по замеру. Одновременные jobs не конкурируют.
-Проверять удаление всех derived caches и полную пересборку. Не говорить, что
-последняя реакция уже изменила карту, пока её event не вошёл в опубликованный run.
+Текущий worker примерно раз в 30 секунд под общей транзакционной блокировкой
+графа фиксирует cutoff, считает trust→mass→geometry и проверяет сохранение бюджета.
+Он добавляет неизменяемую запись influence_runs с input digest; чтение выбирает
+последний опубликованный run, а не несуществующее поле published_run_id.
+Ошибка сохраняет последнюю удачную раскладку с явным pending/unavailable.
+Дополнительные worker не записывают конкурирующие графовые транзакции.
+Порог degraded-after пока не является установленным SLA.
 
-Старый run нельзя приписывать новому тексту: response сравнивает content revision
-и при несовпадении отдаёт mass/geometry=null, calculation_pending=true. Историческая
-масса показывается отдельно со своей версией, никогда как поддержка нового смысла.
+Читатель сравнивает cutoff, активные аккаунты и pin текста. Чужая версия не
+получает старые координаты. Последние удачные координаты того же текста могут
+оставаться видимыми с pending до пересчёта; свежая масса при этом не выдумывается.
+Пакеты карты используют один snapshot ID, не смешивают разные runs и явно
+сообщают об отсутствующих точках вместо тихой частичной замены раскладки.
 
 ## 9. Шесть координат и настоящий социальный движок
 
@@ -539,35 +544,18 @@ cyan/red, magenta/green, yellow/blue. У текущего `relativeAxis` зна�
 и направление цветного луча требуют фиксированной таблицы и golden cases:
 не переставлять индексы неявно.
 
-**Открытая научно-продуктовая часть D05:** API не объясняет источник первых
-user coordinates и точную роль opposition. Поэтому нельзя честно вывести
-содержательную семантику шести осей только из текста текущего контракта.
+**D05 выбран владельцем 23 октября 2026:** вариант с перестановкой
+противоположных пар. Пользователь задаёт шесть положительных координат (цвет),
+подписка вносит нормированный вектор, явная блокировка — `[B,A,D,C,F,E]`.
+Обычная отписка нейтральна. Оба типа реакции делят один бюджет T1; общего
+влияния не прибавляется. Итоговые координаты — взвешенная сумма подтверждённых
+вкладов, проекция остаётся относительной. Это заменяет прежние кандидаты
+self-anchors/PCA и промежуточный вариант вычитания компонентов.
 
-Два кандидата для P07:
-
-1. Добровольные self-anchors на трёх утверждённых шкалах; координата точки —
-   нормированное взвешенное агрегирование supports, opposition отдельно даёт
-   disagreement/confidence. Проще объяснить и стабилизировать; требует осознанно
-   вернуть самоидентификацию из прежнего проекта. Названия старых полюсов не
-   переносить без решения владельца.
-2. Emergent layout из signed user×point reaction matrix: совместные реакции
-   дают сходство, затем reproducible low-rank projection. Лучше соответствует
-   идее возникающего поля, но оси не имеют готовых смысловых названий; есть
-   rotation/sign ambiguity, cold start, чувствительность к кампании голосования.
-   Нужны зафиксированный seed, alignment к прошлому run, privacy review и
-   объяснение, что близость не является диагнозом или объективной истиной.
-
-Рекомендация для первой социальной alpha: weights/mass включены,
-`geometry.coordinates=null` до принятия и проверки одного из вариантов.
-На карте допускается только явно помеченная synthetic/unresolved раскладка.
-Это этап поставки, не отмена социальной геометрии целевого движка.
-
-Для любого выбранного варианта определить: допустимый диапазон 6 чисел,
-нормализацию пары, zero/epsilon, continuity, confidence formula, минимальные
-данные, авторский seed/его отсутствие, влияние opposition, устойчивость между
-срезами и объяснимость. Хранить space_version и algorithm_version отдельно.
-Confidence не называть вероятностью истины. Низкий sample/конфликт не скрывать.
-Старый порог «закрепление с четвёртого сторонника» — вопрос, не default.
+Точный численный контракт, диапазоны, привязки к версиям, Git-перенос, API,
+начальная раскладка, границы и rollback: [SOCIAL-GEOMETRY-V1](SOCIAL-GEOMETRY-V1.md).
+Confidence и радиус по социальной массе пока не внедряются; размер сферы
+по-прежнему означает степень связности. Нулевая выборка не создаёт координаты.
 
 Golden datasets: пустой мир; один сторонник; четыре согласованных; два
 противостоящих кластера; межкластерная точка; новая isolated point; симметрия
@@ -876,7 +864,7 @@ review, не включать автоматически общий timer все
 | P04 | P01,P02 | Core + site Git import, stable ID/provenance/edge claims | Manifest validation, preview/accept, namespace collisions, fork/core dedup, missing target/SSRF/symlink/cross-source deletion rejected |
 | P05 | P02–P04,D16,D17 | Public point/field/search, create/edit/revisions/reactions/trust/events/inbox | Atomic idempotency, commit-order, bounded hub, one user vote across sites, same point in hosted/full/bridge; author ACL, edit/reaction races, durable notifications |
 | P06 | P05,D03,D16 | Pure trust/mass + shared snapshots | Conservation N incl held_pending, stale-revision gate, no site/fork mass, deterministic rebuild and last-good publish |
-| P07 | P06,D05 | Geometry prototype/approved formula | Six values, cold start, opposition/confidence, cross-site layout consistency, no false certainty |
+| P07 | P06,D05 | Opposite-pair geometry v1 | Six values, normalized profiles, support/block budget conservation, version pins and shared anonymous projection; confidence deferred |
 | P08 | P03–P07 | Общий renderer/SDK/standalone/full/local UI, semantic editor/diff/inbox | Default `s_`, full navigation, deep links/history, local CSS tokens, version-pinned word links, plain words, homonyms, old SDK compatibility, keyboard/mobile |
 | P09 | P02,P08 | Onboarding UI, docs/snippets, demo, badges/link-to-us | Nontechnical owner connects Free site; CSS preview; copy snippet has no secret; correct support/source links |
 | P10 | P06–P08 | User-concept/F–S research | ADR + fixtures; derived hierarchy не меняет raw source/authorship; optional feature off |
@@ -922,7 +910,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | D02 | Один repo/API/DB и hosted frontend Amsterdam | Выбрано направление; versions/domain topology подтвердить P01/P12 |
 | D03 | Смысл support/oppose и T1 formula | T1 v1 принят: damping 0.5, точные полубюджеты; SOCIAL-V1 |
 | D04 | Автор редактирует свои точки и ссылки | Новое требование отменяет общий create-only запрет; чужие пары/источники недоступны |
-| D05 | Social coordinates | Self anchors vs emergent layout, требуется prototype/owner review |
+| D05 | Social coordinates | Выбран opposite-pairs v1; нормировка координат, общий T1-бюджет; SOCIAL-GEOMETRY-V1 |
 | D06 | Users as mapped points | Отдельная безопасная projection, no double mass; details deferred |
 | D07 | F–S | Исследование после reliable graph, не обязательная скрытая миграция MVP |
 | D08 | Recovery/retention/moderation | Определить публичные правила до open signup |
@@ -1392,3 +1380,24 @@ Pending or older displayed texts do not inherit fresh labels. No geometry/radius
 weight formula or vote-policy change and no new migration. SOCIAL-V1 owns the
 HTTP/pin/compatibility contract. Runtime read-only checks confirmed autodeploy
 reached editor main9fc00b1 during this work; this new packet still needs review.
+
+### Opposite-pair geometry and separate setup guides — 23 October 2026
+
+Implemented source: six-coordinate/color profile, version-bound blocks, shared
+T1 point-slot budget, anonymous batch projection, hosted/full/static field
+integration and seed restoration. Links and support remain separate; blocks do
+not cast ballots. Git authority transfers both reaction pins. Contract and
+acceptance checks: SOCIAL-GEOMETRY-V1. Publication and live-site verification
+remain separate steps after owner review.
+
+Installation documentation is split into SELF-HOSTING.md (Russian, `/setup/`)
+and SELF-HOSTING-EN.md (English, `/setup/en/`). These are documentation routes,
+not language partitions of the graph. Shared field controls/links use English
+without bilingual slash labels; first-party forms keep their own existing text.
+
+Owner UI refinements in the same packet: replace verbose field support messages
+with a four-icon subscribe/block/related-post/favorite toolbar and attribution.
+Management-host actions are first-party writes; external embeds use explicit
+trusted confirmation. Acknowledged editor create/edit opens the published point
+in its hosted entrance, with validated local return paths. No draft is discarded
+on failure or an uncertain write.

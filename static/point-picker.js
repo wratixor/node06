@@ -3,6 +3,7 @@
 (() => {
   if (document.body.dataset.page !== "field" && document.body.dataset.pointPicker !== "true") return;
   const body = document.body;
+  const label = (en,ru) => document.documentElement.lang === "ru" ? ru : en;
   const idPattern = /^[a-z0-9][a-z0-9_-]{0,95}$/;
   function element(tag, text, parent) {
     const node = document.createElement(tag);
@@ -24,15 +25,15 @@
   input.type = "search";
   input.maxLength = 128;
   input.autocomplete = "off";
-  input.placeholder = "Поиск / Search";
-  input.setAttribute("aria-label", "Поиск точек / Search points");
+  input.placeholder = label("Search","Поиск");
+  input.setAttribute("aria-label", label("Search points","Поиск точек"));
   input.setAttribute("aria-controls", "point-picker");
   input.setAttribute("aria-expanded", "false");
   const submit = element("button", "", form);
   submit.id = "point-picker-open";
   submit.type = "submit";
-  submit.setAttribute("aria-label", "Найти / Search");
-  submit.title = "Найти / Search";
+  submit.setAttribute("aria-label", label("Search","Поиск"));
+  submit.title = label("Search","Поиск");
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
@@ -48,33 +49,29 @@
   panel.setAttribute("aria-labelledby", "point-picker-title");
   const heading = element("div", "", panel);
   heading.className = "picker-heading";
-  element("h2", "Результаты / Results", heading).id = "point-picker-title";
+  element("h2", label("Results","Результаты"), heading).id = "point-picker-title";
   const close = button("×", heading);
-  close.setAttribute("aria-label", "Закрыть результаты / Close results");
+  close.setAttribute("aria-label", label("Close results","Закрыть результаты"));
   const status = element("p", "", panel);
   status.id = "point-picker-status";
   status.setAttribute("role", "status");
-  const detail = element("section", "", panel);
-  detail.id = "point-picker-detail";
-  detail.hidden = true;
-  detail.tabIndex = -1;
   const results = element("ul", "", panel);
   results.id = "point-picker-results";
-  const more = button("Ещё / More", panel);
+  const more = button(label("More","Ещё"), panel);
   more.id = "point-picker-more";
   more.hidden = true;
   let transportPromise, bridge, transportConfig;
-  let generation = 0, detailGeneration = 0, debounce, cursor = null, query = "";
-  let seen = new Set(), selected = null, onSelect = null, defaultSelection = null;
+  let generation = 0, selectionGeneration = 0, debounce, cursor = null, query = "";
+  let seen = new Set(), onSelect = null, defaultSelection = null;
   const errors = {
-    POINT_NOT_FOUND: "Точка больше недоступна / Point unavailable.",
-    INVALID_SEARCH_QUERY: "Не более 8 слов / Use at most 8 words.",
-    METHOD_NOT_ALLOWED: "Сервер ещё не поддерживает этот поиск / Server update required.",
-    INVALID_CONFIG: "Проверьте настройки подключения / Check connection settings.",
-    BRIDGE_CLOSED: "Соединение закрыто. Повторите поиск / Connection closed. Retry search.",
+    POINT_NOT_FOUND: label("Point unavailable.","Точка больше недоступна."),
+    INVALID_SEARCH_QUERY: label("Use at most 8 words.","Не более 8 слов."),
+    METHOD_NOT_ALLOWED: label("Server update required.","Нужно обновить сервер."),
+    INVALID_CONFIG: label("Check connection settings.","Проверьте настройки подключения."),
+    BRIDGE_CLOSED: label("Connection closed. Retry search.","Соединение закрыто. Повторите поиск."),
   };
   function failure(error) {
-    return errors[error.message] || "Поиск недоступен. Повторите попытку / Search unavailable. Please retry.";
+    return errors[error.message] || label("Search unavailable. Please retry.","Поиск недоступен. Повторите попытку.");
   }
   async function read(url) {
     const controller = new AbortController();
@@ -98,6 +95,7 @@
             const { query: q, ...page } = params;
             return read(`/api/v1/points/search?${new URLSearchParams({ q, ...page })}`);
           }
+          if (method === "points.geometry") return read(`/api/v1/geometry?${new URLSearchParams({ids:params.point_ids.join(",")})}`);
           const suffix = method === "point.social" ? "/social-summary" : method === "point.neighbors" ? "/neighbors" : "";
           return read(`/api/v1/points/${encodeURIComponent(params.point_id)}${suffix}`);
         };
@@ -130,9 +128,10 @@
       throw error;
     }
   }
+  window.node06ReturnPath = () => transportConfig ? `/sites/${transportConfig.siteId}/` : body.dataset.searchSite ? `/sites/${body.dataset.searchSite}/` : body.dataset.fieldPath || '/';
   window.node06ManagementOrigin = () => transportConfig?.serviceOrigin || body.dataset.managementOrigin || (body.dataset.hosted === "true" && !body.dataset.searchSite ? location.origin : "");
   window.readNode06Public = (method, params) => {
-    if (!["point.read", "points.searchPage", "point.neighbors", "point.social"].includes(method))
+    if (!["point.read", "points.searchPage", "point.neighbors", "point.social", "points.geometry"].includes(method))
       return Promise.reject(new Error("METHOD_NOT_ALLOWED"));
     return request(method, params);
   };
@@ -146,77 +145,34 @@
     url.search = new URLSearchParams({ p: id, open: id });
     return url.href;
   }
-  async function showPoint(id) {
-    const current = ++detailGeneration;
-    selected = null;
-    detail.hidden = false;
-    detail.textContent = "Загрузка / Loading…";
+  async function selectTag(id) {
+    const current = ++selectionGeneration;
+    const callback = onSelect;
+    status.textContent = label("Adding tag…","Добавляем тег…");
     try {
-      const point = await request("point.read", { point_id: id });
-      if (current !== detailGeneration || panel.hidden) return;
-      selected = { id: point.id, lang: point.lang, revision_id: point.revision_id,
-        content_digest: point.content_digest, preview: point.preview, href: href(point.id) };
-      detail.replaceChildren();
-      element("h3", `${point.id} · ${point.lang}`, detail);
-      // Never insert server-provided HTML in the parent page.
-      element("p", point.body ?? point.preview, detail).className = "picker-body";
-      const actions = element("div", "", detail);
-      actions.className = "picker-actions";
-      const open = element("a", "Открыть / Open", actions);
-      open.href = selected.href;
-      if (transportConfig) { open.target = "_blank"; open.rel = "noopener"; }
-      const community = element("a", "Поддержка / Versions", actions);
-      const communityUrl = new URL("/community/", transportConfig?.serviceOrigin || body.dataset.managementOrigin || location.origin);
-      communityUrl.search = new URLSearchParams({ p: point.id });
-      community.href = communityUrl.href; community.target = "_blank"; community.rel = "noopener noreferrer";
-      const related = element("a", "Добавить связанную точку / Add related point", actions);
-      const relatedUrl = new URL("/editor/", transportConfig?.serviceOrigin || body.dataset.managementOrigin || location.origin);
-      relatedUrl.search = new URLSearchParams({ from: point.id });
-      related.href = relatedUrl.href; related.target = "_blank"; related.rel = "noopener noreferrer";
-      if (window.renderNode06Social) {
-        const social = element("section", "", detail);
-        window.renderNode06Social(social, point.id, selected);
-      }
-      const address = element("input", "", detail);
-      address.value = selected.href;
-      address.readOnly = true;
-      address.setAttribute("aria-label", "Адрес точки / Point address");
-      button("Копировать адрес / Copy address", actions).addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(address.value);
-          status.textContent = "Адрес скопирован / Address copied.";
-        } catch {
-          address.focus(); address.select();
-          status.textContent = "Скопируйте выделенный адрес / Copy the selected address.";
-        }
-      });
-      if (onSelect) button("Выбрать / Select", actions).addEventListener("click", () => {
-        if (!selected) return;
-        const value = { ...selected };
-        const callback = onSelect;
-        closePanel();
-        callback(value);
-      });
-      panel.scrollTop = 0;
-      detail.focus({ preventScroll: true });
-    } catch (error) { if (current === detailGeneration && !panel.hidden) detail.textContent = failure(error); }
+      const point = await request("point.read", {point_id:id});
+      if(current!==selectionGeneration || panel.hidden || callback!==onSelect)return;
+      const pin={id:point.id,lang:point.lang,revision_id:point.revision_id,
+        content_digest:point.content_digest,preview:point.preview,href:href(point.id)};
+      closePanel();callback(pin);
+    } catch(error){if(current===selectionGeneration&&!panel.hidden)status.textContent=failure(error);}
   }
   async function search(append = false) {
     clearTimeout(debounce);
     const value = input.value.trim();
     const current = ++generation;
     if (!append) {
-      ++detailGeneration; selected = null; detail.hidden = true;
+      ++selectionGeneration;
       results.replaceChildren(); seen = new Set(); cursor = null; query = value;
     }
     more.hidden = true;
     if (!value) {
-      if (onSelect) { openPanel(); status.textContent = "Введите слово / Enter a word."; }
+      if (onSelect) { openPanel(); status.textContent = label("Enter a word.","Введите слово."); }
       else closePanel();
       input.focus(); return;
     }
     openPanel();
-    status.textContent = "Поиск / Searching…";
+    status.textContent = label("Searching…","Поиск…");
     try {
       const page = await request("points.searchPage", { query, after: append ? cursor : "", limit: 10 });
       if (current !== generation || panel.hidden) return;
@@ -224,14 +180,17 @@
         if (!idPattern.test(point.id) || seen.has(point.id) || seen.size >= 50) continue;
         seen.add(point.id);
         const item = element("li", "", results);
-        const select = button(`${point.id} · ${point.lang}`, item);
-        select.addEventListener("click", () => showPoint(point.id));
-        element("p", point.preview, item);
+        item.dataset.pointId=point.id;
+        const result=element(onSelect?"button":"a","",item);
+        element("span",point.preview||point.id,result);
+        if(onSelect){result.type="button";result.title=label("Add as tag","Добавить как тег");result.addEventListener("click",()=>selectTag(point.id));}
+        else{result.href=href(point.id);result.title=label("Open article","Открыть статью");if(transportConfig){result.target="_blank";result.rel="noopener noreferrer";}}
+
       }
       cursor = page.next_cursor;
       more.hidden = !cursor || seen.size >= 50;
       status.textContent = seen.size ? `${seen.size} · ${cursor && seen.size >= 50
-        ? "Уточните запрос / Refine the query" : "Найдено / Found"}` : "Ничего не найдено / No matches.";
+        ? label("Refine the query","Уточните запрос") : label("Found","Найдено")}` : label("No matches.","Ничего не найдено.");
     } catch (error) {
       if (current === generation && !panel.hidden) {
         status.textContent = failure(error);
@@ -257,7 +216,7 @@
   function closePanel(focus = false) {
     panel.hidden = true;
     input.setAttribute("aria-expanded", "false");
-    ++generation; ++detailGeneration;
+    ++generation; ++selectionGeneration;
     clearTimeout(debounce); onSelect = defaultSelection;
     if (focus) input.focus();
   }
@@ -268,10 +227,10 @@
   window.openNode06Picker = (options = {}) => {
     onSelect = typeof options.onSelect === "function" ? options.onSelect : defaultSelection;
     // Details must be re-read for every editor selection.
-    ++detailGeneration; selected = null; detail.hidden = true;
+    ++selectionGeneration;
     openPanel(); input.focus(); form.scrollIntoView({ block: "start", behavior: "instant" }); positionPanel();
     if (input.value.trim()) search();
-    else status.textContent = "Введите слово / Enter a word.";
+    else status.textContent = label("Enter a word.","Введите слово.");
   };
   close.addEventListener("click", () => closePanel(true));
   document.addEventListener("keydown", event => {
@@ -287,11 +246,11 @@
   });
   form.addEventListener("submit", event => { event.preventDefault(); search(); });
   input.addEventListener("input", () => {
-    ++generation; ++detailGeneration; selected = null; detail.hidden = true; more.hidden = true;
+    ++generation; ++selectionGeneration; more.hidden = true;
     clearTimeout(debounce);
     if (!input.value.trim()) {
       results.replaceChildren();
-      if (onSelect) { openPanel(); status.textContent = "Введите слово / Enter a word."; }
+      if (onSelect) { openPanel(); status.textContent = label("Enter a word.","Введите слово."); }
       else { closePanel(); status.textContent = ""; }
       return;
     }
@@ -303,7 +262,7 @@
   });
   input.addEventListener("keydown", event => {
     if (event.key === "ArrowDown" && !panel.hidden) {
-      const first = results.querySelector("button");
+      const first = results.querySelector("a,button");
       if (first) { event.preventDefault(); event.stopPropagation(); first.focus(); }
     }
   });

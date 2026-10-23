@@ -425,3 +425,23 @@ favorite_points = Table(
     Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
     Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), primary_key=True),
 )
+
+
+user_geometry = Table(
+    "user_geometry",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("coordinates", JSON, nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+point_blocks = Table(
+    "point_blocks",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), primary_key=True),
+    Column("revision_id", ForeignKey("point_revisions.id", ondelete="RESTRICT"), nullable=True),
+    Column("content_digest", String(64), nullable=False),
+    Column("static_body", Text, nullable=True),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+Index("ix_point_blocks_point", point_blocks.c.point_id)

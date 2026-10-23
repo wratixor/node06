@@ -17,6 +17,17 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
   try {
     const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
+    async function waitGeometry(pid,color){
+      const deadline=Date.now()+45000;
+      while(Date.now()<deadline){
+        const response=await page.request.get(base+'/api/v1/geometry?'+new URLSearchParams({ids:pid}));
+        assert.equal(response.status(),200);
+        const data=await response.json();
+        if(!data.pending&&data.items[0]?.color===color)return;
+        await page.waitForTimeout(500);
+      }
+      throw new Error('Geometry snapshot did not converge: '+pid+' '+color);
+    }
     const errors = [];
     const embedCookies = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -83,8 +94,8 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#point-body').evaluate(input => input.setSelectionRange(0, input.value.length));
     await page.locator('#link-word').click();
     await page.locator('#point-picker-query').fill('skills-ru');
-    await page.getByRole('button', { name: 'skills-ru · ru', exact: true }).click();
-    await page.getByRole('button', { name: 'Выбрать / Select', exact: true }).click();
+    await page.locator('#point-picker-results [data-point-id=skills-ru] button').click();
+    await page.waitForFunction(()=>document.querySelector('#point-body').value.includes('md://point/skills-ru'));
     assert.equal(await page.locator('#point-body').inputValue(), '[воля](md://point/skills-ru)');
     assert.equal(await page.locator('#point-picker-query').evaluate(e=>getComputedStyle(e).borderRadius), '0px');
     assert.equal(await page.locator('#tag-search .point-search').count(), 1);
@@ -101,7 +112,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(() => !document.querySelector('#publish').disabled);
     assert((await page.locator('#editor-status').textContent()).includes('Текст сохранён'));
     await page.locator('#publish').click();
-    await page.locator('#open-point').waitFor({ state: 'visible' });
+    await page.waitForURL(url=>url.pathname==='/'&&url.searchParams.has('open'));
     const authoredId = new URL(page.url()).searchParams.get('p');
     assert(/^p_[0-9a-f]{32}$/.test(authoredId));
     assert.equal((await (await page.request.get(base+'/api/v1/points/'+authoredId)).json()).lang,'und');
@@ -112,8 +123,8 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert(graph.find(point => point.id === 'skills-ru').links.includes(authoredId));
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Editor fits mobile');
     await page.screenshot({ path: '/tmp/node06-editor-mobile.png', fullPage: true });
-    await page.reload();
-    await page.locator('#editor-form').waitFor({ state: 'visible' });
+    await page.goto(base+'/editor/?p='+authoredId);
+    await page.locator('#editor-form').waitFor({state:'visible'});
     const authorSession = await (await page.request.get(base + '/api/v1/me')).json();
     const pin = await (await page.request.get(base + '/api/v1/points/skills-ru')).json();
     assert.equal((await page.request.patch(base + '/api/v1/points/' + authoredId, {
@@ -131,8 +142,10 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#editor-form').waitFor({state:'visible'});
     await page.locator('#point-body').fill('Edited without a language selector');
     await page.locator('#publish').click();
-    await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.startsWith('Опубликовано'));
+    await page.waitForURL(url=>url.pathname==='/'&&url.searchParams.get('open')===authoredId);
     assert.equal((await (await page.request.get(base+'/api/v1/points/'+authoredId)).json()).lang,'en');
+    await page.goto(base+'/editor/?p='+authoredId);
+    await page.locator('#editor-form').waitFor({state:'visible'});
     await page.locator('#point-body').fill('Unsaved after metadata-preserving edit');
 
     page.once('dialog', dialog => dialog.accept());
@@ -255,10 +268,9 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     // The full iframe uses its public bridge endpoint, never embed /api.
     await frame.locator('#point-picker-open').click();
     await frame.locator('#point-picker-query').fill('skill');
-    await frame.locator('#point-picker-results button').first().waitFor();
-    await frame.getByRole('button', { name: /^skills-ru ·/ }).click();
-    await frame.locator('#point-picker-detail a').first().waitFor();
-    assert((await frame.locator('#point-picker-detail a').first().getAttribute('href')).includes('/embed/v1/'));
+    await frame.locator('#point-picker-results a').first().waitFor();
+    assert((await frame.locator('#point-picker-results a').first().getAttribute('href')).includes('/embed/v1/'));
+    assert.equal(await frame.locator('#point-picker-detail').count(),0);
     await frame.locator('#point-picker-query').press('Escape');
     assert.equal(await frame.locator('#point-picker').isVisible(), false);
     assert.equal(await frame.locator('#point-panel').isVisible(), false);
@@ -321,10 +333,9 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.evaluate(() => openNode06Picker({ onSelect: point => { window.pickedPoint = point; } }));
     await page.locator('#point-picker-query').fill(active);
     await page.locator('#point-picker-results button').first().click();
-    await page.locator('#point-picker-detail a').first().waitFor();
-    assert((await page.locator('.picker-body').textContent()).includes('<script>'));
+    await page.waitForFunction(()=>Boolean(window.pickedPoint));
+    assert.equal(await page.locator('#point-picker-detail').count(),0);
     assert.equal(await page.evaluate(() => window.stolen), undefined);
-    await page.getByRole('button', { name: 'Выбрать / Select', exact: true }).click();
     const picked = await page.evaluate(() => window.pickedPoint);
     assert.equal(picked.id, active); assert(picked.revision_id.startsWith('v_'));
     assert.equal(new URL(picked.href).searchParams.get('p'), active);
@@ -343,20 +354,20 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     const slow = page.waitForRequest(request => request.url().includes('q=zzslow'));
     await page.locator('#point-picker-query').fill('zzslow'); await slow;
     await page.locator('#point-picker-query').fill('skill');
-    await page.getByRole('button', { name: /^skills-ru ·/ }).waitFor();
+    await page.locator('#point-picker-results [data-point-id=skills-ru] a').waitFor();
     await page.waitForTimeout(1300);
-    assert.equal(await page.getByRole('button', { name: /^stale ·/ }).count(), 0);
+    assert.equal(await page.locator('#point-picker-results [data-point-id=stale] a').count(), 0);
     await page.locator('#point-picker-query').fill('zzfail');
     await page.waitForFunction(() => document.querySelector('#point-picker-status').textContent.includes('Search unavailable'));
     assert.equal(await page.locator('#point-picker-query').inputValue(), 'zzfail');
     await page.locator('#point-picker-query').fill('skill');
-    await page.getByRole('button', { name: /^skills-ru ·/ }).waitFor();
+    await page.locator('#point-picker-results [data-point-id=skills-ru] a').waitFor();
     if (await page.locator('#point-picker-more').isVisible()) {
       const before = await page.locator('#point-picker-results li').count();
       await page.locator('#point-picker-more').click();
       await page.waitForFunction(before => document.querySelectorAll('#point-picker-results li').length > before, before);
     }
-    await page.getByRole('button', { name: 'Закрыть результаты / Close results', exact: true }).click();
+    await page.getByRole('button', { name: 'Close results', exact: true }).click();
     // Authenticated social actions stay first-party; a separate fixture point
     // keeps earlier editor tests and the site's source ownership independent.
     const socialSession = await (await page.request.get(base + '/api/v1/me')).json();
@@ -390,16 +401,46 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       await page.waitForTimeout(1000);
     }
     assert((await page.locator('#inbox').textContent()).includes('proposal-adopted'), 'Background outbox delivers without operator commands');
+    await page.locator('#my-color summary').click();
+    await page.locator('#color-r').fill('220');
+    await page.locator('#color-g').fill('64');
+    await page.locator('#color-b').fill('180');
+    await page.locator('#color-form button').click();
+    await page.waitForFunction(()=>document.querySelector('#community-status').textContent.includes('Цвет сохранён'));
+    assert.equal((await (await page.request.get(base+'/api/v1/me/geometry')).json()).color,'#db40b3');
+    await page.screenshot({path:'/tmp/node06-color-mobile.png',fullPage:true});
+    await waitGeometry(socialPoint,'#db40b3');
     await page.goto(base+'/?p='+socialPoint+'&open='+socialPoint);
-    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Current-version influence: 0.5'));
-    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('You support the current version'));
-    assert.equal(await page.locator('#point-panel-body .point-social').getAttribute('data-point-id'),socialPoint);
-    const manageHref=await page.locator('#point-panel-body .point-social a').getAttribute('href');
-    assert.equal(new URL(manageHref).searchParams.get('p'),socialPoint);
-    assert.equal(new URL(manageHref).origin,base);
-    assert.equal(await page.locator('#point-panel-body .point-social script').count(),0);
-    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-    await page.screenshot({path:'/tmp/node06-field-social-mobile.png',fullPage:true});
+    const actions=page.locator('#point-panel-body .point-actions');
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='true');
+    assert.equal(await actions.locator('svg').count(),4);
+    assert.equal(await page.locator('#point-panel-body .point-social h2').count(),0);
+    assert((await page.locator('#point-panel-body .point-author').textContent()).includes(socialSession.handle));
+    assert.equal(await page.locator('#point-panel-body .point-action-status').isVisible(),false);
+    const favorite=actions.locator('[data-action=favorite]');
+    await page.route(base+'/api/v1/me/favorites/'+socialPoint,async route=>{
+      assert.equal((await route.fetch()).status(),200);await route.abort();
+    },{times:1});
+    await favorite.click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-action-status')?.textContent.includes('not confirmed'));
+    await favorite.click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=favorite]')?.getAttribute('aria-pressed')==='true');
+    await favorite.click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=favorite]')?.getAttribute('aria-pressed')==='false');
+    await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.color==='#db40b3',socialPoint,{timeout:45000});
+    assert((await page.locator('#point-panel-body > .eyebrow').textContent()).includes('SOCIAL GEOMETRY'));
+    await page.screenshot({path:'/tmp/node06-colored-field-mobile.png',fullPage:true});
+    await actions.locator('[data-action=block]').click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=block]')?.getAttribute('aria-pressed')==='true');
+    assert.equal(await actions.locator('[data-action=support]').getAttribute('aria-pressed'),'false');
+    await waitGeometry(socialPoint,'#24bf4c');
+    await page.locator('.field-geometry-status button').click();
+    await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.color==='#24bf4c',socialPoint);
+    await actions.locator('[data-action=block]').click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=block]')?.getAttribute('aria-pressed')==='false');
+    await waitGeometry(socialPoint,null);
+    await page.locator('.field-geometry-status button').click();
+    await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.coordinateSource==='display-only',socialPoint);
 
     // Late summaries cannot replace another point, and unavailable data is not zero.
     let started, finished;
@@ -417,19 +458,18 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await slowFinished; await page.waitForTimeout(150);
     assert.equal(await page.locator('#point-panel-body .point-social').getAttribute('data-point-id'),'skills-en');
     await page.route(base+'/api/v1/points/skills-en/social-summary',async route=>{
-      const response=await route.fetch(), value=await response.json();
-      value.content_digest='0'.repeat(64); await route.fulfill({json:value});
+      const response=await route.fetch(),value=await response.json();value.content_digest='0'.repeat(64);await route.fulfill({json:value});
     },{times:1});
-    await page.locator('#point-panel-body .point-social button').click();
-    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Server text changed'));
-    assert(!(await page.locator('#point-panel-body .point-social').innerText()).includes('Current-version influence:'));
+    await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-action-status')?.textContent.includes('Text changed'));
+    assert.equal(await page.locator('#point-panel-body [data-action=support]').isDisabled(),true);
     await page.route(base+'/api/v1/points/skills-en/social-summary',route=>route.fulfill({status:400,json:{code:'METHOD_NOT_ALLOWED'}}),{times:1});
-    await page.locator('#point-panel-body .point-social button').click();
-    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Server update required'));
+    await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-action-status')?.textContent.includes('Actions unavailable'));
     assert(await page.locator('#point-panel-body .point-text').isVisible());
     await page.route(base+'/api/v1/me/subscriptions/skills-en',route=>route.fulfill({status:503,json:{code:'UNAVAILABLE'}}),{times:1});
-    await page.locator('#point-panel-body .point-social button').click();
-    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Personal support unavailable'));
+    await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-action-status')?.textContent.includes('Actions unavailable'));
     await page.goto(base + '/community/?p=skills-ru');
     await page.waitForFunction(() => !document.querySelector('#choose-point').disabled);
     assert.equal(await page.locator('#proposal-form').isVisible(), false, 'Git point proposals are protected');
@@ -439,26 +479,54 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await related.waitFor();
     const relatedHref = await related.getAttribute('href');
     assert.equal(new URL(relatedHref).searchParams.get('from'), 'skills-ru');
-    await page.goto(relatedHref);
-    await page.locator('#tag-tools').waitFor({state:'visible'});
-    await page.waitForFunction(()=>document.querySelector('#editor-form').dataset.ready==='true');
-    assert.equal(await page.locator('#favorite-tags button').count(), 0, 'The fixture owner must not see another account favorites');
-    await page.getByRole('button', {name:'☆ Сохранить тег',exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.includes('Тег сохранён'));
-    await page.reload();
-    await page.waitForFunction(()=>document.querySelector('#favorite-tags button'));
-    assert((await page.locator('#point-links').innerText()).includes('Навык'));
-    assert((await page.locator('#favorite-tags').innerText()).includes('Навык'));
-    await page.getByRole('button',{name:'Убрать связь',exact:true}).click();
-    await page.locator('#favorite-tags button').first().click();
-    await page.waitForFunction(()=>document.querySelectorAll('#point-links li').length === 1);
-    await page.locator('#point-body').fill('A related point from the current meaning');
-    await page.locator('#publish').click();
-    await page.locator('#open-point').waitFor({state:'visible'});
+    assert.equal(new URL(relatedHref).searchParams.get('return_to'),'/');
+    const beforeEditor=page.url();
+    await related.click();
+    const editorFrame=page.frameLocator('#point-editor-overlay iframe');
+    await editorFrame.locator('#editor-form').waitFor({state:'visible'});
+    await editorFrame.locator('#point-body').fill('Unsaved overlay draft');
+    const keepDraft=page.waitForEvent('dialog').then(dialog=>dialog.dismiss());
+    await page.locator('#point-editor-overlay .editor-overlay-heading button').click();
+    await keepDraft;
+    assert.equal(await editorFrame.locator('#point-body').inputValue(),'Unsaved overlay draft');
+    const discardDraft=page.waitForEvent('dialog').then(dialog=>dialog.accept());
+    await page.locator('#point-editor-overlay .editor-overlay-heading button').click();
+    await discardDraft;
+    await page.locator('#point-editor-overlay').waitFor({state:'detached'});
+    assert.equal(page.url(),beforeEditor,'Closing editor preserves map URL');
+    await related.click();
+    await editorFrame.locator('#tag-tools').waitFor({state:'visible'});
+    await page.frames().find(f=>f.url().includes("editor_channel=")).waitForFunction(()=>document.querySelector('#editor-form').dataset.ready==='true');
+    assert.equal(await editorFrame.locator('#favorite-tags button').count(), 0, 'The fixture owner must not see another account favorites');
+    await editorFrame.getByRole('button', {name:'☆ Сохранить тег',exact:true}).click();
+    await page.frames().find(f=>f.url().includes("editor_channel=")).waitForFunction(()=>document.querySelector('#editor-status').textContent.includes('Тег сохранён'));
+    const editorDocument=page.frames().find(f=>f.url().includes("editor_channel="));
+    await Promise.all([editorDocument.waitForNavigation({waitUntil:'load'}),editorFrame.locator("body").evaluate(()=>location.reload())]);
+    await editorDocument.waitForFunction(()=>document.querySelector('#editor-form').dataset.ready==='true'&&document.querySelector('#favorite-tags button'));
+    assert((await editorFrame.locator('#point-links').innerText()).includes('Навык'));
+    assert((await editorFrame.locator('#favorite-tags').innerText()).includes('Навык'));
+    await editorFrame.getByRole('button',{name:'Убрать связь',exact:true}).click();
+    await editorFrame.locator('#favorite-tags button').first().click();
+    await page.frames().find(f=>f.url().includes("editor_channel=")).waitForFunction(()=>document.querySelectorAll('#point-links li').length === 1);
+    await editorFrame.locator('#point-body').fill('A related point from the current meaning');
+    await page.screenshot({path:'/tmp/node06-editor-overlay-mobile.png',fullPage:true});
+    await editorFrame.locator('#publish').click();
+    await page.waitForURL(url=>url.pathname==='/'&&/^p_[0-9a-f]{32}$/.test(url.searchParams.get('p')||'')&&url.searchParams.get('p')===url.searchParams.get('open'));
     const relatedId = new URL(page.url()).searchParams.get('p');
     const relatedPublished = await (await page.request.get(base+'/api/v1/points/'+relatedId)).json();
     assert(relatedPublished.links.includes('skills-ru'));
     assert.equal(relatedPublished.body,'A related point from the current meaning');
+    await page.locator('.point-create-related').click();
+    await editorFrame.locator('#editor-form[data-ready=true]').waitFor();
+    await editorFrame.locator('.editor-meta details').first().locator('summary').click();
+    await editorFrame.locator('#my-points a').filter({hasText:'A related point from the current meaning'}).click();
+    await editorFrame.locator('#title').filter({hasText:'Изменить точку'}).waitFor();
+    await editorFrame.locator('#point-body').fill('Updated through the map overlay');
+    await editorFrame.locator('#publish').click();
+    await page.locator('#point-editor-overlay').waitFor({state:'detached'});
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-text')?.textContent.includes('Updated through the map overlay'));
+    assert.equal(new URL(page.url()).searchParams.get('p'),relatedId);
+
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.screenshot({path:'/tmp/node06-editor-related-mobile.png',fullPage:true});
     await page.setViewportSize({width:1280,height:1000});
@@ -489,26 +557,25 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await searchInput.press('Enter');
     await page.waitForFunction(() => {
       const text = document.querySelector('#point-picker-status').textContent;
-      return document.querySelector('#point-picker-results button') || (text && !text.includes('Searching'));
+      return document.querySelector('#point-picker-results a') || (text && !text.includes('Searching'));
     });
-    assert(await page.locator('#point-picker-results button').count(),
-      'Static picker: ' + await page.locator('#point-picker-status').textContent());
-    await page.locator('#point-picker-results button').first().click();
-    await page.locator('#point-picker-detail a').first().waitFor();
-    const destination = new URL(await page.locator('#point-picker-detail a').first().getAttribute('href'));
-    assert((await page.locator('#point-picker-detail').boundingBox()).y < 844, 'Selected detail must be in view');
-    assert.equal(destination.origin, base);
-    assert.equal(destination.pathname, `/sites/${active}/`);
-    assert.equal(await page.locator('#point-picker-detail a').first().getAttribute('target'), '_blank');
+    assert(await page.locator('#point-picker-results a').count(),
+      'Static picker: '+await page.locator('#point-picker-status').textContent());
+    const destination=new URL(await page.locator('#point-picker-results a').first().getAttribute('href'));
+    assert.equal(destination.origin,base);assert.equal(destination.pathname,`/sites/${active}/`);
+    assert.equal(await page.locator('#point-picker-results a').first().getAttribute('target'),'_blank');
+    assert.equal(await page.locator('#point-picker-detail').count(),0);
+    assert.equal(await page.locator('#point-picker .point-social').count(),0);
+    assert.equal(await page.locator('#point-picker input').count(),0);
     const publicSocial=await page.evaluate(()=>window.readNode06Public('point.social',{point_id:'skills-ru'}));
     assert.equal(publicSocial.id,'skills-ru');
     assert.equal(publicSocial.protected,true);
-    const socialBox=page.locator('#point-picker-detail .point-social');
-    await socialBox.getByRole('link').waitFor();
-    await page.waitForFunction(()=>document.querySelector('#point-picker-detail .point-social')?.textContent.includes('Source-managed point'));
-    assert.equal(new URL(await socialBox.locator('a').getAttribute('href')).origin,base);
-    assert((await socialBox.innerText()).includes('Open account to manage support'));
-
+    const publicGeometry=await page.evaluate(()=>window.readNode06Public('points.geometry',{point_ids:['skills-ru','skills-en']}));
+    assert.equal(publicGeometry.schema,'node06-geometry/1');
+    assert.equal(publicGeometry.items.length,2);
+    assert.equal(await page.evaluate(async()=>{
+      try{await window.readNode06Public('points.geometry',{point_ids:['skills-ru','skills-ru']});return null;}catch(error){return error.message;}
+    }),'INVALID_PARAMS');
     assert(page.frames().some(frame => frame.url().startsWith(embed + '/bridge/v1/')));
     assert.equal(await page.evaluate(async embed => {
       try { await fetch(embed + '/api/v1/meta'); return true; } catch { return false; }
@@ -525,9 +592,9 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(await searchInput.isVisible(), true);
     assert.equal(await searchInput.inputValue(), 'skill', 'Escape preserves query');
     await searchInput.press('Enter');
-    await page.locator('#point-picker-results button').first().waitFor();
+    await page.locator('#point-picker-results a').first().waitFor();
     await searchInput.press('ArrowDown');
-    assert.equal(await page.locator('#point-picker-results button').first().evaluate(node => node === document.activeElement), true);
+    assert.equal(await page.locator('#point-picker-results a').first().evaluate(node => node === document.activeElement), true);
     await page.locator('main').click({ position: { x: 3, y: 3 } });
     assert.equal(await page.locator('#point-picker').isVisible(), false, 'Outside click dismisses results');
     await searchInput.fill('');

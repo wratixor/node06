@@ -17,6 +17,7 @@ from .community_ui import router as community_router
 from .config import Settings, get_settings
 from .db import Database
 from .editor_ui import router as editor_router
+from .geometry_api import router as geometry_router
 from .hosted import management_path, register_hosted, request_origin
 from .point_api import router as point_router
 from .public_points import PublicPointError
@@ -67,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(account_router)
     app.include_router(site_router)
     app.include_router(social_router)
+    app.include_router(geometry_router)
     app.include_router(community_router)
     app.include_router(author_router)
     app.include_router(editor_router)
@@ -212,6 +214,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "revision_subscriptions",
                 "revision_proposals",
                 "influence_t1",
+                "opposite_pair_geometry",
+                "point_blocks",
+                "user_coordinates",
                 "private_inbox",
                 "authored_point_history",
                 "bounded_neighbors",
