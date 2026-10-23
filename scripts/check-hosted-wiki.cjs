@@ -540,8 +540,8 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     // Explicitly permit this disposable test origin to reach its loopback fixture, not the LAN
     // from production. CSP and bridge source/origin/credential checks stay active.
     await context.grantPermissions(['local-network-access'], { origin: base });
-    await page.route(base + '/picker-parent', route => route.fulfill({
-      path: require('node:path').join(__dirname, '../dist/index.html'),
+    await page.route(base + '/picker-parent**', route => route.fulfill({
+      body: require('node:fs').readFileSync(require('node:path').join(__dirname, '../dist/index.html'),'utf8').replace('data-page="field"','data-page="field" data-field-path="/picker-parent"'),
       contentType: 'text/html',
       headers: { 'Content-Security-Policy': `default-src 'self'; connect-src 'self'; frame-src ${embed}; script-src 'self'; style-src 'self'` },
     }));
@@ -600,6 +600,89 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await searchInput.fill('');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: '/tmp/node06-search-field-mobile.png', fullPage: true });
+    // Neocities-style anonymous draft overlay: no popup on opening, exact root
+    // pin, explicit top-level review, uncertain response replay, back to static map.
+    const staticPage=await context.newPage();
+    staticPage.on('pageerror',error=>errors.push(error.message));
+    staticPage.on('request',request=>{if(request.url().startsWith(embed+'/'))embedCookies.push(request.allHeaders().then(headers=>Boolean(headers.cookie)));});
+    await context.grantPermissions(['local-network-access'],{origin:'https://garden.localhost'});
+    await staticPage.route('https://garden.localhost/**',async route=>{
+      const path=new URL(route.request().url()).pathname;
+      if(path==='/assets/connection.json')return route.fulfill({json:{embedOrigin:embed,serviceOrigin:base,siteId:active}});
+      if(path==='/full-parent')return route.fulfill({contentType:'text/html',body:`<iframe id=wiki width=380 height=800 src="${embed}/embed/v1/${active}/?p=point-ru&open=point-ru"></iframe>`,headers:{'Content-Security-Policy':`default-src 'self'; frame-src ${embed}`}});
+      if(path==='/picker-parent')return route.fulfill({
+        body:require('node:fs').readFileSync(require('node:path').join(__dirname,'../dist/index.html'),'utf8').replace('data-page="field"','data-page="field" data-field-path="/picker-parent"'),
+        contentType:'text/html',headers:{'Content-Security-Policy':`default-src 'self'; connect-src 'self'; frame-src ${embed}; script-src 'self'; style-src 'self'`}
+      });
+      if(/^\/(assets|data)\/[a-z0-9_.-]+$/.test(path))return route.fulfill({path:require('node:path').join(__dirname,'../dist',path)});
+      return route.abort();
+    });
+    await staticPage.goto('https://garden.localhost/picker-parent?p=point-ru&open=point-ru');
+    await staticPage.locator('.point-create-related').waitFor();
+    const pagesBefore=context.pages().length;
+    await staticPage.locator('.point-create-related').click();
+    const externalEditor=staticPage.frameLocator('#point-editor-overlay iframe');
+    await externalEditor.locator('#editor-form[data-ready=true]').waitFor();
+    assert.equal(context.pages().length,pagesBefore,'Opening draft must not open a new window');
+    assert((await externalEditor.locator('#point-links').textContent()).includes('Точка'));
+    await externalEditor.locator('#point-body').fill('Embedded root child <script>not executable</script>');
+    await staticPage.locator('#point-editor-overlay .editor-overlay-heading button').click();
+    await staticPage.locator('.editor-discard').waitFor();
+    await staticPage.getByRole('button',{name:'Keep editing',exact:true}).click();
+    assert.equal(await externalEditor.locator('#point-body').inputValue(),'Embedded root child <script>not executable</script>');
+    const popupPromise=staticPage.waitForEvent('popup');
+    await externalEditor.locator('#publish').click();
+    const approval=await popupPromise;
+    await approval.locator('#confirmation-publish:not([disabled])').waitFor();
+    assert((await approval.locator('#confirmation-links').textContent()).includes('point-ru'));
+    assert.equal(await approval.locator('#confirmation-body').textContent(),'Embedded root child <script>not executable</script>');
+    assert.equal(await approval.locator('#confirmation-body script').count(),0);
+    const fixedDraft=await approval.locator('#confirmation-body').textContent();
+    // Wrong source, even the registered parent origin, cannot replace the draft.
+    await approval.evaluate(()=>window.dispatchEvent(new MessageEvent('message',{origin:location.origin,data:{protocol:'node06-publish/1',kind:'draft',payload:{body:'spoofed'}}})));
+    assert.equal(await approval.locator('#confirmation-body').textContent(),fixedDraft);
+    let approvalLost=true;
+    await approval.route(base+`/editor/confirm/${active}/`,async route=>{
+      if(approvalLost){approvalLost=false;await route.fetch();await route.abort('failed');}
+      else await route.continue();
+    });
+    await approval.locator('#confirmation-publish').click();
+    await approval.waitForFunction(()=>document.querySelector('#confirmation-status').textContent.includes('Ответ не получен'));
+    assert.equal(await externalEditor.locator('#point-body').getAttribute('readonly'),'');
+    await approval.locator('#confirmation-publish').click();
+    await staticPage.waitForURL(url=>url.pathname==='/picker-parent'&&/^p_[0-9a-f]{32}$/.test(url.searchParams.get('p')||''));
+    const embeddedId=new URL(staticPage.url()).searchParams.get('p');
+    await staticPage.waitForFunction(()=>document.querySelector('#point-panel-body .point-text')?.textContent.includes('Embedded root child'));
+    assert.equal(await staticPage.locator('#point-panel-body .point-text script').count(),0);
+    const publishedRootChild=await (await page.request.get(base+'/api/v1/points/'+embeddedId)).json();
+    assert.deepEqual(publishedRootChild.declared_links,['point-ru']);
+    await staticPage.screenshot({path:'/tmp/node06-embedded-published-mobile.png',fullPage:true});
+    await staticPage.goto('https://garden.localhost/full-parent');
+    const fullWiki=staticPage.frameLocator('#wiki');
+    await fullWiki.locator('.point-create-related').click();
+    const nestedEditor=fullWiki.frameLocator('#point-editor-overlay iframe');
+    await nestedEditor.locator('#editor-form[data-ready=true]').waitFor();
+    await nestedEditor.locator('#point-body').fill('Nested draft');
+    await fullWiki.locator('#point-editor-overlay .editor-overlay-heading button').click();
+    await fullWiki.getByRole('button',{name:'Discard draft',exact:true}).click();
+    await fullWiki.locator('#point-editor-overlay').waitFor({state:'detached'});
+    // Compact profile panels keep unrelated lists collapsed and unsubscribe direct.
+    await page.goto(base+'/community/');
+    await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
+    assert.equal(await page.locator('[data-profile-panel]:visible').count(),1);
+    await page.locator('[data-tab=blocks]').click();
+    assert.equal(await page.locator('[data-profile-panel=blocks]').isVisible(),true);
+    assert.equal(await page.locator('[data-profile-panel=subscriptions]').isVisible(),false);
+    await page.locator('[data-tab=favorites]').click();
+    assert.equal(await page.locator('[data-profile-panel=favorites]').isVisible(),true);
+    await page.locator('#profile-query').fill('no-such-favorite');
+    assert.equal(await page.locator('#profile-favorites li:visible').count(),0);
+    await page.locator('#profile-query').fill('');
+    await page.locator('[data-tab=favorites]').focus();
+    await page.keyboard.press('Home');
+    assert.equal(await page.locator('[data-tab=points]').getAttribute('aria-selected'),'true');
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:'/tmp/node06-compact-profile-mobile.png',fullPage:true});
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);

@@ -12,6 +12,7 @@ class AuthBodyLimit:
         if scope["type"] != "http" or not scope["path"].startswith(
             (
                 "/api/v1/auth/",
+                "/editor/confirm/",
                 "/api/v1/sites",
                 "/api/v1/points",
                 "/api/v1/proposals",

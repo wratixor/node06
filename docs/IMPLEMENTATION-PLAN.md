@@ -1401,3 +1401,19 @@ Management-host actions are first-party writes; external embeds use explicit
 trusted confirmation. Acknowledged editor create/edit opens the published point
 in its hosted entrance, with validated local return paths. No draft is discarded
 on failure or an uncertain write.
+
+
+### Embedded drafting and compact profile — 23 October 2026
+
+Implemented source packet: anonymous drafts over Neocities/full-frame maps,
+explicit trusted top-level confirmation and return to the original point shell.
+Static requested points are hydrated through the read bridge, so a newly created
+post does not need a static rebuild. Migration0013 binds publication retries to
+actor/site/content. First-party profile lists use compact tabs with direct
+remove actions. Contract: [EMBEDDED-DRAFTS-V1](EMBEDDED-DRAFTS-V1.md).
+
+Scoped authenticated embed grants, external own-point editing/favorites,
+self-service Git source proof/preview/accept, semantic/diff UI refinement, devlogs
+and remote profile/subscription sync remain subsequent packets. This creation
+flow intentionally leaves public bridge read-only and account pages unframeable.
+Publication requires normal owner review/main deployment and migration0013.

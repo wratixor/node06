@@ -45,3 +45,12 @@ Build the frontend, run online `alembic upgrade head` in the service environment
 [Deployment and rollback](https://github.com/wratixor/node06/blob/main/docs/DEPLOYMENT-HANDOFF.md)
 
 On the Amsterdam server, use the existing `geno-dice-deploy` scripts and local configuration. Automatic deployment tracks accepted `main` commits. After an update, check health, readiness, metadata, sign-in and reading from the real site. A successful build does not prove a successful production deployment.
+
+## Editor over the map
+
+On a connected static copy, a new related post opens over the map. Text and
+links stay in the draft; publishing opens the trusted wiki window for login and
+explicit confirmation. After success, the point opens on the original site.
+Third-party cookies are unnecessary. If the browser blocks the confirmation
+window, allow it and retry: the draft stays on screen. Editing your existing
+points and using account favorite tags remain available in the hosted editor.

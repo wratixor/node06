@@ -41,7 +41,7 @@ class EditContent(Content):
     expected_revision_id: RevisionID
 
 
-def write(request, payload, point_id=None):
+def write(request, payload, point_id=None, *, compose_site=None):
     public = public_service(request, set())
     auth, token = authenticated_mutation(request)
     actor = auth.authenticate(token)
@@ -55,6 +55,7 @@ def write(request, payload, point_id=None):
         key,
         payload.model_dump(),
         point_id,
+        compose_site=compose_site,
     )
 
 

@@ -128,6 +128,13 @@
       throw error;
     }
   }
+  window.node06EditorConnection = async () => {
+    await transport();
+    return transportConfig || (body.dataset.searchSite ? {
+      siteId:body.dataset.searchSite, embedOrigin:location.origin,
+      serviceOrigin:body.dataset.managementOrigin,
+    } : null);
+  };
   window.node06ReturnPath = () => transportConfig ? `/sites/${transportConfig.siteId}/` : body.dataset.searchSite ? `/sites/${body.dataset.searchSite}/` : body.dataset.fieldPath || '/';
   window.node06ManagementOrigin = () => transportConfig?.serviceOrigin || body.dataset.managementOrigin || (body.dataset.hosted === "true" && !body.dataset.searchSite ? location.origin : "");
   window.readNode06Public = (method, params) => {

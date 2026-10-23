@@ -249,3 +249,14 @@ Closing checks dirty/uncertain state inside the editor; Cancel preserves it.
 Closing during an in-flight publication is deferred. Standalone editor URLs still
 work and navigate directly after success. A non-responsive editor requires an
 explicit discard confirmation before the parent can remove it.
+
+
+## External draft modal and compact profile — 23 October 2026
+
+Static and full-frame maps now use an anonymous embedded draft with explicit
+trusted top-level publication review. This replaces the external new-tab editor
+link for new related points, preserves the root pin and returns the result to the
+original map. Management-host editing stays in its same-origin modal. Account
+favorites/own-point editing remain first-party. Compact profile lists are grouped
+in tabs. Exact boundaries, replay/migration and acceptance:
+[EMBEDDED-DRAFTS-V1](EMBEDDED-DRAFTS-V1.md). This is not broad embed authentication.

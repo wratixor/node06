@@ -14,6 +14,7 @@ from .author_api import router as author_router
 from .authoring import AuthoringError
 from .bridge import register_bridge
 from .community_ui import router as community_router
+from .compose_ui import router as compose_router
 from .config import Settings, get_settings
 from .db import Database
 from .editor_ui import router as editor_router
@@ -72,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(community_router)
     app.include_router(author_router)
     app.include_router(editor_router)
+    app.include_router(compose_router)
     app.include_router(point_router)
     app.include_router(site_ui_router)
 
@@ -158,7 +160,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         if (
-            request.url.path.startswith(("/api/v1/auth/", "/api/v1/me"))
+            request.url.path.startswith(("/api/v1/auth/", "/api/v1/me", "/editor/confirm/"))
             or request.url.path.endswith("/manage")
             or request.url.path == "/api/v1/ui-config"
             or (
@@ -218,6 +220,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "point_blocks",
                 "user_coordinates",
                 "private_inbox",
+                "embedded_draft_confirmation",
+                "compact_profile",
                 "authored_point_history",
                 "bounded_neighbors",
                 "account_sessions",
