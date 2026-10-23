@@ -18,29 +18,23 @@ PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 · <a href="/account/" target="_blank" rel="noopener">Аккаунт</a>
 · <a href="/sites/">Мои сайты</a> · <a href="/community/">Подписки</a></nav></header>
 <main><h1 id="title">Новая точка</h1><p id="editor-status" role="status">Проверяем вход…</p>
-<p id="related-context" hidden></p>
-<p>Слова остаются словами, пока вы сами не выберете для них смысловую ссылку.
-Связь не означает поддержку. Язык — свойство текста точки.</p>
 <button id="retry-login" type="button" hidden>Продолжить после входа</button>
-
-<form id="editor-form" hidden>
-<label>Язык текста (ru, en, und…)<input id="point-lang" value="und" maxlength="35" required></label>
-<label>Текст<textarea id="point-body" maxlength="8192" rows="14" required></textarea></label>
-</form>
-<section id="tag-tools" hidden><h2>Связанные точки / теги</h2>
-<div id="tag-search"></div>
-<button id="link-word" type="button">Связать выделенные слова / добавить связь</button>
-<p>Найдите смысл, откройте результат и нажмите «Выбрать». Выделенное слово можно
-превратить в ссылку. Для публикации нужны 1–16 связанных точек.</p>
-<h3>Выбранные</h3><ul id="point-links"></ul>
-<h3>Избранные теги</h3><p>Личный список для следующих публикаций. Это не подписка и не голос.</p>
-<ul id="favorite-tags"></ul>
-<button id="publish" type="submit" form="editor-form">Опубликовать</button></section>
-<p><a id="open-point" hidden>Открыть точку</a></p>
-<section id="history" hidden><h2>История опубликованных версий</h2><ol></ol>
-<button id="more-history" type="button" hidden>Ещё версии</button></section>
+<div class="editor-meta">
 <details><summary>Мои точки</summary><section id="my-points"><ul></ul>
 <button id="more-mine" hidden>Ещё</button></section></details>
+<details id="history" hidden><summary>История</summary><ol></ol>
+<button id="more-history" type="button" hidden>Ещё версии</button></details>
+<a id="open-point" hidden>Открыть точку</a></div>
+<section id="tag-tools" aria-label="Связи и избранное" hidden>
+<div id="tag-search"></div><ul id="point-links" aria-label="Выбранные связи"></ul>
+<div id="favorite-wrap" hidden><span class="editor-caption">Избранное</span>
+<ul id="favorite-tags"></ul></div></section>
+<form id="editor-form" hidden>
+<div class="editor-toolbar"><button id="link-word" type="button"
+title="Связать выделенные слова с точкой">Ссылка</button></div>
+<textarea id="point-body" aria-label="Текст" placeholder="Текст точки…"
+maxlength="8192" rows="14" required></textarea>
+<button id="publish" type="submit">Опубликовать</button></form>
 <noscript>Для редактора нужен JavaScript.</noscript></main></body></html>"""
 
 
@@ -71,19 +65,27 @@ def style():
         + """
 body[data-page=editor] .site-header{position:static}
 body[data-page=editor] nav{flex-wrap:wrap;gap:.7rem;align-items:center}
-body[data-page=editor] main{margin:1rem auto;max-width:960px}
-body[data-page=editor] #point-lang{max-width:160px}
-body[data-page=editor] textarea{width:100%;min-height:280px;resize:vertical;font:inherit;
-line-height:1.6}
-body[data-page=editor] #tag-tools{border:1px solid var(--line);padding:16px;margin:20px 0}
-body[data-page=editor] #tag-search .point-search{max-width:none;width:100%;margin:12px 0}
-body[data-page=editor] #point-links,body[data-page=editor] #favorite-tags{list-style:none;padding:0}
+body[data-page=editor] main{margin:1rem auto;max-width:960px;padding-top:8px}
+body[data-page=editor] h1{font-size:28px;margin:8px 0}
+#editor-status{font-size:13px;margin:4px 0;color:var(--muted)}
+.editor-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;margin:8px 0}
+.editor-meta details[open]{flex-basis:100%}
+body[data-page=editor] #tag-tools{border:1px solid var(--line);padding:10px;margin:12px 0}
+body[data-page=editor] #tag-search .point-search{max-width:none;width:100%;margin:0}
+body[data-page=editor] #point-links,body[data-page=editor] #favorite-tags{
+list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
+body[data-page=editor] #point-links:empty{display:none}
 body[data-page=editor] #point-links li,body[data-page=editor] #favorite-tags li{
-display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;
-border-bottom:1px solid var(--line)}
-body[data-page=editor] #point-links a{flex:1 1 200px}
-.point-create-related{display:inline-block;border:1px solid var(--line);padding:8px;margin:12px 0}
-
+display:inline-flex;align-items:center;border:1px solid var(--line);max-width:100%}
+body[data-page=editor] #point-links a{padding:4px 8px;overflow-wrap:anywhere}
+body[data-page=editor] #point-links button,body[data-page=editor] #favorite-tags button{
+border:0;padding:4px 7px;margin:0;min-width:28px;font-size:13px}
+#favorite-wrap{margin-top:8px}.editor-caption{font-size:12px;color:var(--muted)}
+body[data-page=editor] #editor-form{padding:10px;border:1px solid var(--line)}
+.editor-toolbar{margin-bottom:6px}.editor-toolbar button{padding:3px 9px}
+body[data-page=editor] textarea{width:100%;height:clamp(280px,45vh,460px);
+min-height:220px;resize:vertical;font:inherit;line-height:1.6;margin:0}
+body[data-page=editor] #publish{display:block;margin:8px 0 0 auto;width:auto}
 body[data-page=editor] button{max-width:100%;overflow-wrap:anywhere}
 body[data-page=editor] pre{white-space:pre-wrap;overflow-wrap:anywhere}
 body[data-page=editor] li,body[data-page=editor] summary{overflow-wrap:anywhere}

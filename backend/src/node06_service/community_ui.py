@@ -56,17 +56,12 @@ PAGE = """<!doctype html>
 </div>
 <form id="proposal-form" hidden>
 <h2>Предложить новую версию</h2>
-<p>Одно предложение на пользователя за любые 24 часа на сервере.
-Одновременно открыто одно предложение на точку. Само предложение не голосует.</p>
-<label>Язык<input id="proposal-lang" value="und" maxlength="35" required>
-</label>
+<button id="proposal-link" type="button">Ссылка</button>
+<ul id="proposal-links">
+</ul>
 <label>Новый текст<textarea id="proposal-body" maxlength="8192" rows="10" required>
 </textarea>
 </label>
-<button id="proposal-link" type="button">Связать выделенные слова / добавить связь</button>
-<p>Выберите 1–16 связанных точек.</p>
-<ul id="proposal-links">
-</ul>
 <button id="submit-proposal" type="submit">Предложить версию</button>
 </form>
 </section>

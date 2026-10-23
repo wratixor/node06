@@ -7,8 +7,8 @@ published content; writes happen only on the configured management origin.
 ## User workflow
 
 Open `/editor/` (also linked from Account and the hosted header), sign in via
-`/account/`, write text and choose its language. Language describes this point,
-not a localized site. No site registration is required. Select words and use
+`/account/`, choose links and write text. No language selection or language suffix is required
+for a user point; root IDs authored with RU/EN suffixes are just existing content. No site registration is required. Select words and use
 **Связать выделенные слова / добавить связь** to search current public points.
 Selection inserts `[words](md://point/id)` and pins that target's revision/digest.
 Without a selection it adds a declared graph connection without changing prose.
@@ -186,3 +186,28 @@ Validation: disposable PostgreSQL privacy/CSRF/replay/cap/removal tests, package
 wheel HTTPS browser workflows for saving/reusing favorites and contextual creation,
 mobile overflow and existing lost-response publication checks. This source packet
 is not a claim that production has already updated.
+
+
+### Editor order update — 23 October 2026
+
+Neither the first-party editor nor the proposal form asks for language. Newly
+authored points use the existing neutral API default, while editing/proposing
+retains existing metadata internally so ordinary text edits do not rewrite it.
+User IDs are generated independently of language; no suffix is required. Root
+IDs, imports and public API metadata stay compatible. This is UI work, not a
+localization feature or a migration.
+
+The editor places search, selected connections and favorites above the text.
+My points and published history are collapsible above these controls. Text is the
+last editing section, followed only by Publish. Proposal reference controls also
+precede the candidate textarea. The shared picker remains outside the publication
+form to avoid nested-form submission. Selection links, receipts and draft
+retention continue through the same handlers.
+
+The owner requested a minimal post form: no permanent explanatory paragraphs or
+section headings. Tags use compact chips (open, star for favorite, × for remove),
+favorites show as + buttons and disappear when empty. Tooltips/accessible names
+explain icon actions without filling the form. Search/tags precede a small Link
+toolbar, textarea and right-aligned Publish. My points/history/open link remain
+compact above the form; failures still show actionable status and preserve drafts.
+No new title field, rich-text formats or unsupported media toolbar is introduced.

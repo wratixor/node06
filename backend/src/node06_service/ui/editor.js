@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   const el = id => document.getElementById(id);
-  let pid = new URLSearchParams(location.search).get("p"), revision = null, csrf;
+  let pid = new URLSearchParams(location.search).get("p"), revision = null, csrf, language = "und";
   const from = new URLSearchParams(location.search).get("from");
   let favorites = new Map();
   let links = new Map(), receipt = null, busy = false, dirty = false, selection, historyCursor, mineCursor;
@@ -17,7 +17,7 @@
     POINT_EDIT_FORBIDDEN: "Изменять напрямую можно только свою пользовательскую точку.",
     UNDECLARED_POINT_LINK: "В тексте есть смысловая ссылка, которой нет в списке связей. Выберите её через поиск или уберите ссылку.",
     ACCOUNT_CHANGED: "Аккаунт сменился. Войдите в исходный аккаунт, чтобы завершить проверку предыдущей публикации.",
-    INVALID_INPUT: "Проверьте язык, текст и число связей (1–16).",
+    INVALID_INPUT: "Проверьте текст и число связей (1–16).",
     AUTH_RATE_LIMITED: "Слишком много запросов. Повторите позже.",
   };
   async function api(path, options = {}) {
@@ -32,7 +32,7 @@
   function failure(error) { status(errors[error.message] || "Запрос не завершён. Текст сохранён на этой странице; повторите попытку."); }
   function label(pin) {
     const text = (pin.preview || pin.id).split(/\s[—–]\s|\n/)[0].trim();
-    return text.length > 72 ? text.slice(0, 69).trimEnd() + "…" : text;
+    return text.length > 40 ? text.slice(0, 37).trimEnd() + "…" : text;
   }
   function renderLinks() {
     el("point-links").replaceChildren();
@@ -41,11 +41,14 @@
       const a = document.createElement("a");
       a.textContent = label(pin); a.title = pin.preview || pin.id; a.href = "/?" + new URLSearchParams({ p: pin.id, open: pin.id });
       a.target = "_blank"; a.rel = "noopener noreferrer"; li.append(a);
-      remove.type = "button"; remove.textContent = "Убрать связь";
+      remove.type = "button"; remove.textContent = "×";
+      remove.setAttribute("aria-label","Убрать связь"); remove.title="Убрать связь";
       remove.disabled = busy || Boolean(receipt);
       remove.addEventListener("click", () => { links.delete(pin.id); receipt = null; dirty = true; renderLinks(); });
       const star = document.createElement("button"); star.type = "button";
-      star.textContent = favorites.has(pin.id) ? "★ В избранном" : "☆ Сохранить тег";
+      star.textContent = favorites.has(pin.id) ? "★" : "☆";
+      star.setAttribute("aria-label",favorites.has(pin.id) ? "★ В избранном" : "☆ Сохранить тег");
+      star.title = favorites.has(pin.id) ? "Убрать из избранного" : "Сохранить тег";
       star.disabled = busy || Boolean(receipt);
       star.addEventListener("click", () => saveFavorite(pin.id, !favorites.has(pin.id)));
       li.append(" ", star, remove); el("point-links").append(li);
@@ -80,7 +83,8 @@
   });
   function renderFavorites() {
     el("favorite-tags").replaceChildren();
-    if (!favorites.size) { el("favorite-tags").textContent = "Сохраните часто используемые точки кнопкой ☆ у выбранной связи."; return; }
+    el("favorite-wrap").hidden = !favorites.size;
+    if (!favorites.size) return;
     for (const pin of favorites.values()) {
       const li = document.createElement("li"), add = document.createElement("button"), remove = document.createElement("button");
       add.type = remove.type = "button";
@@ -90,7 +94,7 @@
         try { const current = await api("/points/" + pin.id); selectPin(current); }
         catch(error) { failure(error); }
       });
-      remove.textContent = "Убрать из избранного"; remove.disabled = busy || Boolean(receipt);
+      remove.textContent = "×"; remove.setAttribute("aria-label","Убрать из избранного"); remove.title="Убрать из избранного"; remove.disabled = busy || Boolean(receipt);
       remove.addEventListener("click", () => saveFavorite(pin.id, false));
       li.append(add, remove); el("favorite-tags").append(li);
     }
@@ -137,13 +141,13 @@
     event.preventDefault(); if (busy) return;
     let attemptedWrite = false;
     busy = true; el("publish").disabled = true; el("link-word").disabled = true;
-    renderFavorites(); el("point-body").readOnly = true; el("point-lang").readOnly = true; renderLinks();
+    renderFavorites(); el("point-body").readOnly = true; renderLinks();
     try {
       // Refresh CSRF after login in another tab, without discarding an uncertain receipt.
       const session = await api("/me");
       csrf = session.csrf_token;
       if (receipt && receipt.actor !== session.user_id) throw new Error("ACCOUNT_CHANGED");
-      const payload = { body: el("point-body").value, lang: el("point-lang").value, links: [...links.values()].map(({id, revision_id, content_digest}) => ({id, revision_id, content_digest})) };
+      const payload = { body: el("point-body").value, lang: language, links: [...links.values()].map(({id, revision_id, content_digest}) => ({id, revision_id, content_digest})) };
       if (pid) payload.expected_revision_id = revision;
       const encoded = JSON.stringify(payload);
       if (!receipt || receipt.body !== encoded) receipt = { body: encoded, key: crypto.randomUUID(), actor: session.user_id };
@@ -151,7 +155,7 @@
       const result = await api(pid ? "/points/" + pid : "/points", { method: pid ? "PATCH" : "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf, "Idempotency-Key": receipt.key }, body: receipt.body });
       pid = result.id; revision = result.revision_id; receipt = null; dirty = false;
       window.history.replaceState(null, "", "/editor/?" + new URLSearchParams({ p: pid }));
-      el("title").textContent = "Редактирование точки"; openPoint(); status(result.changed ? "Опубликовано. Связи не добавляют поддержку." : "Изменений нет.");
+      el("title").textContent = "Изменить точку"; openPoint(); status(result.changed ? "Опубликовано." : "Изменений нет.");
       // A failed history read must not misreport a committed publication as failed.
       try { await history(true); } catch (_) { status("Опубликовано. Историю сейчас загрузить не удалось; текст сохранён."); }
     } catch (error) {
@@ -159,7 +163,7 @@
       failure(error);
       if (receipt) status("Ответ о публикации не получен. Нажмите Опубликовать ещё раз для безопасной проверки. Текст сохранён и временно защищён от изменения.");
     }
-    finally { busy = false; el("publish").disabled = false; el("link-word").disabled = Boolean(receipt); el("point-body").readOnly = Boolean(receipt); el("point-lang").readOnly = Boolean(receipt); renderLinks(); renderFavorites(); }
+    finally { busy = false; el("publish").disabled = false; el("link-word").disabled = Boolean(receipt); el("point-body").readOnly = Boolean(receipt); renderLinks(); renderFavorites(); }
   });
   el("retry-login").addEventListener("click", () => location.reload());
   (async () => {
@@ -169,23 +173,22 @@
         if (!/^p_[0-9a-f]{32}$/.test(pid)) throw new Error("POINT_EDIT_FORBIDDEN");
         const point = await api("/points/" + pid);
         if (point.source.kind !== "user" || point.source.author_user_id !== me.user_id) throw new Error("POINT_EDIT_FORBIDDEN");
-        revision = point.revision_id; el("point-body").value = point.body; el("point-lang").value = point.lang;
+        revision = point.revision_id; el("point-body").value = point.body; language = point.lang || "und";
         const revisions = await history(true), current = revisions.find(row => row.revision_id === revision);
         if (!current) throw new Error("POINT_REVISION_CHANGED");
         links = new Map(current.citations.map(pin => [pin.id, { id: pin.id, revision_id: pin.revision_id, content_digest: pin.content_digest }]));
-        renderLinks(); el("title").textContent = "Редактирование точки"; openPoint();
+        renderLinks(); el("title").textContent = "Изменить точку"; openPoint();
       }
       if (!pid && from) {
         if (!/^[a-z0-9][a-z0-9_-]{0,95}$/.test(from)) throw new Error("TARGET_NOT_PUBLIC");
         const source = await api("/points/" + from);
         links.set(source.id, {id:source.id,preview:source.preview,revision_id:source.revision_id,content_digest:source.content_digest});
-        el("related-context").hidden = false;
-        el("related-context").textContent = "Новая точка будет связана с: " + label(source);
         renderLinks();
       }
       el("editor-form").hidden = false; el("tag-tools").hidden = false; status("Вы вошли: " + me.handle);
       try { await refreshFavorites(); } catch (_) { status("Редактор готов. Избранное временно недоступно."); }
       try { await mine(); } catch (_) { status("Редактор готов. Список ваших точек временно недоступен."); }
+      el("editor-form").dataset.ready = "true";
     } catch(error) { failure(error); el("retry-login").hidden = false; }
   })();
   window.addEventListener("beforeunload", event => { if (dirty || receipt) { event.preventDefault(); } });

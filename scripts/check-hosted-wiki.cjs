@@ -75,7 +75,10 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     // First-party authoring works for an ordinary user before any site registration.
     await page.goto(base + '/editor/');
     await page.locator('#editor-form').waitFor({ state: 'visible' });
-    await page.locator('#point-lang').fill('ru');
+    assert.equal(await page.locator('#point-lang').count(),0);
+    assert.equal(await page.locator('#editor-form input').count(),0);
+    assert((await page.locator('#tag-tools').boundingBox()).y < (await page.locator('#point-body').boundingBox()).y);
+    assert(await page.evaluate(()=>document.querySelector('#editor-form').lastElementChild.id === 'publish'));
     await page.locator('#point-body').fill('воля');
     await page.locator('#point-body').evaluate(input => input.setSelectionRange(0, input.value.length));
     await page.locator('#link-word').click();
@@ -101,6 +104,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#open-point').waitFor({ state: 'visible' });
     const authoredId = new URL(page.url()).searchParams.get('p');
     assert(/^p_[0-9a-f]{32}$/.test(authoredId));
+    assert.equal((await (await page.request.get(base+'/api/v1/points/'+authoredId)).json()).lang,'und');
     assert.equal((await (await page.request.get(base + '/api/v1/me/points')).json()).items.length, 1);
     const authored = await (await page.request.get(base + '/api/v1/points/' + authoredId)).json();
     const graph = await (await page.request.get(base + '/data/points.json')).json();
@@ -122,6 +126,15 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(() => !document.querySelector('#publish').disabled);
     assert((await page.locator('#editor-status').textContent()).includes('Точка уже изменена'));
     assert.equal(await page.locator('#point-body').inputValue(), 'Unsaved local version');
+    page.once('dialog',dialog=>dialog.accept());
+    await page.reload();
+    await page.locator('#editor-form').waitFor({state:'visible'});
+    await page.locator('#point-body').fill('Edited without a language selector');
+    await page.locator('#publish').click();
+    await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.startsWith('Опубликовано'));
+    assert.equal((await (await page.request.get(base+'/api/v1/points/'+authoredId)).json()).lang,'en');
+    await page.locator('#point-body').fill('Unsaved after metadata-preserving edit');
+
     page.once('dialog', dialog => dialog.accept());
     await page.goto(base + '/sites/');
 
@@ -359,6 +372,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(() => !document.querySelector('#choose-point').disabled);
     await page.locator('#support-point').click();
     await page.waitForFunction(() => document.querySelector('#support-status').textContent.includes('основную'));
+    assert.equal(await page.locator('#proposal-lang').count(),0);
     await page.locator('#proposal-body').fill('Browser social new text <script>unsafe()</script>');
     await page.locator('#submit-proposal').click();
     await page.getByRole('button', { name: 'Голос за новую', exact: true }).waitFor();
@@ -427,7 +441,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(new URL(relatedHref).searchParams.get('from'), 'skills-ru');
     await page.goto(relatedHref);
     await page.locator('#tag-tools').waitFor({state:'visible'});
-    await page.waitForFunction(()=>document.querySelector('#favorite-tags').textContent.length > 0);
+    await page.waitForFunction(()=>document.querySelector('#editor-form').dataset.ready==='true');
     assert.equal(await page.locator('#favorite-tags button').count(), 0, 'The fixture owner must not see another account favorites');
     await page.getByRole('button', {name:'☆ Сохранить тег',exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.includes('Тег сохранён'));
