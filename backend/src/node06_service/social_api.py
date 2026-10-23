@@ -397,3 +397,12 @@ def favorites(request: Request):
             except PublicPointError:
                 items.append({"id": pid, "preview": "", "unavailable": True})
     return {"items": items}
+
+
+@router.get("/points/{point_id}/social-summary")
+def summary(point_id: PointID, request: Request, response: Response):
+    response.headers.update(PUBLIC_HEADERS)
+    from .point_api import respond
+    from .social_read import point_summary
+
+    return respond(lambda: point_summary(public_service(request, set()), point_id))

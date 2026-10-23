@@ -14,15 +14,15 @@ from .public_points import PublicPointError, PublicPoints
 from .root_import import POINT
 from .site_registry import SiteNotFoundError, SiteRegistry
 
-PAGED_METHODS = ["point.read", "points.searchPage", "point.neighbors"]
-METHODS = ["capabilities.get", "site.get", "point.get", "points.search", *PAGED_METHODS]
+CURRENT_METHODS = ["point.read", "points.searchPage", "point.neighbors", "point.social"]
+METHODS = ["capabilities.get", "site.get", "point.get", "points.search", *CURRENT_METHODS]
 # Leave room for channel/request ID and the response envelope within 256 KiB.
 MAX_RESPONSE_BYTES = 255 * 1024
 
 
 def current_read(app, method, params):
     key = "query" if method == "points.searchPage" else "point_id"
-    allowed = {key} if method == "point.read" else {key, "after", "limit"}
+    allowed = {key} if method in ("point.read", "point.social") else {key, "after", "limit"}
     if key not in params or set(params) - allowed:
         raise PublicPointError("INVALID_PARAMS", 400)
     value = params[key]
@@ -41,6 +41,10 @@ def current_read(app, method, params):
         roots=app.state.hosted_bundle.roots,
         build_revision=app.state.settings.build_revision,
     )
+    if method == "point.social":
+        from .social_read import point_summary
+
+        return point_summary(store, value)
     if method == "point.read":
         return store.get(value)
     if key == "query":
@@ -116,7 +120,7 @@ def register_bridge(app: FastAPI) -> None:
             method = params.pop("method", None)
             if method not in METHODS:
                 return error("METHOD_NOT_ALLOWED")
-            if method in PAGED_METHODS:
+            if method in CURRENT_METHODS:
                 data = current_read(app, method, params)
             elif method in ("capabilities.get", "site.get"):
                 if params:

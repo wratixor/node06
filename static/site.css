@@ -35,3 +35,7 @@ nav{flex-wrap:wrap}nav a{overflow-wrap:anywhere}.field-head>div:first-child{min-
 @media(max-width:600px){.site-header nav{width:100%;gap:12px}.point-search{max-width:none;flex-basis:100%;width:100%;min-width:0}#point-picker{width:calc(100vw - 24px);padding:12px;max-height:60vh;max-height:60dvh}}
 
 .point-create-related{display:inline-block;border:1px solid var(--line);padding:8px;margin:12px 0}
+
+.point-social{border:1px solid var(--line);padding:12px;margin:12px 0;font:14px/1.6 system-ui,sans-serif}
+.point-social h2{margin:0 0 8px}.point-social p{margin:8px 0}
+.point-social button,.point-social a{overflow-wrap:anywhere;max-width:100%}

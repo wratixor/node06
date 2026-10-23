@@ -295,10 +295,11 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <body data-page="{page_kind}" data-management-origin="{html.escape(service_origin(), quote=True)}" data-point-id="{html.escape(point_id, quote=True)}">
 <header class="site-header"><nav>{nav}</nav><span class="status">ROOT ERA / STATIC FIELD</span></header>
 <main>{body}</main>
-<footer>node06 · static root field · social layer planned · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer>
+<footer>node06 · static root field · shared social service · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer>
 <script src="{asset_url("site.js")}" defer></script>
 <script src="{asset_url("node06-client.js")}" defer></script>
 <script src="{asset_url("point-picker.js")}" defer></script>
+<script src="{asset_url("field-social.js")}" defer></script>
 </body>
 </html>'''
 
@@ -349,6 +350,10 @@ def build() -> None:
             "body": p.text,
             "html": render_markdown(p.text, set(points)),
             "origin": "root",
+            "revision_id": None,
+            "content_digest": hashlib.sha256(json.dumps({
+                "id": p.id, "lang": p.lang, "body": p.text, "links": sorted(neighbors),
+            }, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest(),
             "coordinates": coordinates[p.id],
             "coordinate_source": coordinate_source,
         })
@@ -394,8 +399,8 @@ def build() -> None:
     welcome = '''<section id="start-page" class="start-page"><div class="eyebrow">NODE06 / ROOT ERA</div><h1>NODE06</h1>
 <div class="welcome-links"><a href="https://neocities.org/site/node06" target="_blank" rel="noopener noreferrer">Neocities · профиль / profile ↗</a></div>
 <div class="welcome-grid">
-<section class="welcome-card" lang="en"><h2>Welcome to the field.</h2><p>NODE06 is an experimental graph of points. A point may be a word, a thought, a link or a longer text. The map comes first; texts are opened from inside it. The current root era is static. A social layer is planned.</p><div class="welcome-links"><a href="/?p=node06-en&open=node06-en">NODE06</a><a href="/?p=point-en&open=point-en">POINT</a><a href="/?p=field-en&open=field-en">FIELD</a><a href="/?p=root-era-en&open=root-era-en">ROOT ERA</a></div></section>
-<section class="welcome-card" lang="ru"><h2>Добро пожаловать в поле.</h2><p>NODE06 — экспериментальный граф точек. Точкой может быть слово, мысль, ссылка или длинный текст. Карта первична, тексты открываются из неё. Сейчас идёт статическая корневая эпоха. Позже появится социальный слой.</p><div class="welcome-links"><a href="/?p=node06-ru&open=node06-ru">NODE06</a><a href="/?p=point-ru&open=point-ru">ТОЧКА</a><a href="/?p=field-ru&open=field-ru">ПОЛЕ</a><a href="/?p=root-era-ru&open=root-era-ru">КОРНЕВАЯ ЭПОХА</a></div></section>
+<section class="welcome-card" lang="en"><h2>Welcome to the field.</h2><p>NODE06 is an experimental graph of points. A point may be a word, a thought, a link or a longer text. The map comes first; texts are opened from inside it. Roots are published from Git. Shared accounts, support and revision proposals use the connected service.</p><div class="welcome-links"><a href="/?p=node06-en&open=node06-en">NODE06</a><a href="/?p=point-en&open=point-en">POINT</a><a href="/?p=field-en&open=field-en">FIELD</a><a href="/?p=root-era-en&open=root-era-en">ROOT ERA</a></div></section>
+<section class="welcome-card" lang="ru"><h2>Добро пожаловать в поле.</h2><p>NODE06 — экспериментальный граф точек. Точкой может быть слово, мысль, ссылка или длинный текст. Карта первична, тексты открываются из неё. Корни публикуются из Git. Общие аккаунты, подписки и голосования работают через подключённый сервер.</p><div class="welcome-links"><a href="/?p=node06-ru&open=node06-ru">NODE06</a><a href="/?p=point-ru&open=point-ru">ТОЧКА</a><a href="/?p=field-ru&open=field-ru">ПОЛЕ</a><a href="/?p=root-era-ru&open=root-era-ru">КОРНЕВАЯ ЭПОХА</a></div></section>
 </div></section>'''
     root = welcome + '<section id="root-field" hidden>' + field_body + '</section>'
     write(DIST / "index.html", shell("NODE06", root, "en", "field"))

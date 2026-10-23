@@ -85,3 +85,10 @@ def test_public_site_read_uses_shared_site_registry() -> None:
     assert response.status_code == 200
     assert response.json()["id"] == pending.site_id
     assert response.json()["welcome_body"] == "Reader welcome"
+
+
+def test_public_social_summary_without_database_is_explicitly_unavailable():
+    response = get("/api/v1/points/skills-ru/social-summary")
+    assert response.status_code == 503
+    assert response.json()["code"] == "DATABASE_NOT_CONFIGURED"
+    assert response.headers["cache-control"] == "no-store"

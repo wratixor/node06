@@ -129,3 +129,51 @@ Still future: signed reactions/geometry, federation/profile sync, scoped embed
 writes, quotas/billing, adaptive voting duration, self-service imports, snapshot
 retention and large-scale performance qualification. Registration has no invented
 proof-of-personhood: account farming remains a product limitation of base-one T1.
+
+## Field summaries — source packet, 23 October 2026
+
+The field text panel and shared public search detail now show support/version
+state without leaving the map: current-version influence, influence held on other
+versions, open proposal and explicit weighted old/new totals. A contextual link
+opens first-party comparison/subscription/voting in a separate tab. Geometry,
+sphere radii and T1/voting rules are unchanged. No authenticated bridge writes.
+
+`GET /api/v1/points/{id}/social-summary` and bridge method `point.social` share
+`node06-point-social/1`: current revision/digest, protection, influence
+(available/pending/current/held/subscribed/snapshot_id/model), and at most one
+open proposal (id, ISO close time, nullable old/new tally). It omits proposal
+bodies, author/subscriber identities, individual ballots and account state.
+Pending/unpublished values are null, never fake zero. An actual fresh zero is
+represented as decimal string `"0"`. No headcounts substitute for influence.
+
+T1 snapshots now persist per-point current/held/subscribed integer allocations
+with their public current-version pins. A projection-format marker in the input
+identity forces publication after upgrade even when social inputs are unchanged.
+This is derived JSON, requiring no new migration or mass-formula change. Old
+projection rows remain history; until the worker publishes the new format,
+summary reads are explicitly pending. Active-user set, event cutoff and source
+pin changes invalidate the fresh label. Read-side proposal tallies are checked
+again against the event cutoff after collecting ballots. Final decisions still
+use the existing graph transaction and a newly computed authoritative snapshot.
+
+Graph payloads include revision/digest pins for built core, site, Git and authored
+points. The UI compares the displayed pin with the server summary; an outdated
+local text is marked changed and never given the current text's influence label.
+It keeps the text visible and offers review on the trusted server. Slow responses
+for detached/replaced point panels cannot overwrite the current point.
+
+Personal active subscription/version and explicit own ballot are read only via
+same-origin `/me/subscriptions/{id}` on the management host, with the existing
+cookie. A 401 says sign in; read failure is not presented as no subscription.
+Static parents/full frames show the public aggregate and a trusted management
+link, never the account cookie/CSRF or a claim that the visitor is unsubscribed.
+Refresh is manual or on returning window focus; there is no continual polling.
+The renderer and picker share one public transport/iframe. Registered site,
+parent/source/channel checks and method/parameter/size limits remain in force.
+
+Compatibility: method addition preserves node06-embed/1. Older servers can still
+serve existing picker methods; missing social support produces an update/
+unavailable message without blocking text. Core builder pins use the same
+canonical digest as public reads. Updated frontend/dist and backend should ship
+from the same reviewed revision through normal deployment. No extra service,
+privileged timer, or migration is introduced by this packet.

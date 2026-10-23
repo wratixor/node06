@@ -376,6 +376,46 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       await page.waitForTimeout(1000);
     }
     assert((await page.locator('#inbox').textContent()).includes('proposal-adopted'), 'Background outbox delivers without operator commands');
+    await page.goto(base+'/?p='+socialPoint+'&open='+socialPoint);
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Current-version influence: 0.5'));
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('You support the current version'));
+    assert.equal(await page.locator('#point-panel-body .point-social').getAttribute('data-point-id'),socialPoint);
+    const manageHref=await page.locator('#point-panel-body .point-social a').getAttribute('href');
+    assert.equal(new URL(manageHref).searchParams.get('p'),socialPoint);
+    assert.equal(new URL(manageHref).origin,base);
+    assert.equal(await page.locator('#point-panel-body .point-social script').count(),0);
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:'/tmp/node06-field-social-mobile.png',fullPage:true});
+
+    // Late summaries cannot replace another point, and unavailable data is not zero.
+    let started, finished;
+    const slowStarted=new Promise(resolve=>{started=resolve;});
+    const slowFinished=new Promise(resolve=>{finished=resolve;});
+    await page.route(base+'/api/v1/points/skills-ru/social-summary',async route=>{
+      const response=await route.fetch(); started();
+      await new Promise(resolve=>setTimeout(resolve,1500));
+      await route.fulfill({response}); finished();
+    },{times:1});
+    await page.goto(base+'/?p=skills-ru&open=skills-ru');
+    await slowStarted;
+    await page.locator('#point-panel-body .links-list [data-point-id="skills-en"]').click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.dataset.pointId==='skills-en');
+    await slowFinished; await page.waitForTimeout(150);
+    assert.equal(await page.locator('#point-panel-body .point-social').getAttribute('data-point-id'),'skills-en');
+    await page.route(base+'/api/v1/points/skills-en/social-summary',async route=>{
+      const response=await route.fetch(), value=await response.json();
+      value.content_digest='0'.repeat(64); await route.fulfill({json:value});
+    },{times:1});
+    await page.locator('#point-panel-body .point-social button').click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Server text changed'));
+    assert(!(await page.locator('#point-panel-body .point-social').innerText()).includes('Current-version influence:'));
+    await page.route(base+'/api/v1/points/skills-en/social-summary',route=>route.fulfill({status:400,json:{code:'METHOD_NOT_ALLOWED'}}),{times:1});
+    await page.locator('#point-panel-body .point-social button').click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Server update required'));
+    assert(await page.locator('#point-panel-body .point-text').isVisible());
+    await page.route(base+'/api/v1/me/subscriptions/skills-en',route=>route.fulfill({status:503,json:{code:'UNAVAILABLE'}}),{times:1});
+    await page.locator('#point-panel-body .point-social button').click();
+    await page.waitForFunction(()=>document.querySelector('#point-panel-body .point-social')?.textContent.includes('Personal support unavailable'));
     await page.goto(base + '/community/?p=skills-ru');
     await page.waitForFunction(() => !document.querySelector('#choose-point').disabled);
     assert.equal(await page.locator('#proposal-form').isVisible(), false, 'Git point proposals are protected');
@@ -446,6 +486,15 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(destination.origin, base);
     assert.equal(destination.pathname, `/sites/${active}/`);
     assert.equal(await page.locator('#point-picker-detail a').first().getAttribute('target'), '_blank');
+    const publicSocial=await page.evaluate(()=>window.readNode06Public('point.social',{point_id:'skills-ru'}));
+    assert.equal(publicSocial.id,'skills-ru');
+    assert.equal(publicSocial.protected,true);
+    const socialBox=page.locator('#point-picker-detail .point-social');
+    await socialBox.getByRole('link').waitFor();
+    await page.waitForFunction(()=>document.querySelector('#point-picker-detail .point-social')?.textContent.includes('Source-managed point'));
+    assert.equal(new URL(await socialBox.locator('a').getAttribute('href')).origin,base);
+    assert((await socialBox.innerText()).includes('Open account to manage support'));
+
     assert(page.frames().some(frame => frame.url().startsWith(embed + '/bridge/v1/')));
     assert.equal(await page.evaluate(async embed => {
       try { await fetch(embed + '/api/v1/meta'); return true; } catch { return false; }
