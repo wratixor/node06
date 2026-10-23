@@ -278,7 +278,14 @@ class HostedBundle:
         return list(by_id.values())
 
     def render(
-        self, settings: Settings, *, field_path="/", site=None, theme=None, embedded=False
+        self,
+        settings: Settings,
+        *,
+        field_path="/",
+        site=None,
+        theme=None,
+        embedded=False,
+        brand_title=None,
     ) -> str:
         title = html.escape((site and site.display_name) or settings.hosted_title)
         home = site.id if site else ""
@@ -302,7 +309,10 @@ class HostedBundle:
             ),
         )
         source = source.replace("<title>NODE06 · node06</title>", f"<title>{title}</title>")
-        source = source.replace(">NODE06</a>", f">{title}</a>")
+        brand = title if embedded else html.escape(brand_title or settings.hosted_title)
+        source = source.replace(
+            '<a href="/">NODE06</a>', f'<a class="site-home-link" href="/">{brand}</a>', 1
+        )
         start = source.index('<section id="start-page"')
         end = source.index('<section id="root-field"', start)
         welcome = render_home(
@@ -311,6 +321,13 @@ class HostedBundle:
         source = source[:start] + welcome + source[end:]
         if home:
             source = source.replace('href="/"', f'href="{html.escape(field_path, quote=True)}"')
+        if not embedded:
+            source = re.sub(
+                r'(<a class="site-home-link" href=")[^"]*(")',
+                r"\1/\2",
+                source,
+                count=1,
+            )
         feed = field_path + "?" + urlencode({"p": ALL_SITES_ID, "mode": "feed"})
         source = source.replace('href="/recent/"', f'href="{html.escape(feed, quote=True)}"')
         source = re.sub(r"<!--service-nav-->.*?<!--/service-nav-->", "", source, flags=re.S)
@@ -400,8 +417,33 @@ def register_hosted(app: FastAPI, settings: Settings) -> None:
         field_path = (
             f"/embed/v1/{site.id}/" if embedded else f"/sites/{site.id}/" if site_id else "/"
         )
+        brand_title = settings.hosted_title
+        if not embedded and settings.default_site_id:
+            try:
+                default_site = (
+                    site
+                    if selected == settings.default_site_id
+                    else SiteRegistry(request.app.state.database).get_public_site(
+                        settings.default_site_id
+                    )
+                )
+                brand_title = (default_site.effective_home_page or {}).get("title") or (
+                    default_site.display_name or settings.hosted_title
+                )
+            except SiteNotFoundError:
+                # A missing default entrance must not break other active sites.
+                pass
+            except SQLAlchemyError:
+                return JSONResponse(
+                    {"code": "GRAPH_UNAVAILABLE"}, status_code=503, headers=PUBLIC_HEADERS
+                )
         source = bundle.render(
-            settings, field_path=field_path, site=site, theme=theme, embedded=embedded
+            settings,
+            field_path=field_path,
+            site=site,
+            theme=theme,
+            embedded=embedded,
+            brand_title=brand_title,
         )
         ancestors = f"{site.origin} {settings.management_origin}" if embedded else "'none'"
         headers = {

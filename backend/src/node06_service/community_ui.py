@@ -45,11 +45,28 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <details id="my-color" hidden>
 <summary>Мой цвет</summary>
 <form id="color-form">
-<label>Красный<input id="color-r" type="range" min="1" max="255" value="128"></label>
-<label>Зелёный<input id="color-g" type="range" min="1" max="255" value="128"></label>
-<label>Синий<input id="color-b" type="range" min="1" max="255" value="128"></label>
-<output id="color-preview">#808080</output>
-<button type="submit" data-requires-auth="true">Сохранить цвет</button>
+<div class="profile-stats">
+<label class="coordinate coordinate-0"><span aria-hidden="true"></span>
+<input id="coordinate-0" data-coordinate="0" aria-label="Красная координата"
+ type="number" min="1" max="65535" step="1" value="128" required></label>
+<label class="coordinate coordinate-1"><span aria-hidden="true"></span>
+<input id="coordinate-1" data-coordinate="1" aria-label="Голубая координата"
+ type="number" min="1" max="65535" step="1" value="128" required></label>
+<label class="coordinate coordinate-2"><span aria-hidden="true"></span>
+<input id="coordinate-2" data-coordinate="2" aria-label="Зелёная координата"
+ type="number" min="1" max="65535" step="1" value="128" required></label>
+<label class="coordinate coordinate-3"><span aria-hidden="true"></span>
+<input id="coordinate-3" data-coordinate="3" aria-label="Пурпурная координата"
+ type="number" min="1" max="65535" step="1" value="128" required></label>
+<label class="coordinate coordinate-4"><span aria-hidden="true"></span>
+<input id="coordinate-4" data-coordinate="4" aria-label="Синяя координата"
+ type="number" min="1" max="65535" step="1" value="128" required></label>
+<label class="coordinate coordinate-5"><span aria-hidden="true"></span>
+<input id="coordinate-5" data-coordinate="5" aria-label="Жёлтая координата"
+ type="number" min="1" max="65535" step="1" value="128" required></label>
+</div>
+<output id="color-preview" aria-label="Итоговый цвет">#808080</output>
+<button type="submit" data-requires-auth="true">Сохранить</button>
 </form>
 </details>
 <section id="selected-point" hidden>
@@ -173,7 +190,16 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-profile-panel]{border-top:1px solid var(--line);padding:8px 0}
 body[data-page=community] #my-color{font-size:14px;margin:8px 0}
 body[data-page=community] #color-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-body[data-page=community] #color-form label{font-size:12px;margin:5px 0;max-width:150px}
+.profile-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;
+width:100%;max-width:420px}
+body[data-page=community] #color-form label{font-size:13px;margin:0;min-width:0}
+.profile-stats .coordinate{display:flex;align-items:stretch;border:1px solid var(--line)}
+.profile-stats .coordinate span{width:10px;flex:none;background:var(--coordinate)}
+.coordinate-0{--coordinate:#ee484a}.coordinate-1{--coordinate:#00d2dc}
+.coordinate-2{--coordinate:#3ece70}.coordinate-3{--coordinate:#d646d6}
+.coordinate-4{--coordinate:#4170ee}.coordinate-5{--coordinate:#f0cd2c}
+.profile-stats input{width:100%;min-width:0;padding:5px 8px;border:0}
+#color-preview:empty{visibility:hidden}
 body[data-page=community] .site-header{position:static}
 body[data-page=community] nav{flex-wrap:wrap;align-items:center}
 body[data-page=community] pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
