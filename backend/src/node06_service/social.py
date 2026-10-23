@@ -14,6 +14,7 @@ from .models import (
     ballots,
     core_publications,
     edge_claims,
+    favorite_points,
     inbox,
     influence_runs,
     point_edges,
@@ -87,6 +88,27 @@ class Social:
                 )
             )
             return result
+
+    def _favorite(self, c, actor, pid, payload):
+        where = (favorite_points.c.user_id == actor) & (favorite_points.c.point_id == pid)
+        if not payload["active"]:
+            c.execute(delete(favorite_points).where(where))
+        else:
+            self.point(c, pid)  # Public now; create a real core anchor if needed.
+            exists = c.scalar(select(favorite_points.c.point_id).where(where))
+            count = c.scalar(
+                select(func.count())
+                .select_from(favorite_points)
+                .where(favorite_points.c.user_id == actor)
+            )
+            if not exists and count >= 64:
+                raise SocialError("FAVORITES_LIMIT", 409)
+            c.execute(
+                pg_insert(favorite_points)
+                .values(user_id=actor, point_id=pid)
+                .on_conflict_do_nothing()
+            )
+        return {"point_id": pid, "active": payload["active"]}
 
     def _subscription(self, c, actor, pid, payload):
         point = self.pinned(c, pid, payload)

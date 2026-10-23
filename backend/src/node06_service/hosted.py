@@ -291,7 +291,8 @@ class HostedBundle:
             "tenant": "true" if site else "",
             "theme": json.dumps(theme or {}),
         }
-        source = self.page.replace(
+        base_page = re.sub(r' data-management-origin="[^"]*"', "", self.page)
+        source = base_page.replace(
             '<body data-page="field"',
             '<body data-page="field" '
             + " ".join(

@@ -146,3 +146,43 @@ Influence correction, 23 October: subscription counts are not voting weights.
 Binding adoption depends on authoritative versioned influence snapshots; do not
 use headcount as an interim implementation. T1 was subsequently explicitly approved for v1 with conservation checks; see
 SOCIAL-V1 for the numerical contract.
+
+## Contextual editor and account favorites — 23 October 2026
+
+The field text panel and shared search detail expose **Add related point** on
+static, hosted and full-iframe copies. The link opens the trusted management
+origin's `/editor/?from=POINT_ID` in a separate tab. This creates a NEW point;
+it does not try to edit the source (including protected Git roots). After login,
+the editor reads the current public source and preselects its exact revision/digest
+as a connection. Unavailable sources are explicit errors, not silently dropped.
+The account opens separately and **Continue after login** reloads the same editor
+URL with its source context; passwords never enter an embedding parent's page.
+
+The editor uses the same search field/magnifier/results component as the site,
+placed next to its selected links rather than requiring a search in the header.
+Search is rectangular across the whole frontend. Select a result to add a link;
+selected textarea words become an explicit semantic Markdown link. The textarea
+is resizable, chosen targets show readable previews, and My points is collapsible.
+
+Private favorites are bookmarks of point IDs, not a second taxonomy or automatic
+subscription. Save a selected target with ☆; use + in favorites to add it to the
+current text. Existing links, proposals, influence and support stay unchanged.
+Favorites belong to the local account, so the same user sees them across connected
+sites on this instance. Different instances do not synchronize them. Every use
+fetches the current public target pin; it does not reuse an old favorite revision.
+Removing a link does not remove the bookmark, and removing a bookmark does not
+remove an already selected link. At most 64 favorites per account.
+
+Migration `0011_favorite_points` adds `(user_id, point_id)` with foreign keys.
+`GET /api/v1/me/favorites` returns private bounded current previews/pins. An
+unavailable saved target is marked unavailable and remains removable. Same-origin
+CSRF/idempotency-protected `POST /api/v1/me/favorites/{id}` with `{active: bool}`
+sets/removes membership; only currently public targets can be added. There is
+no public favorites directory and no authenticated favorite API on the embed host.
+
+Apply the online migration through the normal backup-first deploy after merge.
+Downgrade drops favorites; it does not remove authored points or subscriptions.
+Validation: disposable PostgreSQL privacy/CSRF/replay/cap/removal tests, packaged
+wheel HTTPS browser workflows for saving/reusing favorites and contextual creation,
+mobile overflow and existing lost-response publication checks. This source packet
+is not a claim that production has already updated.

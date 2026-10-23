@@ -1369,3 +1369,14 @@ Every static copy now links to ACCOUNT, MY SITES, COMMUNITY and NEW POINT using
 its public connection.json serviceOrigin. `/setup/` is built from
 docs/SELF-HOSTING.md; hosted copies expose the same guide and use their own
 management origin. Public frames link out to trusted management in a new tab.
+
+### Contextual authoring / private favorites — 23 October 2026
+
+Implemented source: field/search actions open a NEW related point on the configured
+trusted management origin with the current source pin preselected. The editor's
+inline tag lookup reuses the shared rectangular search component. Account-private
+favorites (max64, migration0011) save point identities for subsequent use and
+refresh their current pins when chosen. They never create support, votes or mass.
+Detailed contract: POINT-AUTHORING-V1. Cross-server favorites synchronization and
+rich-text/WYSIWYG editing are not introduced by this packet. Source validation
+and production rollout remain separate states.

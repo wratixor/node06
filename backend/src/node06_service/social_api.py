@@ -12,6 +12,7 @@ from .author_api import Content, PointID, RevisionID
 from .hosted import PUBLIC_HEADERS
 from .models import (
     ballots,
+    favorite_points,
     inbox,
     influence_runs,
     proposals,
@@ -367,3 +368,32 @@ def own_influence(request: Request):
             "point_budget": amount(units // 2),
             "pending": run["data"].get("cutoff_seq") != latest,
         }
+
+
+@router.post("/me/favorites/{point_id}")
+def favorite(point_id: PointID, payload: Trust, request: Request):
+    return mutate(request, "favorite", point_id, payload)
+
+
+@router.get("/me/favorites")
+def favorites(request: Request):
+    _, _, actor = manager(request, mutation=False)
+    public = public_service(request, set())
+    from .public_points import PublicPointError
+
+    with request.app.state.database.connect() as c:
+        ids = c.scalars(
+            select(favorite_points.c.point_id)
+            .where(favorite_points.c.user_id == actor.user_id)
+            .order_by(favorite_points.c.point_id)
+        ).all()
+        items = []
+        for pid in ids:
+            try:
+                point = public.raw_on(c, pid)
+                items.append(
+                    {key: point[key] for key in ("id", "preview", "revision_id", "content_digest")}
+                )
+            except PublicPointError:
+                items.append({"id": pid, "preview": "", "unavailable": True})
+    return {"items": items}

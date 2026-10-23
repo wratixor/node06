@@ -248,8 +248,8 @@ def asset_url(name: str) -> str:
     return f"/assets/{name}?v={version}"
 
 
-def service_navigation() -> str:
-    """Static copies link to their configured trusted service; no API access needed."""
+def service_origin() -> str:
+    """Trusted management origin for a connected static copy, or empty offline."""
     connection = STATIC / "connection.json"
     if not connection.exists():
         return ""
@@ -260,7 +260,13 @@ def service_navigation() -> str:
     if (parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password
             or parsed.path not in ("", "/") or parsed.query or parsed.fragment):
         raise SystemExit("connection.json serviceOrigin must be an HTTPS origin")
-    origin = html.escape(origin.rstrip("/"), quote=True)
+    return origin.rstrip("/")
+
+
+def service_navigation() -> str:
+    origin = html.escape(service_origin(), quote=True)
+    if not origin:
+        return ""
     return '<!--service-nav-->' + ''.join(
         f'<a href="{origin}{path}" target="_blank" rel="noopener noreferrer">{label} ↗</a>'
         for path, label in (("/account/", "ACCOUNT"), ("/sites/", "MY SITES"),
@@ -286,7 +292,7 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 {ICON_LINKS}
 <link rel="stylesheet" href="{asset_url("site.css")}">
 </head>
-<body data-page="{page_kind}" data-point-id="{html.escape(point_id, quote=True)}">
+<body data-page="{page_kind}" data-management-origin="{html.escape(service_origin(), quote=True)}" data-point-id="{html.escape(point_id, quote=True)}">
 <header class="site-header"><nav>{nav}</nav><span class="status">ROOT ERA / STATIC FIELD</span></header>
 <main>{body}</main>
 <footer>node06 · static root field · social layer planned · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer>

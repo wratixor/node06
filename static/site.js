@@ -114,6 +114,14 @@
         }).join('')}</ul>
       </section>
       <p class="meta">created ${point.created_at.slice(0,10)} · last interaction ${point.last_interaction_at.slice(0,10)} · ${point.degree} links</p>`;
+    const origin=document.body.dataset.managementOrigin || (document.body.dataset.hosted==='true'?location.origin:'');
+    if(origin){
+      const action=document.createElement('a');
+      action.className='point-create-related'; action.textContent='Добавить связанную точку / Add related point';
+      action.href=new URL('/editor/?'+new URLSearchParams({from:point.id}),origin).href;
+      action.target='_blank'; action.rel='noopener noreferrer';
+      panelBody.querySelector('.point-text').before(action);
+    }
     if(push) updateUrl();
   }
 

@@ -65,7 +65,7 @@
   more.hidden = true;
   let transportPromise, bridge, transportConfig;
   let generation = 0, detailGeneration = 0, debounce, cursor = null, query = "";
-  let seen = new Set(), selected = null, onSelect = null;
+  let seen = new Set(), selected = null, onSelect = null, defaultSelection = null;
   const errors = {
     POINT_NOT_FOUND: "Точка больше недоступна / Point unavailable.",
     INVALID_SEARCH_QUERY: "Не более 8 слов / Use at most 8 words.",
@@ -162,6 +162,10 @@
       const communityUrl = new URL("/community/", transportConfig?.serviceOrigin || body.dataset.managementOrigin || location.origin);
       communityUrl.search = new URLSearchParams({ p: point.id });
       community.href = communityUrl.href; community.target = "_blank"; community.rel = "noopener noreferrer";
+      const related = element("a", "Добавить связанную точку / Add related point", actions);
+      const relatedUrl = new URL("/editor/", transportConfig?.serviceOrigin || body.dataset.managementOrigin || location.origin);
+      relatedUrl.search = new URLSearchParams({ from: point.id });
+      related.href = relatedUrl.href; related.target = "_blank"; related.rel = "noopener noreferrer";
       const address = element("input", "", detail);
       address.value = selected.href;
       address.readOnly = true;
@@ -243,11 +247,15 @@
     panel.hidden = true;
     input.setAttribute("aria-expanded", "false");
     ++generation; ++detailGeneration;
-    clearTimeout(debounce); onSelect = null;
+    clearTimeout(debounce); onSelect = defaultSelection;
     if (focus) input.focus();
   }
+  window.setNode06PickerSelection = callback => {
+    defaultSelection = typeof callback === "function" ? callback : null;
+    onSelect = defaultSelection;
+  };
   window.openNode06Picker = (options = {}) => {
-    onSelect = typeof options.onSelect === "function" ? options.onSelect : null;
+    onSelect = typeof options.onSelect === "function" ? options.onSelect : defaultSelection;
     // Details must be re-read for every editor selection.
     ++detailGeneration; selected = null; detail.hidden = true;
     openPanel(); input.focus(); form.scrollIntoView({ block: "start", behavior: "instant" }); positionPanel();

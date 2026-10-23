@@ -417,3 +417,11 @@ support_history = Table(
     Column("content_digest", String(64), nullable=False),
     Column("reason", String(32), nullable=False),
 )
+
+
+favorite_points = Table(
+    "favorite_points",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("point_id", ForeignKey("points.id", ondelete="CASCADE"), primary_key=True),
+)
