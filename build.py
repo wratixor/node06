@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import math
@@ -239,6 +240,13 @@ def validate(points: dict[str, Point]) -> None:
         raise SystemExit("Link validation failed:\n" + "\n".join(f"- {e}" for e in errors))
 
 
+def asset_url(name: str) -> str:
+    source = (ROOT / "backend/src/node06_service/ui/bridge-client.js"
+              if name == "node06-client.js" else STATIC / name)
+    version = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
+    return f"/assets/{name}?v={version}"
+
+
 def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") -> str:
     nav = (
         '<a href="/">NODE06</a>'
@@ -253,15 +261,15 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <meta name="color-scheme" content="dark">
 <title>{html.escape(title)} · node06</title>
 {ICON_LINKS}
-<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="{asset_url("site.css")}">
 </head>
 <body data-page="{page_kind}" data-point-id="{html.escape(point_id, quote=True)}">
 <header class="site-header"><nav>{nav}</nav><span class="status">ROOT ERA / STATIC FIELD</span></header>
 <main>{body}</main>
 <footer>node06 · static root field · social layer planned · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer>
-<script src="/assets/site.js" defer></script>
-<script src="/assets/node06-client.js" defer></script>
-<script src="/assets/point-picker.js" defer></script>
+<script src="{asset_url("site.js")}" defer></script>
+<script src="{asset_url("node06-client.js")}" defer></script>
+<script src="{asset_url("point-picker.js")}" defer></script>
 </body>
 </html>'''
 

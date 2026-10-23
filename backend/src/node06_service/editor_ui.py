@@ -1,8 +1,9 @@
 """Trusted first-party editor; session credentials never enter an iframe parent."""
 
+from hashlib import sha256
 from importlib.resources import files
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 
 from .account_ui import CSS, HEADERS
@@ -33,8 +34,14 @@ PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 
 
 @router.get("/", response_class=HTMLResponse)
-def editor():
-    return HTMLResponse(PAGE, headers=HEADERS)
+def editor(request: Request):
+    page = PAGE
+    bundle = getattr(request.app.state, "hosted_bundle", None)
+    if bundle:
+        for name in ("site.css", "point-picker.js"):
+            version = sha256((bundle.directory / "assets" / name).read_bytes()).hexdigest()[:12]
+            page = page.replace(f"/assets/{name}", f"/assets/{name}?v={version}")
+    return HTMLResponse(page, headers=HEADERS)
 
 
 @router.get("/client.js")

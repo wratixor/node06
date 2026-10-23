@@ -338,7 +338,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       await page.locator('#point-picker-more').click();
       await page.waitForFunction(before => document.querySelectorAll('#point-picker-results li').length > before, before);
     }
-    await page.getByRole('button', { name: 'Закрыть / Close', exact: true }).click();
+    await page.getByRole('button', { name: 'Закрыть результаты / Close results', exact: true }).click();
     // A Neocities-style static page ships its own SDK/config and does not fetch
     // the remote API directly. The local HTTPS fixture is the registered parent.
     await page.route(base + '/assets/connection.json', route => route.fulfill({
@@ -354,8 +354,14 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     }));
     await page.goto(base + '/picker-parent');
     assert.equal(await page.evaluate(() => typeof connectNode06), 'function', 'Static SDK is present');
-    await page.locator('#point-picker-open').click();
-    await page.locator('#point-picker-query').fill('skill');
+    const searchInput = page.locator('#point-picker-query');
+    assert.equal(await searchInput.isVisible(), true, 'Search is already an inline field');
+    assert.equal(await page.locator('dialog#point-picker').count(), 0, 'No modal search window');
+    assert.equal(await page.locator('#point-picker-open svg').count(), 1, 'Submit uses a magnifier');
+    assert.equal(await searchInput.evaluate(input => getComputedStyle(input).borderRadius), '22px');
+    assert(new URL(await page.locator('link[rel=stylesheet]').first().getAttribute('href'), base).searchParams.has('v'), 'Styles are content-versioned');
+    await searchInput.fill('skill');
+    await searchInput.press('Enter');
     await page.waitForFunction(() => {
       const text = document.querySelector('#point-picker-status').textContent;
       return document.querySelector('#point-picker-results button') || (text && !text.includes('Searching'));
@@ -373,11 +379,26 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(await page.evaluate(async embed => {
       try { await fetch(embed + '/api/v1/meta'); return true; } catch { return false; }
     }, embed), false, 'Static parent direct cross-origin fetch remains blocked by CSP');
+    const popup = await page.locator('#point-picker').boundingBox();
+    assert(popup.x >= 0 && popup.x + popup.width <= 390 && popup.y + popup.height <= 844,
+      'Mobile dropdown stays inside the viewport');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: '/tmp/node06-picker-mobile.png', fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.screenshot({ path: '/tmp/node06-picker-desktop.png', fullPage: true });
     await page.locator('#point-picker-query').press('Escape');
     assert.equal(await page.locator('#point-picker').isVisible(), false);
+    assert.equal(await searchInput.isVisible(), true);
+    assert.equal(await searchInput.inputValue(), 'skill', 'Escape preserves query');
+    await searchInput.press('Enter');
+    await page.locator('#point-picker-results button').first().waitFor();
+    await searchInput.press('ArrowDown');
+    assert.equal(await page.locator('#point-picker-results button').first().evaluate(node => node === document.activeElement), true);
+    await page.locator('main').click({ position: { x: 3, y: 3 } });
+    assert.equal(await page.locator('#point-picker').isVisible(), false, 'Outside click dismisses results');
+    await searchInput.fill('');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: '/tmp/node06-search-field-mobile.png', fullPage: true });
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);

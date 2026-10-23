@@ -130,11 +130,13 @@ are brief; select/read again to capture the current text, not stale search text.
 A semantic selection is not support, a vote, a created edge or a saved post.
 
 Built field/home pages now load local `assets/point-picker.js` and an identical
-copy of the parent SDK as `assets/node06-client.js`. The header Search button
-opens an accessible dialog: debounced query, at most 10 items/page and 50 on screen,
+copy of the parent SDK as `assets/node06-client.js`. The header has a compact
+search input with a magnifier submit button. Results appear in an anchored,
+non-modal dropdown: debounced query, at most 10 items/page and 50 on screen,
 more/empty/error states, current plain-text detail, point navigation and copyable
 web address. No server HTML is inserted into the parent DOM. Clipboard rejection
-leaves a selectable address. Escape closes the dialog without changing the graph;
+leaves a selectable address. Escape or clicking outside dismisses results while
+keeping the query and page; Arrow Down enters the results.
 slow responses cannot overwrite a newer query. Raw Markdown in the detail preview
 is intentional; Open leads to the existing rendered point view.
 
@@ -150,7 +152,7 @@ Transport selection:
   own registration/instance; the site ID is not a credential. Invalid/unavailable
   configuration gives an explicit error, never a silent local-only result set.
 
-Static search shows shared results inside the dialog; Open points to the hosted
+Static search shows shared results in the dropdown; Open points to the hosted
 entrance in a new tab, preserving a locally maintained static field. Hosted/full
 Open retains the current entrance path. This slice does not replace the static
 map with a live graph or provide an authenticated post editor.
@@ -178,3 +180,13 @@ localhost fixture origin** to reach its loopback embed server; no production fla
 policy or browser setting is changed. Direct parent cross-origin fetch still fails
 under CSP. Mobile (390px) and desktop (1440px) screenshots were inspected locally.
 Real deployed Neocities is still a separate post-publication check.
+
+
+Header search refinement, 23 October 2026: replaces the separate search-launch
+button/modal with an always-visible rounded input and SVG magnifier in the
+existing entrance palette. Enter/icon submit, typing debounces, and Escape/outside
+click close only the results. The shared editor onSelect contract is retained.
+The dropdown follows the input on scroll/resize and fits desktop/mobile viewports.
+No API/bridge/auth/DB changes. Built CSS/browser scripts use content-hash query
+versions; the first-party editor uses matching hashes from the actual hosted
+bundle, preventing stale cached CSS from leaving new controls unstyled.
