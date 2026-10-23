@@ -1275,7 +1275,8 @@ across the instance; notify subscribers and their feed, compare old/new versions
 allow new subscribers to support a candidate, adopt after a majority. Later owner
 clarification protects ALL Git-owned points, not only descriptions of the system. This is not implemented by authoring;
 новые участники сначала подписываются на старую версию и могут выбрать новую;
-в конце голосования new > old принимает правку, ничья оставляет старую;
+в конце голосования new_influence > old_influence принимает правку; равенство
+влияния оставляет старую, число людей не используется;
 пределы срока 24 часа–7 дней, пустая точка без автопринятия. Do not conflate graph
 links, revision support and proposal acceptance. The earlier Git/community-overlay
 proposal is superseded: Git publication directly replaces its protected content,
@@ -1315,9 +1316,39 @@ also use voting. All Git-owned points (including game/lore and Git welcome) are
 protected; authorized Git updates replace text directly, automatically transfer
 active support and leave historical provenance plus changelog/news. No community
 overlay on Git roots. User-version support still requires explicit confirmation.
-Unanimous support of all current active subscribers permits immediate adoption,
-even before 24 hours; zero subscribers never adopt automatically. One subscriber
-can be unanimous; no new quorum was approved. Scheduled range 24h–7d remains for
+100% of eligible subscribed influence permits immediate adoption, even before
+24 hours, only with positive total subscribed influence fully covered by explicit
+new-version ballots; silent positive influence also prevents early closure.
+Zero-weight accounts do not block unanimity; zero total influence never adopts.
+Headcount does not decide the outcome; no headcount quorum was approved. Scheduled range 24h–7d remains for
 future configurable duration. Implement membership/choice/finalize races and
 Git support transfer atomically; do not treat source updates as fresh user votes.
 Canonical next packet: [REVISION-PROPOSALS-PLAN](REVISION-PROPOSALS-PLAN.md).
+
+
+Influence-only correction, 23.10.2026: compare summed eligible influence for the
+candidate/current version, not subscriber/voter counts. At 72h close new influence
+must exceed old; equality retains current. Immediate 100% means positive subscribed influence fully covered by explicit
+new-version ballots, not a count of consenting accounts or a share of cast ballots. Use one
+consistent authoritative influence snapshot and preserve its identity in the
+result. P05 subscription/proposal storage precedes P06 validated influence
+snapshots, which must precede binding weighted adoption. T1 remains an unapproved
+candidate; no one-account-one-vote placeholder may ship as the agreed mechanism.
+
+Static NODE06 entrance also includes its Neocities profile link under the title:
+https://neocities.org/site/node06 . Hosted tenant home replaces this static entrance
+and does not inherit NODE06's profile link. This is source work, not publication.
+
+
+Explicit-ballot clarification, 23.10.2026: subscriptions and ballots are separate.
+Only influence behind explicit old/new votes cast during that proposal contributes
+to its final totals. Nonvoters never become old-version votes. An explicit vote
+atomically switches/creates subscription to the selected version, with one current
+ballot per user/proposal and replay history. Initial old-version enrollment before
+a new-version vote is not an extra ballot. Zero cast influence cannot adopt.
+Owner confirmed the early denominator is ALL current eligible subscribed
+influence. Early closure requires positive total subscribed influence and explicit
+new-version ballots covering all of it. Silent positive influence blocks only
+early consent coverage, never adds old-version votes to the scheduled tally.
+100% of ballots cast so far is insufficient while positive subscribed influence
+remains uncast.
