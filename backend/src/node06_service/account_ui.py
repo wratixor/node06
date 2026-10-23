@@ -1,6 +1,9 @@
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, Response
 
+from .personal_ui import CSS as PERSONAL_CSS
+from .personal_ui import navigation
+
 router = APIRouter(prefix="/account")
 HEADERS = {
     "Cache-Control": "no-store",
@@ -19,11 +22,10 @@ PAGE = """<!doctype html>
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<script src="/account/client.js" defer></script></head><body><main>
-<nav><a href="/">Вики</a> · <a href="/sites/">Мои сайты</a>
-· <a href="/editor/">Мои точки / создать</a>
-· <a href="/community/">Подписки и уведомления</a></nav>
-<h1>Аккаунт NODE06</h1><p>Одна учётная запись для всей сети сайтов.</p>
+<script src="/account/client.js" defer></script></head><body>
+
+{personal_navigation}
+<main><h1>Вход и безопасность</h1>
 <p id="status" role="status" aria-live="polite">Проверяем сессию…</p>
 <section id="recovery-result" hidden><h2>Сохраните аварийный код</h2>
 <p>Он показан один раз. Храните его отдельно от пароля: код позволяет восстановить аккаунт.
@@ -48,9 +50,10 @@ minlength="48" maxlength="48"></label>
 <section id="session-actions" hidden><button id="logout" type="button">Выйти здесь</button>
 <button id="logout-all" type="button">Выйти во всех браузерах</button></section>
 <noscript>Для этого интерфейса нужен JavaScript.</noscript>
-</main></body></html>"""
+</main></body></html>""".replace("{personal_navigation}", navigation("account"))
 
-CSS = """body{background:#090b10;color:#d7e0e8;font:17px/1.5 system-ui;margin:0}
+CSS = (
+    """body{background:#090b10;color:#d7e0e8;font:17px/1.5 system-ui;margin:0}
 main{max-width:620px;margin:3rem auto;padding:1rem}label{display:block;margin:1rem 0}
 input,select,textarea,button{font:inherit;box-sizing:border-box;max-width:100%;padding:.6rem;
 border:1px solid #8292a2;background:#131b25;color:inherit}input,select,textarea{display:block;
@@ -58,6 +61,8 @@ width:100%}button{cursor:pointer;margin:.3rem 0}button:focus-visible,input:focus
 select:focus-visible,textarea:focus-visible{outline:3px solid #8ee4ea;outline-offset:2px}
 [hidden]{display:none!important}#recovery-result{border:2px solid #8ee4ea;padding:1rem}
 textarea{min-height:5rem;overflow-wrap:anywhere}p{overflow-wrap:anywhere}"""
+    + PERSONAL_CSS
+)
 
 SCRIPT = """'use strict';
 const el=id=>document.getElementById(id);

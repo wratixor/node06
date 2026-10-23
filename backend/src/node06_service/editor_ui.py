@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 
 from .account_ui import CSS, HEADERS
+from .personal_ui import navigation
 
 router = APIRouter(prefix="/editor")
 PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
@@ -14,9 +15,7 @@ PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <link rel="stylesheet" href="/assets/site.css"><link rel="stylesheet" href="/editor/style.css">
 <script src="/assets/point-picker.js" defer></script><script src="/editor/client.js" defer></script>
 </head><body data-page="editor" data-hosted="true" data-point-picker="true">
-<header class="site-header"><nav><a href="/">Вики</a>
-· <a href="/account/" target="_blank" rel="noopener">Аккаунт</a>
-· <a href="/sites/">Мои сайты</a> · <a href="/community/">Подписки</a></nav></header>
+{personal_navigation}
 <main><h1 id="title">Новая точка</h1><p id="editor-status" role="status">Проверяем вход…</p>
 <button id="retry-login" type="button" hidden>Продолжить после входа</button>
 <div class="editor-meta">
@@ -35,7 +34,9 @@ title="Связать выделенные слова с точкой">Ссыл�
 <textarea id="point-body" aria-label="Текст" placeholder="Текст точки…"
 maxlength="8192" rows="14" required></textarea>
 <button id="publish" type="submit">Опубликовать</button></form>
-<noscript>Для редактора нужен JavaScript.</noscript></main></body></html>"""
+<noscript>Для редактора нужен JavaScript.</noscript></main></body></html>""".replace(
+    "{personal_navigation}", navigation("editor")
+)
 
 
 @router.get("/", response_class=HTMLResponse)

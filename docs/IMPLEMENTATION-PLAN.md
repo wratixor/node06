@@ -1450,3 +1450,24 @@ profile load/save, independent components, rejection of invalid values, color-on
 markers, derived preview/social geometry, instance-root corner navigation and
 unchanged static/full-frame corners. Ruff/format,51-root build, JS syntax,
 protocol and diff checks passed. No migration or production write performed.
+
+
+### Personal section navigation — 23 October 2026
+
+Owner-requested compact composition: account, profile, sites and editor now share
+one menu with a current-page marker. Navigation stays in the same tab except
+editor sign-in, which preserves the draft in its original tab. Profile tabs include the
+six-component color editor; section fragments survive reload and browser history,
+with `#my-color` retained. Point version comparison is collapsible, and refresh
+shares the profile heading row. The filter is hidden for color/trust forms.
+Account recovery and session handling, editor return channels, private API
+boundaries and influence rules are unchanged. No migration. The external library
+extension remains planned. Contract: [EMBEDDED-DRAFTS-V1](EMBEDDED-DRAFTS-V1.md).
+
+Validation:50 PostgreSQL hosted/auth/authoring checks passed. Final packaged-wheel
+HTTPS Chromium flow passed, including consistent navigation/current-page markers,
+editor sign-in draft-preserving target, mobile overflow checks on all four
+personal pages, color deep links/legacy alias/reload/browser Back and normal
+same-origin/external publication. Six raw components and color-only labels remain
+covered. Ruff/format,51-root build, JS syntax, protocol and diff checks passed.
+No production write performed; owner review/main deployment remains required.

@@ -412,7 +412,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     })).status(),200);
     await page.reload();
     await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
-    await page.locator('#my-color summary').click();
+    await page.locator('[data-tab=color]').click();
     assert.equal(await page.locator('#color-form input[type=range]').count(),0);
     assert.equal(await page.locator('#color-r,#color-g,#color-b').count(),0);
     assert(!/Тело|Дух|Натиск|Самообладание|Реакция|Техника/.test(await page.locator('#color-form').textContent()));
@@ -724,6 +724,33 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(await page.locator('[data-tab=points]').getAttribute('aria-selected'),'true');
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.screenshot({path:'/tmp/node06-compact-profile-mobile.png',fullPage:true});
+    // Every trusted personal page has the same navigation and current-page marker.
+    for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/community/','profile']]){
+      await page.goto(base+path);
+      const nav=page.locator('.personal-header nav');
+      assert.equal(await nav.locator('a').count(),5);
+      assert.equal(await nav.locator('[aria-current=page]').count(),1);
+      assert.equal(await nav.locator('[aria-current=page]').getAttribute('href'),path);
+      assert.equal(await nav.locator('a[target]').count(),key==='editor'?1:0);
+      if(key==='editor')assert.equal(await nav.locator('a[target=_blank]').getAttribute('href'),'/account/');
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),key+' mobile overflow');
+    }
+    await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
+    await page.locator('[data-tab=color]').click();
+    assert.equal(new URL(page.url()).hash,'#color');
+    assert.equal(await page.locator('#profile-filter').isVisible(),false);
+    assert.equal(await page.locator('#choose-point').isVisible(),false);
+    assert.equal(await page.locator('#color-form').isVisible(),true);
+    await page.locator('[data-tab=inbox]').click();
+    await page.goBack();
+    assert.equal(await page.locator('[data-tab=color]').getAttribute('aria-selected'),'true');
+    await page.reload();
+    await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
+    assert.equal(await page.locator('#color-form').isVisible(),true);
+    await page.goto(base+'/community/#my-color');
+    await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
+    assert.equal(await page.locator('#color-form').isVisible(),true);
+    await page.screenshot({path:'/tmp/node06-profile-color-navigation.png',fullPage:true});
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);
