@@ -67,9 +67,9 @@ large-scale load/rate admission remains release hardening work.
 This direct API requires the configured wiki/management origin; it is rejected
 on the embed origin. No broad CORS or cookie change is introduced. Neocities Free
 must continue using its iframe transport. The existing bridge `points.search`
-keeps its older bounded ID/preview substring semantics; it has **not** gained this
-full-body search. A later scoped bridge protocol/UI change must explicitly expose
-new pagination/search without breaking existing clients.
+keeps its older bounded ID/preview substring semantics. P05b adds explicit
+`points.searchPage`, `point.read` and `point.neighbors` methods and a shared picker;
+see [PUBLIC-BRIDGE-V1](PUBLIC-BRIDGE-V1.md). Existing clients retain their behavior.
 
 Migration `0008_point_search` adds derived `point_revisions.search_text`, backfills
 it using Python casefold and creates the GIN index. Service SQLAlchemy revision
@@ -85,8 +85,8 @@ search index/derived column; normal database backup/rollback procedures apply.
 
 ## Follow-up order
 
-1. Expose bounded search/read through the bridge and a real picker UI, preserving
-   legacy client behavior and Neocities Free constraints.
+1. P05b source now exposes bounded reads through the bridge/shared picker.
+   Validate real published Neocities and full iframe behavior after rollout.
 2. Complete source ownership/remote Git transport/private preview/accept for
    self-service imports. Current operator publication remains supported.
 3. Authoring/revisions/author ACL for users without a site; confirm D16/D17 before

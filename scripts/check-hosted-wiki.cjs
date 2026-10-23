@@ -144,6 +144,8 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.unroute('**/api/v1/sites/*/manage');
     // Hosted view and real iframe use the same public graph and no embed session.
     await page.goto(base + `/sites/${active}/`);
+    await page.locator('#start-page').waitFor({ state: 'visible' });
+    await page.getByRole('link', { name: 'Точка входа / Entrance point', exact: true }).click();
     await page.waitForFunction(id => document.querySelector('#field-center-id').textContent === id, active);
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Hosted field must fit 390px');
     assert.equal(await page.locator('.point-text script').count(), 0);
@@ -170,6 +172,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     });
     await page.locator('#show-preview').click();
     const frame = page.frameLocator('iframe');
+    await frame.getByRole('link', { name: 'Точка входа / Entrance point', exact: true }).click();
     await frame.locator('#field-map .node.center').waitFor();
     assert.equal(await frame.locator('#field-center-id').textContent(), active);
     const direct = await page.evaluate(async url => {
@@ -183,6 +186,16 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert((await child.evaluate(() => location.pathname)).startsWith('/embed/v1/'));
     await frame.locator('[data-layout="overlay"]').click();
     await frame.locator('#point-panel-close').click();
+    assert.equal(await frame.locator('#point-panel').isVisible(), false);
+    // The full iframe uses its public bridge endpoint, never embed /api.
+    await frame.locator('#point-picker-open').click();
+    await frame.locator('#point-picker-query').fill('skill');
+    await frame.locator('#point-picker-results button').first().waitFor();
+    await frame.getByRole('button', { name: /^skills-ru ·/ }).click();
+    await frame.locator('#point-picker-detail a').waitFor();
+    assert((await frame.locator('#point-picker-detail a').getAttribute('href')).includes('/embed/v1/'));
+    await frame.locator('#point-picker-query').press('Escape');
+    assert.equal(await frame.locator('#point-picker').isVisible(), false);
     assert.equal(await frame.locator('#point-panel').isVisible(), false);
     // Neocities-style parent: only local scripts/connect, external frames allowed.
     // Serve the copied SDK as a local file, just as the site owner will do.
@@ -198,17 +211,29 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       const ru = await bridge.request('point.get', { point_id: 'field-ru' });
       const en = await bridge.request('point.get', { point_id: 'field-en' });
       const search = await bridge.request('points.search', { query: 'skill' });
+      const page = await bridge.request('points.searchPage', { query: 'skill', limit: 1 });
+      const next = await bridge.request('points.searchPage', { query: 'skill', limit: 1, after: page.next_cursor });
+      const current = await bridge.request('point.read', { point_id: 'skills-ru' });
+      const neighbors = await bridge.request('point.neighbors', { point_id: 'skills-ru', limit: 1 });
+      let invalidLimit;
+      try { await bridge.request('points.searchPage', { query: 'skill', limit: '2' }); }
+      catch (error) { invalidLimit = error.message; }
       let write;
       try { await bridge.request('point.createIntent', {}); } catch (error) { write = error.message; }
       let arbitrary;
       try { await bridge.request('site.get', { url: 'https://evil.example' }); } catch (error) { arbitrary = error.message; }
-      return { site: site.id, ru: ru.id, en: en.id, found: search.items.length, write, arbitrary };
+      return { site: site.id, ru: ru.id, en: en.id, found: search.items.length, write, arbitrary,
+        current: current.id, revision: current.revision_id, body: Boolean(current.body),
+        page: page.items[0].id, next: next.items[0].id, neighbors: neighbors.items.length, invalidLimit };
     }, { embed, active });
     assert.equal(bridged.site, active);
     assert.equal(bridged.ru, 'field-ru'); assert.equal(bridged.en, 'field-en');
     assert(bridged.found > 0);
     assert.equal(bridged.write, 'METHOD_NOT_ALLOWED');
     assert.equal(bridged.arbitrary, 'INVALID_PARAMS');
+    assert.equal(bridged.current, 'skills-ru'); assert.equal(bridged.revision, null);
+    assert(bridged.body && bridged.next > bridged.page && bridged.neighbors === 1);
+    assert.equal(bridged.invalidLimit, 'INVALID_PARAMS');
     const bridgeChild = page.frames().find(f => f.url().startsWith(embed + '/bridge/v1/'));
     const spoofed = await bridgeChild.evaluate(() => new Promise(resolve => {
       let reads = 0;
@@ -226,9 +251,89 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(await page.evaluate(async () => {
       try { await fixtureBridge.request('site.get'); return 'unexpected'; } catch (e) { return e.message; }
     }), 'BRIDGE_CLOSED');
+    // Hosted picker reads current revision metadata and displays raw text safely.
+    await page.goto(base + '/');
+    await page.evaluate(() => openNode06Picker({ onSelect: point => { window.pickedPoint = point; } }));
+    await page.locator('#point-picker-query').fill(active);
+    await page.locator('#point-picker-results button').first().click();
+    await page.locator('#point-picker-detail a').waitFor();
+    assert((await page.locator('.picker-body').textContent()).includes('<script>'));
+    assert.equal(await page.evaluate(() => window.stolen), undefined);
+    await page.getByRole('button', { name: 'Выбрать / Select', exact: true }).click();
+    const picked = await page.evaluate(() => window.pickedPoint);
+    assert.equal(picked.id, active); assert(picked.revision_id.startsWith('v_'));
+    assert.equal(new URL(picked.href).searchParams.get('p'), active);
+    await page.locator('#point-picker-open').click();
+    await page.locator('#point-picker-query').fill('zznothingexists');
+    await page.waitForFunction(() => document.querySelector('#point-picker-status').textContent.includes('No matches'));
+    await page.route(base + '/api/v1/points/search?*', async route => {
+      const q = new URL(route.request().url()).searchParams.get('q');
+      if (q === 'zzslow') {
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        return route.fulfill({ json: { items: [{ id: 'stale', lang: 'en', preview: 'Old request' }], next_cursor: null } });
+      }
+      if (q === 'zzfail') return route.fulfill({ status: 503, json: { code: 'POINTS_UNAVAILABLE' } });
+      return route.continue();
+    });
+    const slow = page.waitForRequest(request => request.url().includes('q=zzslow'));
+    await page.locator('#point-picker-query').fill('zzslow'); await slow;
+    await page.locator('#point-picker-query').fill('skill');
+    await page.getByRole('button', { name: /^skills-ru ·/ }).waitFor();
+    await page.waitForTimeout(1300);
+    assert.equal(await page.getByRole('button', { name: /^stale ·/ }).count(), 0);
+    await page.locator('#point-picker-query').fill('zzfail');
+    await page.waitForFunction(() => document.querySelector('#point-picker-status').textContent.includes('Search unavailable'));
+    assert.equal(await page.locator('#point-picker-query').inputValue(), 'zzfail');
+    await page.locator('#point-picker-query').fill('skill');
+    await page.getByRole('button', { name: /^skills-ru ·/ }).waitFor();
+    if (await page.locator('#point-picker-more').isVisible()) {
+      const before = await page.locator('#point-picker-results li').count();
+      await page.locator('#point-picker-more').click();
+      await page.waitForFunction(before => document.querySelectorAll('#point-picker-results li').length > before, before);
+    }
+    await page.getByRole('button', { name: 'Закрыть / Close', exact: true }).click();
+    // A Neocities-style static page ships its own SDK/config and does not fetch
+    // the remote API directly. The local HTTPS fixture is the registered parent.
+    await page.route(base + '/assets/connection.json', route => route.fulfill({
+      json: { embedOrigin: embed, serviceOrigin: base, siteId: active },
+    }));
+    // Explicitly permit this disposable test origin to reach its loopback fixture, not the LAN
+    // from production. CSP and bridge source/origin/credential checks stay active.
+    await context.grantPermissions(['local-network-access'], { origin: base });
+    await page.route(base + '/picker-parent', route => route.fulfill({
+      path: require('node:path').join(__dirname, '../dist/index.html'),
+      contentType: 'text/html',
+      headers: { 'Content-Security-Policy': `default-src 'self'; connect-src 'self'; frame-src ${embed}; script-src 'self'; style-src 'self'` },
+    }));
+    await page.goto(base + '/picker-parent');
+    assert.equal(await page.evaluate(() => typeof connectNode06), 'function', 'Static SDK is present');
+    await page.locator('#point-picker-open').click();
+    await page.locator('#point-picker-query').fill('skill');
+    await page.waitForFunction(() => {
+      const text = document.querySelector('#point-picker-status').textContent;
+      return document.querySelector('#point-picker-results button') || (text && !text.includes('Searching'));
+    });
+    assert(await page.locator('#point-picker-results button').count(),
+      'Static picker: ' + await page.locator('#point-picker-status').textContent());
+    await page.locator('#point-picker-results button').first().click();
+    await page.locator('#point-picker-detail a').waitFor();
+    const destination = new URL(await page.locator('#point-picker-detail a').getAttribute('href'));
+    assert((await page.locator('#point-picker-detail').boundingBox()).y < 844, 'Selected detail must be in view');
+    assert.equal(destination.origin, base);
+    assert.equal(destination.pathname, `/sites/${active}/`);
+    assert.equal(await page.locator('#point-picker-detail a').getAttribute('target'), '_blank');
+    assert(page.frames().some(frame => frame.url().startsWith(embed + '/bridge/v1/')));
+    assert.equal(await page.evaluate(async embed => {
+      try { await fetch(embed + '/api/v1/meta'); return true; } catch { return false; }
+    }, embed), false, 'Static parent direct cross-origin fetch remains blocked by CSP');
+    await page.screenshot({ path: '/tmp/node06-picker-mobile.png', fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.screenshot({ path: '/tmp/node06-picker-desktop.png', fullPage: true });
+    await page.locator('#point-picker-query').press('Escape');
+    assert.equal(await page.locator('#point-picker').isVisible(), false);
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);
     console.log('PASS: hosted UI, public API bridge/SDK, shared bilingual graph/search, rejected writes/spoofs, reload cleanup, real read-only iframe under same-origin-connect CSP, blocked storage and cookie isolation');
   } finally { await browser.close(); }
-})().catch(error => { console.error(error.message); process.exitCode = 1; });
+})().catch(error => { console.error(error.stack || error.message); process.exitCode = 1; });

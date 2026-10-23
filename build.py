@@ -260,6 +260,8 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <main>{body}</main>
 <footer>node06 · static root field · social layer planned · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer>
 <script src="/assets/site.js" defer></script>
+<script src="/assets/node06-client.js" defer></script>
+<script src="/assets/point-picker.js" defer></script>
 </body>
 </html>'''
 
@@ -291,6 +293,7 @@ def build() -> None:
         shutil.rmtree(DIST)
     DIST.mkdir(parents=True)
     shutil.copytree(STATIC, DIST / "assets", ignore=shutil.ignore_patterns("icons"))
+    shutil.copyfile(ROOT / "backend/src/node06_service/ui/bridge-client.js", DIST / "assets/node06-client.js")
     for name in ICON_FILES:
         shutil.copyfile(STATIC / "icons" / name, DIST / name)
 

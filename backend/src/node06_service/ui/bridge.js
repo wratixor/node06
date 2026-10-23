@@ -1,7 +1,8 @@
 "use strict";
 (() => {
   const protocol = "node06-embed/1";
-  const methods = ["capabilities.get", "site.get", "point.get", "points.search"];
+  const methods = ["capabilities.get", "site.get", "point.get", "points.search",
+    "point.read", "points.searchPage", "point.neighbors"];
   const parents = document.body.dataset.parents.split(" ");
   const site = document.body.dataset.site;
   const active = new Set();
@@ -35,9 +36,18 @@
       || !/^[A-Za-z0-9_-]{1,128}$/.test(message.id) || !plain(message.params)) return;
     const { id, method, params } = message;
     if (!methods.includes(method)) { fail(id, "METHOD_NOT_ALLOWED"); return; }
-    const keys = method === "point.get" ? ["point_id"] : method === "points.search" ? ["query"] : [];
-    if (!exact(params, keys) || keys.some(key => typeof params[key] !== "string"
-      || params[key].length < 1 || params[key].length > 128)) { fail(id, "INVALID_PARAMS"); return; }
+    const paged = ["points.searchPage", "point.neighbors"].includes(method);
+    const keys = ["point.get", "point.read", "point.neighbors"].includes(method) ? ["point_id"]
+      : ["points.search", "points.searchPage"].includes(method) ? ["query"] : [];
+    const allowed = paged ? [...keys, "after", "limit"] : keys;
+    if (Object.keys(params).some(key => !allowed.includes(key))
+      || keys.some(key => typeof params[key] !== "string" || params[key].length < 1 || params[key].length > 128)
+      || (Object.hasOwn(params, "after") && (typeof params.after !== "string"
+        || !/^(?:[a-z0-9][a-z0-9_-]{0,95})?$/.test(params.after)))
+      || (Object.hasOwn(params, "limit") && (!Number.isInteger(params.limit) || params.limit < 1 || params.limit > 50))
+      || (["point.read", "point.neighbors"].includes(method) && !/^[a-z0-9][a-z0-9_-]{0,95}$/.test(params.point_id))) {
+      fail(id, "INVALID_PARAMS"); return;
+    }
     // Ignore duplicate pending IDs, preserving the original request's single response.
     if (active.has(id)) return;
     if (active.size >= 8) { fail(id, "BUSY"); return; }

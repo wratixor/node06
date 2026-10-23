@@ -235,6 +235,7 @@ class HostedBundle:
             "home-point": home,
             "home-page": "true",
             "hosted": "true",
+            "search-site": home if embedded else "",
             "tenant": "true" if site else "",
             "theme": json.dumps(theme or {}),
         }

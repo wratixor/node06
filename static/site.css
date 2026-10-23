@@ -4,3 +4,9 @@ body[data-tenant="true"]{background:var(--bg);color:var(--ink)}body[data-tenant=
 nav{flex-wrap:wrap}nav a{overflow-wrap:anywhere}.field-head>div:first-child{min-width:0;max-width:100%}.field-head h1{overflow-wrap:anywhere}
 
 .home-blocks .welcome-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr))}.home-blocks p{overflow-wrap:anywhere}.home-introduction{font:18px/1.65 system-ui,sans-serif;max-width:65ch}
+
+/* Shared public point search; colors follow the entrance theme. */
+#point-picker{color:var(--ink);background:var(--bg);border:1px solid var(--line);width:min(760px,calc(100% - 32px));max-height:85vh;overflow:auto;padding:20px}
+#point-picker::backdrop{background:#000b}.picker-heading,.picker-actions{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.picker-heading h2{margin:0}.picker-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.picker-form label{width:100%}.picker-form input{flex:1;min-width:120px}#point-picker input{color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:10px;max-width:100%}#point-picker-results{padding:0;list-style:none}#point-picker-results li{border-top:1px solid var(--line);padding:12px 0}#point-picker-results p{margin:8px 0;overflow-wrap:anywhere}#point-picker-detail{border-top:1px solid var(--line);margin-top:20px;padding-top:12px;overflow-wrap:anywhere}.picker-body{white-space:pre-wrap;max-height:35vh;overflow:auto}#point-picker-detail>input{width:100%;margin-top:12px}.picker-actions a{padding:10px;border:1px solid var(--line)}
+#point-picker-results button{max-width:100%;text-align:left;white-space:normal;overflow-wrap:anywhere}
+#point-picker .picker-heading{position:sticky;top:-20px;z-index:1;background:var(--bg);padding-top:12px;padding-bottom:12px}#point-picker-detail{scroll-margin-top:120px}@media(min-width:600px){#point-picker-detail{scroll-margin-top:80px}}
