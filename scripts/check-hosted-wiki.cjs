@@ -83,6 +83,11 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.getByRole('button', { name: 'skills-ru · ru', exact: true }).click();
     await page.getByRole('button', { name: 'Выбрать / Select', exact: true }).click();
     assert.equal(await page.locator('#point-body').inputValue(), '[воля](md://point/skills-ru)');
+    assert.equal(await page.locator('#point-picker-query').evaluate(e=>getComputedStyle(e).borderRadius), '0px');
+    assert.equal(await page.locator('#tag-search .point-search').count(), 1);
+    await page.getByRole('button', {name:'☆ Сохранить тег',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.includes('Тег сохранён'));
+    assert((await page.locator('#favorite-tags').innerText()).includes('Навык'));
     // Commit succeeds but response is lost: the same draft retries the same receipt.
     await page.route(base + '/api/v1/points', async route => {
       const response = await route.fetch();
@@ -375,6 +380,36 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(() => !document.querySelector('#choose-point').disabled);
     assert.equal(await page.locator('#proposal-form').isVisible(), false, 'Git point proposals are protected');
     assert((await page.locator('#protection').textContent()).includes('Защищённая'));
+    await page.goto(base + '/?p=skills-ru&open=skills-ru');
+    const related = page.locator('.point-create-related');
+    await related.waitFor();
+    const relatedHref = await related.getAttribute('href');
+    assert.equal(new URL(relatedHref).searchParams.get('from'), 'skills-ru');
+    await page.goto(relatedHref);
+    await page.locator('#tag-tools').waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.querySelector('#favorite-tags').textContent.length > 0);
+    assert.equal(await page.locator('#favorite-tags button').count(), 0, 'The fixture owner must not see another account favorites');
+    await page.getByRole('button', {name:'☆ Сохранить тег',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#editor-status').textContent.includes('Тег сохранён'));
+    await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#favorite-tags button'));
+    assert((await page.locator('#point-links').innerText()).includes('Навык'));
+    assert((await page.locator('#favorite-tags').innerText()).includes('Навык'));
+    await page.getByRole('button',{name:'Убрать связь',exact:true}).click();
+    await page.locator('#favorite-tags button').first().click();
+    await page.waitForFunction(()=>document.querySelectorAll('#point-links li').length === 1);
+    await page.locator('#point-body').fill('A related point from the current meaning');
+    await page.locator('#publish').click();
+    await page.locator('#open-point').waitFor({state:'visible'});
+    const relatedId = new URL(page.url()).searchParams.get('p');
+    const relatedPublished = await (await page.request.get(base+'/api/v1/points/'+relatedId)).json();
+    assert(relatedPublished.links.includes('skills-ru'));
+    assert.equal(relatedPublished.body,'A related point from the current meaning');
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:'/tmp/node06-editor-related-mobile.png',fullPage:true});
+    await page.setViewportSize({width:1280,height:1000});
+    await page.screenshot({path:'/tmp/node06-editor-related-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
     // A Neocities-style static page ships its own SDK/config and does not fetch
     // the remote API directly. The local HTTPS fixture is the registered parent.
     await page.route(base + '/assets/connection.json', route => route.fulfill({
@@ -394,7 +429,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(await searchInput.isVisible(), true, 'Search is already an inline field');
     assert.equal(await page.locator('dialog#point-picker').count(), 0, 'No modal search window');
     assert.equal(await page.locator('#point-picker-open svg').count(), 1, 'Submit uses a magnifier');
-    assert.equal(await searchInput.evaluate(input => getComputedStyle(input).borderRadius), '22px');
+    assert.equal(await searchInput.evaluate(input => getComputedStyle(input).borderRadius), '0px');
     assert(new URL(await page.locator('link[rel=stylesheet]').first().getAttribute('href'), base).searchParams.has('v'), 'Styles are content-versioned');
     await searchInput.fill('skill');
     await searchInput.press('Enter');
