@@ -72,7 +72,54 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#password').fill(password);
     await page.locator('#submit').click();
     await page.waitForFunction(() => document.querySelector('#account-form').hidden);
-    await page.locator('nav a[href="/sites/"]').click();
+    // First-party authoring works for an ordinary user before any site registration.
+    await page.goto(base + '/editor/');
+    await page.locator('#editor-form').waitFor({ state: 'visible' });
+    await page.locator('#point-lang').fill('ru');
+    await page.locator('#point-body').fill('воля');
+    await page.locator('#point-body').evaluate(input => input.setSelectionRange(0, input.value.length));
+    await page.locator('#link-word').click();
+    await page.locator('#point-picker-query').fill('skills-ru');
+    await page.getByRole('button', { name: 'skills-ru · ru', exact: true }).click();
+    await page.getByRole('button', { name: 'Выбрать / Select', exact: true }).click();
+    assert.equal(await page.locator('#point-body').inputValue(), '[воля](md://point/skills-ru)');
+    // Commit succeeds but response is lost: the same draft retries the same receipt.
+    await page.route(base + '/api/v1/points', async route => {
+      const response = await route.fetch();
+      assert.equal(response.status(), 201);
+      await route.abort();
+    }, { times: 1 });
+    await page.locator('#publish').click();
+    await page.waitForFunction(() => !document.querySelector('#publish').disabled);
+    assert((await page.locator('#editor-status').textContent()).includes('Текст сохранён'));
+    await page.locator('#publish').click();
+    await page.locator('#open-point').waitFor({ state: 'visible' });
+    const authoredId = new URL(page.url()).searchParams.get('p');
+    assert(/^p_[0-9a-f]{32}$/.test(authoredId));
+    assert.equal((await (await page.request.get(base + '/api/v1/me/points')).json()).items.length, 1);
+    const authored = await (await page.request.get(base + '/api/v1/points/' + authoredId)).json();
+    const graph = await (await page.request.get(base + '/data/points.json')).json();
+    assert(graph.find(point => point.id === authoredId).links.includes('skills-ru'));
+    assert(graph.find(point => point.id === 'skills-ru').links.includes(authoredId));
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Editor fits mobile');
+    await page.screenshot({ path: '/tmp/node06-editor-mobile.png', fullPage: true });
+    await page.reload();
+    await page.locator('#editor-form').waitFor({ state: 'visible' });
+    const authorSession = await (await page.request.get(base + '/api/v1/me')).json();
+    const pin = await (await page.request.get(base + '/api/v1/points/skills-ru')).json();
+    assert.equal((await page.request.patch(base + '/api/v1/points/' + authoredId, {
+      headers: { Origin: base, 'X-CSRF-Token': authorSession.csrf_token, 'Idempotency-Key': 'browser-update-key' },
+      data: { body: 'New version elsewhere', lang: 'en', expected_revision_id: authored.revision_id,
+        links: [{ id: pin.id, revision_id: pin.revision_id, content_digest: pin.content_digest }] }
+    })).status(), 200);
+    await page.locator('#point-body').fill('Unsaved local version');
+    await page.locator('#publish').click();
+    await page.waitForFunction(() => !document.querySelector('#publish').disabled);
+    assert((await page.locator('#editor-status').textContent()).includes('Точка уже изменена'));
+    assert.equal(await page.locator('#point-body').inputValue(), 'Unsaved local version');
+    page.once('dialog', dialog => dialog.accept());
+    await page.goto(base + '/sites/');
+
     await page.waitForFunction(() => !document.querySelector('#new-origin').disabled);
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Management must fit 390px');
     await page.locator('#new-origin').fill('https://' + handle + '.example');

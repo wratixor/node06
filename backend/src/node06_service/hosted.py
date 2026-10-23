@@ -69,7 +69,8 @@ def validate_embed_origin(settings: Settings) -> None:
 
 def management_path(path: str, method: str) -> bool:
     return (
-        path.startswith(("/account", "/sites", "/api/v1/auth/", "/api/v1/me"))
+        path.startswith(("/editor", "/account", "/sites", "/api/v1/auth/", "/api/v1/me"))
+        or (path.startswith("/api/v1/points") and method != "GET")
         or path == "/api/v1/ui-config"
         or (path.startswith("/api/v1/sites") and (method != "GET" or path.endswith("/manage")))
     )
@@ -158,7 +159,7 @@ class HostedBundle:
             )
         if len(imported) > request.app.state.settings.hosted_site_limit * 101:
             raise GraphUnavailable("GRAPH_CAPACITY_EXCEEDED")
-        result = list(self.roots)
+        result = [{**root, "links": list(root["links"])} for root in self.roots]
         # Active site directory; self-service source claims are still P04.
         result.append(
             {
@@ -219,6 +220,52 @@ class HostedBundle:
                     "commit_sha": row["commit_sha"],
                 },
             }
+        # Published user content shares the same projection and canonical edge claims.
+        from .models import authored_points, edge_claims, point_edges
+        from .public_points import PublicPoints
+
+        public = PublicPoints(database, roots=self.roots)
+        cap = request.app.state.settings.hosted_site_limit * 101
+        with database.connect() as connection:
+            authored = (
+                connection.execute(
+                    public._query()
+                    .where(authored_points.c.point_id.is_not(None), points.c.origin == "user")
+                    .order_by(points.c.id)
+                    .limit(cap + 1)
+                )
+                .mappings()
+                .all()
+            )
+            if len(authored) > cap:
+                raise GraphUnavailable("GRAPH_CAPACITY_EXCEEDED")
+            for row in authored:
+                point = public._convert(row)
+                by_id[point["id"]] = {
+                    **point,
+                    "links": [],
+                    "coordinates": None,
+                    "coordinate_source": "display-only",
+                }
+            edges = connection.execute(
+                select(point_edges.c.point_a, point_edges.c.point_b)
+                .where(
+                    point_edges.c.point_a.in_(by_id),
+                    point_edges.c.point_b.in_(by_id),
+                    select(edge_claims.c.id)
+                    .where(
+                        edge_claims.c.point_a == point_edges.c.point_a,
+                        edge_claims.c.point_b == point_edges.c.point_b,
+                    )
+                    .exists(),
+                )
+                .limit(cap * 20 + 1)
+            ).all()
+            if len(edges) > cap * 20:
+                raise GraphUnavailable("GRAPH_CAPACITY_EXCEEDED")
+            for a, b in edges:
+                by_id[a]["links"] = sorted(set(by_id[a]["links"]) | {b})
+                by_id[b]["links"] = sorted(set(by_id[b]["links"]) | {a})
         # Retired/missing local roots do not leave visible dangling links.
         for point in by_id.values():
             point["links"] = [target for target in point["links"] if target in by_id]
@@ -272,8 +319,11 @@ class HostedBundle:
             )
             source = source.replace("ROOT ERA / STATIC FIELD", "READ ONLY / SHARED GRAPH")
         else:
-            navigation += '<a href="/sites/">MY SITES</a><a href="/account/">ACCOUNT</a>'
-            source = source.replace("ROOT ERA / STATIC FIELD", "ROOTS + SITES / READ ONLY")
+            navigation += (
+                '<a href="/sites/">MY SITES</a><a href="/account/">ACCOUNT</a>'
+                '<a href="/editor/">NEW POINT</a>'
+            )
+            source = source.replace("ROOT ERA / STATIC FIELD", "SHARED CONCEPT GRAPH")
         source = source.replace(
             "static root field · social layer planned",
             "shared graph · read-only preview · social layer planned",
