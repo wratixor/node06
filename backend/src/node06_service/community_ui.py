@@ -37,6 +37,16 @@ PAGE = """<!doctype html>
 <p>Смысловая ссылка не означает поддержку. Подписка не голосует за правку.
 В решении учитывается влияние явных голосов, а не число людей.</p>
 <button id="choose-point" type="button">Выбрать точку</button>
+<details id="my-color" hidden>
+<summary>Мой цвет</summary>
+<form id="color-form">
+<label>Красный<input id="color-r" type="range" min="1" max="255" value="128"></label>
+<label>Зелёный<input id="color-g" type="range" min="1" max="255" value="128"></label>
+<label>Синий<input id="color-b" type="range" min="1" max="255" value="128"></label>
+<output id="color-preview">#808080</output>
+<button type="submit" data-requires-auth="true">Сохранить цвет</button>
+</form>
+</details>
 <section id="selected-point" hidden>
 <h2 id="point-name">
 </h2>
@@ -50,6 +60,10 @@ PAGE = """<!doctype html>
 <p id="support-status">
 </p>
 <button id="support-point" hidden type="button">Подписаться на эту версию</button>
+<button id="confirm-support" hidden type="button">Поддержать новую основную версию</button>
+<button id="block-point" hidden type="button">Блокировать эту версию</button>
+<button id="unblock-point" hidden type="button">Снять блокировку</button>
+<button id="favorite-point" hidden type="button">В избранное</button>
 <p id="protection">
 </p>
 <div id="proposals">
@@ -72,6 +86,10 @@ PAGE = """<!doctype html>
 <button id="more-subscriptions" hidden>Ещё подписки</button>
 </section>
 <section>
+<h2>Мои блокировки</h2>
+<ul id="my-blocks"></ul>
+<button id="more-blocks" hidden type="button">Ещё блокировки</button>
+</section><section>
 <h2>Личная лента и уведомления</h2>
 <ul id="inbox">
 </ul>
@@ -135,6 +153,9 @@ body[data-page=community] .site-header{position:static}
 body[data-page=community] nav{flex-wrap:wrap;align-items:center}
 body[data-page=community] pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
 body[data-page=community] li,body[data-page=community] h2{overflow-wrap:anywhere}
+#color-preview{display:inline-block;padding:8px;border:1px solid #8292a2;
+color:#fff;text-shadow:0 1px 3px #000}
+#my-color input{max-width:320px}
 .community-comparison{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .community-version{min-width:0;border:1px solid #293442;padding:12px}
 .community-proposal{border-top:1px solid #8292a2;padding-top:16px;margin-top:24px}

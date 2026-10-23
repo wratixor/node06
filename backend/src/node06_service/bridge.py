@@ -14,13 +14,35 @@ from .public_points import PublicPointError, PublicPoints
 from .root_import import POINT
 from .site_registry import SiteNotFoundError, SiteRegistry
 
-CURRENT_METHODS = ["point.read", "points.searchPage", "point.neighbors", "point.social"]
+CURRENT_METHODS = [
+    "point.read",
+    "points.searchPage",
+    "point.neighbors",
+    "point.social",
+    "points.geometry",
+]
 METHODS = ["capabilities.get", "site.get", "point.get", "points.search", *CURRENT_METHODS]
 # Leave room for channel/request ID and the response envelope within 256 KiB.
 MAX_RESPONSE_BYTES = 255 * 1024
 
 
 def current_read(app, method, params):
+    if method == "points.geometry":
+        if set(params) != {"point_ids"} or not 1 <= len(params["point_ids"]) <= 6207:
+            raise PublicPointError("INVALID_PARAMS", 400)
+        parts = params["point_ids"].split(",")
+        if any(not POINT.fullmatch(pid) for pid in parts):
+            raise PublicPointError("INVALID_PARAMS", 400)
+        from .geometry_read import batch
+
+        return batch(
+            PublicPoints(
+                app.state.database,
+                roots=app.state.hosted_bundle.roots,
+                build_revision=app.state.settings.build_revision,
+            ),
+            parts,
+        )
     key = "query" if method == "points.searchPage" else "point_id"
     allowed = {key} if method in ("point.read", "point.social") else {key, "after", "limit"}
     if key not in params or set(params) - allowed:

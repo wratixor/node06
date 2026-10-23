@@ -313,17 +313,17 @@ def test_custom_home_blocks_and_scoped_links_for_all_entrances(hosted, pg_databa
 
 def test_setup_and_all_copies_link_to_configured_management(hosted):
     _app, client, active, _pending = hosted
-    for path in ("/", "/setup/", "/about/", f"/sites/{active.site_id}/"):
+    for path in ("/", "/setup/", "/setup/en/", "/about/", f"/sites/{active.site_id}/"):
         response = client.get(path)
         assert response.status_code == 200
         assert "wiki.geno-dice.com/account/" not in response.text
         assert 'href="/sites/"' in response.text or f'href="{ORIGIN}/sites/"' in response.text
         assert 'href="/account/"' in response.text or f'href="{ORIGIN}/account/"' in response.text
-        assert 'href="/setup/"' in response.text
+        assert 'href="/setup/"' in response.text or 'href="/setup/en/"' in response.text
     embedded = client.get(f"{EMBED}/embed/v1/{active.site_id}/")
     assert embedded.status_code == 200
     assert f'href="{ORIGIN}/sites/"' in embedded.text
-    assert f'href="{ORIGIN}/setup/"' in embedded.text
+    assert f'href="{ORIGIN}/setup/en/"' in embedded.text
     assert "режим" in client.get("/setup/").text.lower()
 
 
@@ -359,3 +359,58 @@ def test_social_bridge_is_bounded_public_read_and_pins_match_display(hosted):
         current = client.get(f"/api/v1/points/{pid}/social-summary").json()
         assert displayed["content_digest"] == current["content_digest"]
         assert displayed["revision_id"] == current["revision_id"]
+
+
+def test_installation_guides_are_separate_documents(hosted):
+    _, client, _, _ = hosted
+    ru, en = client.get("/setup/").text, client.get("/setup/en/").text
+    assert '<html lang="ru">' in ru and '<html lang="en">' in en
+    assert "Режим 5" in ru and "Mode 5" not in ru
+    assert "Mode 5" in en and "Режим 5" not in en
+    assert "УСТАНОВКА" in ru and ">SETUP<" in en
+    assert "SETUP /" not in ru + en
+    assert "<h1>NODE06: своя вики</h1>" in ru
+    assert "<h2>Mode 5" in en
+
+
+def test_geometry_bridge_matches_anonymous_read_and_rejects_extra_authority(hosted):
+    from node06_service.public_points import PublicPoints
+    from node06_service.social import Social
+
+    app, client, active, pending = hosted
+    public = PublicPoints(app.state.database, roots=app.state.hosted_bundle.roots)
+    Social(public).work()
+    api = f"{EMBED}/bridge/v1/{active.site_id}/read"
+    direct = client.get("/api/v1/geometry", params={"ids": "skills-ru,skills-en"})
+    bridged = client.get(
+        api, params={"method": "points.geometry", "point_ids": "skills-ru,skills-en"}
+    )
+    assert bridged.status_code == 200 and bridged.json() == direct.json()
+    assert (
+        "points.geometry"
+        in client.get(api, params={"method": "capabilities.get"}).json()["methods"]
+    )
+    assert (
+        client.get(api, params={"method": "points.geometry", "point_ids": pending.site_id}).json()[
+            "items"
+        ]
+        == []
+    )
+    for params in (
+        {"point_ids": "skills-ru,skills-ru"},
+        {"point_ids": "../secret"},
+        {"point_ids": "skills-ru", "user_id": "forged"},
+        {"point_ids": "skills-ru", "limit": 64},
+    ):
+        assert client.get(api, params={"method": "points.geometry", **params}).status_code == 400
+
+
+def test_site_source_author_is_public_owner_and_directory_is_system(hosted):
+    _, client, active, _ = hosted
+    site = client.get(f"/api/v1/points/{active.site_id}").json()
+    assert site["author"]["name"] == "hosted-owner"
+    assert site["author"]["kind"] == "user"
+    directory = client.get("/api/v1/points/all-sites").json()
+    assert directory["author"] == {"kind": "system", "name": "System"}
+    root = client.get("/api/v1/points/skills-ru").json()
+    assert root["author"] == {"kind": "source", "name": "Git source"}

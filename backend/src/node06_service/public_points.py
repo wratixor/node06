@@ -15,6 +15,7 @@ from .models import (
     root_entries,
     root_sources,
     sites,
+    users,
 )
 from .root_import import digest
 from .root_render import render_root
@@ -76,6 +77,7 @@ class PublicPoints:
             )
             value["_search"] = tuple(TOKEN.findall(plain.casefold()))
             self.core[root["id"]] = value
+        self.author = users.alias("public_author")
         self.site = sites.alias("public_site")
         self.source_site = sites.alias("source_site")
         self.source_valid = and_(
@@ -98,6 +100,8 @@ class PublicPoints:
                 points.c.id,
                 points.c.origin,
                 points.c.author_user_id,
+                self.author.c.id.label("public_author_id"),
+                self.author.c.handle.label("public_author_handle"),
                 authored_points.c.lang.label("authored_lang"),
                 points.c.created_at,
                 points.c.last_interaction_at,
@@ -118,6 +122,15 @@ class PublicPoints:
                 .outerjoin(root_sources, root_sources.c.site_id == root_entries.c.site_id)
                 .outerjoin(self.source_site, self.source_site.c.id == root_sources.c.site_id)
                 .outerjoin(self.site, self.site.c.id == points.c.id)
+                .outerjoin(
+                    self.author,
+                    self.author.c.id
+                    == func.coalesce(
+                        points.c.author_user_id,
+                        self.site.c.owner_user_id,
+                        root_sources.c.owner_user_id,
+                    ),
+                )
             )
             .where(
                 points.c.lifecycle == "active",
@@ -164,6 +177,14 @@ class PublicPoints:
                 else digest({"id": row["id"], "lang": lang, "body": body, "links": sorted(refs)})
             ),
             "source": source,
+            "author": (
+                {"kind": "user", "id": row["public_author_id"], "name": row["public_author_handle"]}
+                if row["public_author_id"]
+                else {
+                    "kind": "system" if source["kind"] == "system" else "source",
+                    "name": "System" if source["kind"] == "system" else "Git source",
+                }
+            ),
             "created_at": row["created_at"].isoformat(),
             "last_interaction_at": row["last_interaction_at"].isoformat(),
         }

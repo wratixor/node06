@@ -1,7 +1,8 @@
 "use strict";
 (() => {
   const el = id => document.getElementById(id);
-  let me = null, point = null, social = null, ownPin = null, links = new Map();
+  let me = null, point = null, social = null, ownPin = null, ownFavorite = false, links = new Map();
+  let blocksCursor, colorCoordinates = [128,128,128,128,128,128];
   let subsCursor, inboxCursor, newsCursor, busy = false, draftDirty = false, mutationConfirmed = false;
   // Retain uncertain intent across network retries; switching accounts cannot replay it.
   const receipts = new Map();
@@ -55,6 +56,7 @@
     if (busy) return; busy = true; mutationConfirmed = false;
     document.querySelectorAll("button").forEach(b => { if (b.id !== "point-picker-open") b.disabled = true; });
     el("proposal-body").readOnly = true;
+    el("color-form").querySelectorAll("input").forEach(input=>{input.disabled=true;});
     try { await action(); } catch (error) {
       if (mutationConfirmed) status("Действие сохранено сервером. Не удалось обновить отображение; нажмите Обновить.");
       else failure(error);
@@ -62,6 +64,7 @@
     finally {
       busy = false;
       document.querySelectorAll("button").forEach(b => { b.disabled = !me && b.dataset.requiresAuth === "true"; });
+      el("color-form").querySelectorAll("input").forEach(input=>{input.disabled=receipts.has("/me/geometry");});
       const unresolved = point && receipts.has(`/points/${point.id}/proposals`);
       el("proposal-body").readOnly = Boolean(unresolved);
       el("proposal-link").disabled = Boolean(unresolved);
@@ -83,14 +86,19 @@
     }
     social = await api(`/points/${pid}/social`); point = social.point;
     ownPin = me ? await api(`/me/subscriptions/${pid}`) : null;
-    history.replaceState(null, "", "/community/?" + new URLSearchParams({ p: pid }));
+    history.replaceState(null, "", "/community/?" + new URLSearchParams({ p: pid, ...(new URLSearchParams(location.search).has("intent")?{intent:new URLSearchParams(location.search).get("intent")}:{}) }));
     el("selected-point").hidden = false; el("point-name").textContent = point.preview || point.id;
     el("point-origin").textContent = point.lang + " · " + point.source.kind;
     el("point-current").textContent = point.body;
     el("point-address").href = "/?" + new URLSearchParams({ p: pid, open: pid });
     el("support-point").hidden = !me;
     el("support-point").textContent = ownPin?.subscription?.active ? "Отписаться / снять поддержку" : "Подписаться на основную версию";
-    el("support-status").textContent = !ownPin?.subscription?.active ? "Вы не подписаны." : ownPin.subscription.content_digest === point.content_digest ? "Вы поддерживаете основную версию." : "Вы подписаны на другую версию. Для новой основной версии нужна явная поддержка.";
+    ownFavorite = me ? (await api("/me/favorites")).items.some(row=>row.id===pid) : false;
+    el("favorite-point").hidden=!me;el("favorite-point").textContent=ownFavorite?"Удалить из избранного":"В избранное";
+    el("block-point").hidden = !me || Boolean(ownPin?.block && ownPin.block.content_digest === point.content_digest && ownPin.block.revision_id === point.revision_id);
+    el("unblock-point").hidden = !me || !ownPin?.block;
+    el("confirm-support").hidden = !me || !ownPin?.subscription?.active || ownPin.subscription.content_digest === point.content_digest || ownPin.ballot === "new";
+    el("support-status").textContent = ownPin?.block ? (ownPin.block.content_digest === point.content_digest ? "Вы блокируете основную версию." : "Блокировка другой версии; для новой основной версии подтвердите её отдельно.") : !ownPin?.subscription?.active ? "Вы не подписаны." : ownPin.subscription.content_digest === point.content_digest ? "Вы поддерживаете основную версию." : "Вы подписаны на другую версию. Для новой основной версии нужна явная поддержка.";
     el("protection").textContent = social.protected ? "Защищённая точка: обновления принимаются из Git или системы." : "Пользовательская точка: правки с подписчиками принимаются голосованием.";
     const open = social.proposals.find(q => q.state === "open");
     el("proposal-form").hidden = !me || social.protected || Boolean(open);
@@ -130,7 +138,7 @@
         node("p",choice ? "Ваш явный голос: " + (choice === "new" ? "новая версия" : "старая версия") : "Вы ещё не голосовали. Подписка сама не даёт голос.",section);
         for (const value of ["old","new"]) button(value === "old" ? "Голос за старую" : "Голос за новую",section,async()=>{
           await write(`/proposals/${q.id}/vote`,{choice:value}); status("Голос записан, подписка переключена на выбранную версию.");
-          await load(point.id,false); await refreshMine();
+          await load(point.id,false); await refreshMine(); await refreshBlocks();
         });
       }
     }
@@ -143,8 +151,47 @@
   });
   el("support-point").addEventListener("click", () => act(async()=>{
     await write(`/points/${point.id}/subscription`,{revision_id:point.revision_id,content_digest:point.content_digest,active:!ownPin?.subscription?.active});
-    status("Подписка обновлена. Это действие само не голосует за правку."); await load(point.id,false); await refreshMine();
+    status("Подписка обновлена. Это действие само не голосует за правку."); await load(point.id,false); await refreshMine(); await refreshBlocks();
   }));
+  el("favorite-point").addEventListener("click",()=>act(async()=>{
+    await write(`/me/favorites/${point.id}`,{active:!ownFavorite});await load(point.id,false);status("Избранное обновлено.");
+  }));
+  el("confirm-support").addEventListener("click", () => act(async()=>{
+    await write(`/points/${point.id}/subscription`,{revision_id:point.revision_id,content_digest:point.content_digest,active:true});
+    await load(point.id,false); await refreshMine(); await refreshBlocks(); status("Поддержка новой основной версии подтверждена.");
+  }));
+  for (const [id,active] of [["block-point",true],["unblock-point",false]]) el(id).addEventListener("click",()=>act(async()=>{
+    const pin=active?point:ownPin.block;
+    await write(`/points/${point.id}/block`,{revision_id:pin.revision_id,content_digest:pin.content_digest,active});
+    await load(point.id,false);await refreshMine();await refreshBlocks();status(active?"Блокировка записана. Это не голос за старую версию.":"Блокировка снята.");
+  }));
+  function previewColor() {
+    const hex=[0,2,4].map(j=>Math.round(255*colorCoordinates[j]/(colorCoordinates[j]+colorCoordinates[j+1])).toString(16).padStart(2,"0")).join("");
+    el("color-preview").textContent="#"+hex;el("color-preview").style.backgroundColor="#"+hex;
+  }
+  for(const [pair,id] of ["color-r","color-g","color-b"].entries()) el(id).addEventListener("input",()=>{
+    colorCoordinates[pair*2]=Number(el(id).value);colorCoordinates[pair*2+1]=256-Number(el(id).value);previewColor();
+  });
+  el("color-form").addEventListener("submit",event=>{event.preventDefault();act(async()=>{
+    const saved=await write("/me/geometry",{coordinates:colorCoordinates});colorCoordinates=saved.coordinates;previewColor();status("Цвет сохранён. Позиции обновятся после пересчёта влияния.");
+  });});
+  async function refreshColor() {
+    if(!me)return;
+    const profile=await api("/me/geometry");colorCoordinates=profile.coordinates;
+    for(const [pair,id] of ["color-r","color-g","color-b"].entries()) el(id).value=Math.max(1,Math.min(255,Math.round(256*colorCoordinates[pair*2]/(colorCoordinates[pair*2]+colorCoordinates[pair*2+1]))));
+    previewColor();el("my-color").hidden=false;if(location.hash==="#my-color")el("my-color").open=true;
+  }
+  async function refreshBlocks(append=false) {
+    if(!me)return;
+    if(!append){blocksCursor=null;el("my-blocks").replaceChildren();}
+    const page=await api("/me/blocks?"+new URLSearchParams(blocksCursor?{after:blocksCursor}:{}));
+    for(const row of page.items){const li=node("li",row.point_id+" ",el("my-blocks"));button("Снять блокировку",li,async()=>{
+      await write(`/points/${row.point_id}/block`,{revision_id:row.revision_id,content_digest:row.content_digest,active:false});
+      await refreshBlocks();await refreshMine();if(point?.id===row.point_id)await load(point.id,false);
+    });}
+    blocksCursor=page.next_cursor;el("more-blocks").hidden=!blocksCursor;
+  }
+  el("more-blocks").addEventListener("click",()=>act(()=>refreshBlocks(true)));
   el("proposal-link").addEventListener("click", () => {
     if (busy) return;
     const input = el("proposal-body"), text = input.value, start = input.selectionStart, end = input.selectionEnd;
@@ -204,7 +251,7 @@
   });});
   el("community-refresh").addEventListener("click",()=>act(async()=>{
     if(point)await load(point.id,false);
-    await refreshMine();await refreshInbox();await refreshNews();
+    await refreshMine();await refreshBlocks();await refreshInbox();await refreshNews();
     status("Обновлено.");
   }));
   window.addEventListener("beforeunload",event=>{if(draftDirty||receipts.size)event.preventDefault();});
@@ -213,12 +260,15 @@
     try {me=await api("/me");status("Вы вошли: "+me.handle);} catch(error){status(error.status === 401 ? "Просмотр доступен всем. Для подписки и голосования войдите через Аккаунт." : "Не удалось проверить сессию. Обновите страницу, когда сервер будет доступен.");}
     try {
       const pid=new URLSearchParams(location.search).get("p");if(pid&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(pid))await load(pid);
-      await refreshMine();await refreshInbox();await refreshNews();
+      await refreshColor();await refreshMine();await refreshBlocks();await refreshInbox();await refreshNews();
     } catch(error){failure(error);}
     finally {
       busy=false;
       document.querySelectorAll("button").forEach(b=>{b.disabled=!me && b.dataset.requiresAuth==="true";});
       if(social){renderProposals();applyBudget();}
+      const intent=new URLSearchParams(location.search).get("intent");
+      const requested={support:"support-point",block:"block-point",favorite:"favorite-point"}[intent];
+      if(requested&&me){el(requested).focus();el(requested).scrollIntoView({block:"center"});}
     }
   })();
 })();

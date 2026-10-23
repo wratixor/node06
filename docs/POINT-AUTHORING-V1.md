@@ -211,3 +211,41 @@ explain icon actions without filling the form. Search/tags precede a small Link
 toolbar, textarea and right-aligned Publish. My points/history/open link remain
 compact above the form; failures still show actionable status and preserve drafts.
 No new title field, rich-text formats or unsupported media toolbar is introduced.
+
+## Publication navigation and contextual actions — 23 October 2026
+
+A successful create/edit now opens the published point instead of leaving the
+visitor in the editor. The related-post icon preserves the hosted entrance via
+`return_to`; only `/` and `/sites/s_<32 hex>/` pass validation, preventing external
+redirects. No-op saves likewise open the current published text. Draft/receipt
+state clears only after an acknowledged success; failures stay in the editor.
+
+The map's four-icon toolbar exposes support, explicit block, related post and
+account favorite. Static/full embeds link to first-party confirmation without
+GET writes. Own favorites remain account-private and weightless. Author
+attribution is rendered separately for user/site/source/system points. Shared
+search captions follow the document's UI language without mixed RU/EN labels;
+point contents and graph membership are independent of that UI choice.
+
+Tag search adds the selected current pin immediately in one click; ordinary
+search only opens an article. The popup never renders a recursive article viewer
+or exposes social/edit/copy controls. All tag metadata remains internal to the
+publication contract; users see the point text rather than UUID/language fields.
+
+## Editor over the map
+
+Management-host NEW POINT and related-post links open a modal over the existing
+map. Its editor iframe is strictly same-origin. The editor HTML alone permits
+`frame-ancestors 'self'` / `X-Frame-Options: SAMEORIGIN`; account, other management
+pages and external/embed-origin restrictions remain unchanged. The embed host
+still cannot serve `/editor/`. This is not third-party authenticated embedding.
+External Neocities/full frames retain the trusted-server editor link.
+
+The parent accepts `node06-editor/1` messages only from its exact iframe window,
+exact management origin and per-opening random channel. Published messages carry
+only a validated public point ID; the parent constructs the local destination
+itself. No cookie, CSRF token, recovery code or private draft is sent in messages.
+Closing checks dirty/uncertain state inside the editor; Cancel preserves it.
+Closing during an in-flight publication is deferred. Standalone editor URLs still
+work and navigate directly after success. A non-responsive editor requires an
+explicit discard confirmation before the parent can remove it.

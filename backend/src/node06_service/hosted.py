@@ -243,7 +243,7 @@ class HostedBundle:
                 if row["authored_lang"] is None:
                     if point["id"] in by_id:
                         by_id[point["id"]].update(
-                            {k: point[k] for k in ("revision_id", "content_digest")}
+                            {k: point[k] for k in ("revision_id", "content_digest", "author")}
                         )
                     continue
                 by_id[point["id"]] = {
@@ -322,8 +322,8 @@ class HostedBundle:
                 'target="_blank" rel="noopener">ABOUT ↗</a>',
             )
             source = source.replace(
-                'href="/setup/"',
-                f'href="{html.escape(settings.management_origin)}/setup/" '
+                'href="/setup/en/"',
+                f'href="{html.escape(settings.management_origin)}/setup/en/" '
                 'target="_blank" rel="noopener"',
             )
             navigation += (
@@ -442,13 +442,14 @@ def register_hosted(app: FastAPI, settings: Settings) -> None:
     def information_page(name: str):
         source = (bundle.directory / name / "index.html").read_text()
         origin = html.escape(settings.management_origin or "", quote=True)
+        russian = '<html lang="ru">' in source
         navigation = "".join(
             f'<a href="{origin}{path}">{label}</a>'
             for path, label in (
-                ("/account/", "ACCOUNT"),
-                ("/sites/", "MY SITES"),
-                ("/community/", "COMMUNITY"),
-                ("/editor/", "NEW POINT"),
+                ("/account/", "АККАУНТ" if russian else "ACCOUNT"),
+                ("/sites/", "МОИ САЙТЫ" if russian else "MY SITES"),
+                ("/community/", "СООБЩЕСТВО" if russian else "COMMUNITY"),
+                ("/editor/", "НОВАЯ ТОЧКА" if russian else "NEW POINT"),
             )
         )
         source = re.sub(r"<!--service-nav-->.*?<!--/service-nav-->", navigation, source, flags=re.S)
@@ -460,6 +461,10 @@ def register_hosted(app: FastAPI, settings: Settings) -> None:
     @app.get("/setup/")
     def setup():
         return information_page("setup")
+
+    @app.get("/setup/en/")
+    def setup_english():
+        return information_page("setup/en")
 
     @app.get("/about/")
     def about():

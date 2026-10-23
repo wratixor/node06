@@ -199,3 +199,30 @@ user ID, credentials or write flag is accepted. It includes influence/version
 status and at most one open weighted proposal tally; no private subscriber list
 or individual vote. Feature-detect through capabilities.get; an older bridge can
 reject this method while ordinary search/read continues. Protocol stays /1.
+
+## Additive public geometry
+
+`points.geometry` accepts exactly `{point_ids:[1–64 unique point IDs]}`.
+HTTP `/bridge/v1/{site}/read` encodes `point_ids` as a comma-separated list;
+first-party public HTTP uses `/api/v1/geometry?ids=...`. Response schema is
+`node06-geometry/1`, containing snapshot/pending and version-pinned nullable
+coordinates/color. No user profile, identity, credential or individual reaction
+is returned. Unknown/hidden points are omitted; invalid/extra params fail.
+The iframe validates array bounds and IDs before forwarding. Existing source,
+parent-origin, channel, request-ID, concurrency and response-size controls apply.
+Protocol remains node06-embed/1. See SOCIAL-GEOMETRY-V1 for the numeric contract.
+
+The shared field/search UI now uses single-language English labels, without
+Russian/English slash labels. Setup is two independent documentation pages:
+Russian `/setup/` and English `/setup/en/`. This does not partition point data.
+
+## Search interaction refinement — 23 October 2026
+
+The search popup is now only a result list. In tag-selection mode, one click
+re-reads the current point pin and invokes onSelect, then closes the list. It
+contains no article body, social toolbar, nested links or copy-address action.
+In ordinary browsing mode each result is a direct article link; static copies
+open the corresponding hosted entrance, full frames retain their frame path.
+Results use text previews instead of exposing UUID/language metadata as titles.
+Escape, debounce, cursor bounds, current-result checks and keyboard focus remain.
+The same read-only bridge/API contracts are unchanged by this UI simplification.

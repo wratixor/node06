@@ -15,11 +15,13 @@ from .models import (
     favorite_points,
     inbox,
     influence_runs,
+    point_blocks,
     proposals,
     root_entries,
     social_events,
     social_user_state,
     subscriptions,
+    user_geometry,
     user_trust,
     users,
 )
@@ -331,6 +333,15 @@ def own_subscription(point_id: PointID, request: Request):
                 ballots.c.user_id == actor.user_id,
             )
         )
+        blocked = (
+            c.execute(
+                select(point_blocks).where(
+                    point_blocks.c.user_id == actor.user_id, point_blocks.c.point_id == point_id
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
         last = c.scalar(
             select(social_user_state.c.last_proposed_at).where(
                 social_user_state.c.user_id == actor.user_id
@@ -338,6 +349,7 @@ def own_subscription(point_id: PointID, request: Request):
         )
     return {
         "subscription": dict(row) if row else None,
+        "block": dict(blocked) if blocked else None,
         "ballot": choice,
         "next_proposal_at": last + timedelta(hours=24) if last else None,
     }
@@ -406,3 +418,60 @@ def summary(point_id: PointID, request: Request, response: Response):
     from .social_read import point_summary
 
     return respond(lambda: point_summary(public_service(request, set()), point_id))
+
+
+class Coordinates(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    coordinates: Annotated[
+        list[Annotated[int, Field(strict=True, ge=1, le=65535)]], Field(min_length=6, max_length=6)
+    ]
+
+
+@router.post("/points/{point_id}/block")
+def block(point_id: PointID, payload: Subscription, request: Request):
+    return mutate(request, "block", point_id, payload)
+
+
+@router.post("/me/geometry")
+def set_coordinates(payload: Coordinates, request: Request):
+    _, _, actor = manager(request, mutation=False)
+    return mutate(request, "coordinates", actor.user_id, payload)
+
+
+@router.get("/me/geometry")
+def own_coordinates(request: Request):
+    _, _, actor = manager(request, mutation=False)
+    from .geometry import DEFAULT, color
+
+    with request.app.state.database.connect() as c:
+        coords = (
+            c.scalar(
+                select(user_geometry.c.coordinates).where(user_geometry.c.user_id == actor.user_id)
+            )
+            or DEFAULT
+        )
+    return {"coordinates": coords, "color": color(coords)}
+
+
+@router.get("/me/blocks")
+def own_blocks(
+    request: Request, after: PointID | None = None, limit: Annotated[int, Query(ge=1, le=50)] = 30
+):
+    _, _, actor = manager(request, mutation=False)
+    with request.app.state.database.connect() as c:
+        rows = (
+            c.execute(
+                select(point_blocks)
+                .where(
+                    point_blocks.c.user_id == actor.user_id, point_blocks.c.point_id > (after or "")
+                )
+                .order_by(point_blocks.c.point_id)
+                .limit(limit + 1)
+            )
+            .mappings()
+            .all()
+        )
+    return {
+        "items": [dict(row) for row in rows[:limit]],
+        "next_cursor": rows[limit - 1]["point_id"] if len(rows) > limit else None,
+    }

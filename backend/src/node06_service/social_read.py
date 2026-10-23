@@ -41,6 +41,8 @@ def point_summary(public, point_id):
             "current": None,
             "held": None,
             "subscribed": None,
+            "blocked": None,
+            "blocked_held": None,
             "snapshot_id": None,
             "model": None,
         }
@@ -53,7 +55,8 @@ def point_summary(public, point_id):
             )
             latest = c.scalar(select(func.max(social_events.c.seq))) or 0
             pending = (
-                "point_mass" not in data
+                "geometry" not in data
+                or "point_mass" not in data
                 or data.get("cutoff_seq") != latest
                 or active != set(data["weights"])
                 or bool(
@@ -66,8 +69,8 @@ def point_summary(public, point_id):
             if not pending:
                 influence.update(
                     {
-                        key: amount(entry[key] if entry else 0)
-                        for key in ("current", "held", "subscribed")
+                        key: amount(entry.get(key, 0) if entry else 0)
+                        for key in ("current", "held", "subscribed", "blocked", "blocked_held")
                     }
                 )
             if proposal and not pending:
@@ -98,6 +101,11 @@ def point_summary(public, point_id):
             "revision_id": point["revision_id"],
             "content_digest": point["content_digest"],
             "protected": protected,
+            "author": {
+                k: v
+                for k, v in point.get("author", {"kind": "source", "name": "Git source"}).items()
+                if k != "id"
+            },
             "influence": influence,
             "proposal": (
                 {

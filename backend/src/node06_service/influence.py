@@ -4,7 +4,7 @@ import math
 from decimal import Decimal, localcontext
 
 SCALE = 10**12
-MODEL = "t1-v1-d0.5-q12"
+MODEL = "t1-v2-d0.5-q12-signed-slots"
 
 
 class InfluenceUnavailable(RuntimeError):

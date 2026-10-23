@@ -46,7 +46,14 @@ def editor(request: Request):
         for name in ("site.css", "point-picker.js"):
             version = sha256((bundle.directory / "assets" / name).read_bytes()).hexdigest()[:12]
             page = page.replace(f"/assets/{name}", f"/assets/{name}?v={version}")
-    return HTMLResponse(page, headers=HEADERS)
+    headers = {
+        **HEADERS,
+        "Content-Security-Policy": HEADERS["Content-Security-Policy"].replace(
+            "frame-ancestors 'none'", "frame-ancestors 'self'"
+        ),
+        "X-Frame-Options": "SAMEORIGIN",
+    }
+    return HTMLResponse(page, headers=headers)
 
 
 @router.get("/client.js")

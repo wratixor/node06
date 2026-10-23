@@ -2,7 +2,7 @@
 (() => {
   const protocol = "node06-embed/1";
   const methods = ["capabilities.get", "site.get", "point.get", "points.search",
-    "point.read", "points.searchPage", "point.neighbors", "point.social"];
+    "point.read", "points.searchPage", "point.neighbors", "point.social", "points.geometry"];
   const parents = document.body.dataset.parents.split(" ");
   const site = document.body.dataset.site;
   const active = new Set();
@@ -36,12 +36,20 @@
       || !/^[A-Za-z0-9_-]{1,128}$/.test(message.id) || !plain(message.params)) return;
     const { id, method, params } = message;
     if (!methods.includes(method)) { fail(id, "METHOD_NOT_ALLOWED"); return; }
+    if (method === "points.geometry") {
+      if (!exact(params,["point_ids"]) || !Array.isArray(params.point_ids) ||
+          params.point_ids.length < 1 || params.point_ids.length > 64 ||
+          new Set(params.point_ids).size !== params.point_ids.length ||
+          params.point_ids.some(id=>typeof id!=="string" || !/^[a-z0-9][a-z0-9_-]{0,95}$/.test(id))) {
+        fail(id,"INVALID_PARAMS"); return;
+      }
+    }
     const paged = ["points.searchPage", "point.neighbors"].includes(method);
     const keys = ["point.get", "point.read", "point.neighbors", "point.social"].includes(method) ? ["point_id"]
-      : ["points.search", "points.searchPage"].includes(method) ? ["query"] : [];
+      : ["points.search", "points.searchPage"].includes(method) ? ["query"] : method === "points.geometry" ? ["point_ids"] : [];
     const allowed = paged ? [...keys, "after", "limit"] : keys;
     if (Object.keys(params).some(key => !allowed.includes(key))
-      || keys.some(key => typeof params[key] !== "string" || params[key].length < 1 || params[key].length > 128)
+      || keys.some(key => method !== "points.geometry" && (typeof params[key] !== "string" || params[key].length < 1 || params[key].length > 128))
       || (Object.hasOwn(params, "after") && (typeof params.after !== "string"
         || !/^(?:[a-z0-9][a-z0-9_-]{0,95})?$/.test(params.after)))
       || (Object.hasOwn(params, "limit") && (!Number.isInteger(params.limit) || params.limit < 1 || params.limit > 50))

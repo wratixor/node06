@@ -38,6 +38,8 @@ jobs:
         run: |
           node --check static/site.js
           node --check static/field-social.js
+          node --check static/field-geometry.js
+          node --check static/editor-overlay.js
           node --check static/point-picker.js
           node --check backend/src/node06_service/ui/editor.js
           node --check backend/src/node06_service/ui/community.js
