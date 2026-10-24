@@ -104,7 +104,6 @@ def point_summary(public, point_id):
             "author": {
                 k: v
                 for k, v in point.get("author", {"kind": "source", "name": "Git source"}).items()
-                if k != "id"
             },
             "influence": influence,
             "proposal": (

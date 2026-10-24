@@ -286,8 +286,7 @@ def test_author_attribution_stays_with_original_creator(manager, static_bundle):
     assert edited.status_code == 200
     assert client.get("/api/v1/points/" + created["id"]).json()["author"] == current["author"]
     summary = client.get(f"/api/v1/points/{created['id']}/social-summary").json()
-    assert summary["author"] == {"kind": "user", "name": identity["handle"]}
-    assert "id" not in summary["author"]
+    assert summary["author"] == current["author"]
 
 
 def test_compose_receipt_is_bound_to_actor_site_and_exact_content(

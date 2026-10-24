@@ -413,6 +413,24 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.reload();
     await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
     await page.locator('[data-tab=color]').click();
+    assert.equal(await page.locator('#color-radar [role=slider]').count(),6);
+    const radarHandle=page.locator('#color-radar [data-axis="0"]');
+    const dragBox=await radarHandle.boundingBox();
+    const dragTarget=await page.locator('#color-radar').evaluate(svg=>{const p=new DOMPoint(150,65).matrixTransform(svg.getScreenCTM());return {x:p.x,y:p.y};});
+    await page.mouse.move(dragBox.x+dragBox.width/2,dragBox.y+dragBox.height/2);
+    await page.mouse.down();await page.mouse.move(dragTarget.x,dragTarget.y,{steps:5});await page.mouse.up();
+    assert.notEqual(await page.locator('#coordinate-0').inputValue(),String(largeStats[0]));
+    assert.equal(await page.locator('#coordinate-1').inputValue(),String(largeStats[1]));
+    await radarHandle.focus();await page.keyboard.press('Home');assert.equal(await radarHandle.getAttribute('aria-valuenow'),'1');
+    await page.keyboard.press('End');assert.equal(await radarHandle.getAttribute('aria-valuenow'),'65535');
+    // Real touch events exercise pointer capture on the SVG under mobile sizing.
+    const touchBox=await radarHandle.boundingBox(), cdp=await context.newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:touchBox.x+touchBox.width/2,y:touchBox.y+touchBox.height/2}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[dragTarget]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
+    assert.notEqual(await page.locator('#coordinate-0').inputValue(),'65535');
+    await radarHandle.focus();await page.keyboard.press('End');
+    await page.locator('#color-values summary').click();
     assert.equal(await page.locator('#color-form input[type=range]').count(),0);
     assert.equal(await page.locator('#color-r,#color-g,#color-b').count(),0);
     assert(!/Тело|Дух|Натиск|Самообладание|Реакция|Техника/.test(await page.locator('#color-form').textContent()));
@@ -450,6 +468,22 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(await actions.locator('svg').count(),4);
     assert.equal(await page.locator('#point-panel-body .point-social h2').count(),0);
     assert((await page.locator('#point-panel-body .point-author').textContent()).includes(socialSession.handle));
+    assert.equal(await page.locator('#point-panel-body .point-author a').getAttribute('href'),base+'/people/'+socialSession.user_id+'/');
+    const authorPage=await context.newPage();await authorPage.goto(base+'/people/'+socialSession.user_id+'/');
+    await authorPage.locator('#author-points a').first().waitFor();assert.equal(await authorPage.locator('#author-actions').isVisible(),false);
+    // A distinct public author can be subscribed through the existing T1 edge.
+    const profileViewer=await (await authorPage.request.get(base+'/api/v1/me')).json();
+    const candidates=await (await authorPage.request.get(base+'/api/v1/people?q=browser')).json();
+    const otherAuthor=candidates.items.find(u=>u.id!==profileViewer.user_id);
+    if(!otherAuthor)throw new Error('Browser fixture needs another author');
+    await authorPage.goto(base+'/people/'+otherAuthor.id+'/');await authorPage.locator('#author-actions').waitFor();
+    await authorPage.locator('#author-follow').click();await authorPage.waitForFunction(()=>document.querySelector('#author-follow').getAttribute('aria-pressed')==='true');
+    await authorPage.locator('#author-block').click();await authorPage.waitForFunction(()=>document.querySelector('#author-block').getAttribute('aria-pressed')==='true');
+    assert.equal(await authorPage.locator('#author-follow').isDisabled(),true);
+    await authorPage.locator('#author-block').click();await authorPage.waitForFunction(()=>document.querySelector('#author-block').getAttribute('aria-pressed')==='false');
+    assert.equal(await authorPage.locator('#author-follow').getAttribute('aria-pressed'),'false');
+    await authorPage.screenshot({path:'/tmp/node06-author-profile-mobile.png',fullPage:true});await authorPage.close();
+
     assert.equal(await page.locator('#point-panel-body .point-action-status').isVisible(),false);
     const favorite=actions.locator('[data-action=favorite]');
     await page.route(base+'/api/v1/me/favorites/'+socialPoint,async route=>{
@@ -469,12 +503,12 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert.equal(await actions.locator('[data-action=support]').getAttribute('aria-pressed'),'false');
     // Q12 normalization places the mirrored red channel just below the half-unit tie.
     await waitGeometry(socialPoint,'#1999cc');
-    await page.locator('.field-geometry-status button').click();
+    await page.locator('#field-refresh').click();
     await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.color==='#1999cc',socialPoint);
     await actions.locator('[data-action=block]').click();
     await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=block]')?.getAttribute('aria-pressed')==='false');
     await waitGeometry(socialPoint,null);
-    await page.locator('.field-geometry-status button').click();
+    await page.locator('#field-refresh').click();
     await page.waitForFunction(id=>document.querySelector(`.node[data-id="${id}"]`)?.dataset.coordinateSource==='display-only',socialPoint);
 
     // Late summaries cannot replace another point, and unavailable data is not zero.
@@ -655,12 +689,25 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await staticPage.goto('https://garden.localhost/picker-parent?p=point-ru&open=point-ru');
     assert.equal(await staticPage.locator('.site-header nav a').first().textContent(),'NODE06');
     await staticPage.locator('.point-create-related').waitFor();
+    assert.equal(await staticPage.locator('[data-view]').count(),0);
+    assert.equal(await staticPage.locator('#field-controls #field-refresh').count(),1);
     const pagesBefore=context.pages().length;
     await staticPage.locator('.point-create-related').click();
     const externalEditor=staticPage.frameLocator('#point-editor-overlay iframe');
     await externalEditor.locator('#editor-form[data-ready=true]').waitFor();
     assert.equal(context.pages().length,pagesBefore,'Opening draft must not open a new window');
     assert((await externalEditor.locator('#point-links').textContent()).includes('Точка'));
+    const libraryActor=await (await page.request.get(base+'/api/v1/me')).json();
+    assert.equal((await page.request.post(base+'/api/v1/me/favorites/field-en',{headers:{Origin:base,'X-CSRF-Token':libraryActor.csrf_token,'Idempotency-Key':'browser-library-favorite'},data:{active:true}})).status(),200);
+    const libraryPromise=staticPage.waitForEvent('popup');await externalEditor.locator('#open-library').click();const libraryPage=await libraryPromise;
+    await libraryPage.locator('#library-favorites button[data-point-id=field-en]').waitFor();
+    assert.equal(await libraryPage.locator('#library-favorites').textContent().then(t=>t.length>0),true);
+    // Wrong source/channel cannot add a public point to the draft.
+    const linkCount=await externalEditor.locator('#point-links li').count();
+    await externalEditor.locator('body').evaluate(()=>window.dispatchEvent(new MessageEvent('message',{origin:document.body.dataset.managementOrigin,data:{protocol:'node06-library/1',kind:'selected',id:'field-en',channel:'spoof'}})));
+    assert.equal(await externalEditor.locator('#point-links li').count(),linkCount);
+    await libraryPage.locator('#library-favorites button[data-point-id=field-en]').click();
+    await externalEditor.locator('#point-links li').nth(linkCount).waitFor();assert.equal(await externalEditor.locator('#point-body').inputValue(),'');
     await externalEditor.locator('#point-body').fill('Embedded root child <script>not executable</script>');
     await staticPage.locator('#point-editor-overlay .editor-overlay-heading button').click();
     await staticPage.locator('.editor-discard').waitFor();
@@ -691,7 +738,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await staticPage.waitForFunction(()=>document.querySelector('#point-panel-body .point-text')?.textContent.includes('Embedded root child'));
     assert.equal(await staticPage.locator('#point-panel-body .point-text script').count(),0);
     const publishedRootChild=await (await page.request.get(base+'/api/v1/points/'+embeddedId)).json();
-    assert.deepEqual(publishedRootChild.declared_links,['point-ru']);
+    assert.deepEqual(publishedRootChild.declared_links,['field-en','point-ru']);
     await staticPage.screenshot({path:'/tmp/node06-embedded-published-mobile.png',fullPage:true});
     await staticPage.goto('https://garden.localhost/full-parent');
     const fullWiki=staticPage.frameLocator('#wiki');

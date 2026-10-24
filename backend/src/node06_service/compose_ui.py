@@ -111,6 +111,52 @@ def confirm(site_id: str, request: Request):
     )
 
 
+@router.get("/editor/library/{site_id}/", response_class=HTMLResponse)
+def library(site_id: str, request: Request):
+    if not request.app.state.database.configured:
+        return JSONResponse({"code": "DATABASE_NOT_CONFIGURED"}, status_code=503)
+    try:
+        site = SiteRegistry(request.app.state.database).get_public_site(site_id)
+    except SiteNotFoundError:
+        return JSONResponse({"code": "SITE_NOT_FOUND"}, status_code=404, headers=HEADERS)
+    except SQLAlchemyError:
+        return JSONResponse({"code": "SITES_UNAVAILABLE"}, status_code=503, headers=HEADERS)
+    embed = html.escape(request.app.state.settings.embed_origin or "", quote=True)
+    return HTMLResponse(
+        """<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width"><title>Личная библиотека</title>
+<link rel="stylesheet" href="/account/style.css">
+<script src="/editor/library.js" defer></script></head><body data-embed-origin="""
+        + '"'
+        + embed
+        + '" data-site="'
+        + html.escape(site.id, quote=True)
+        + '"'
+        + """><main><h1>Личная библиотека</h1>
+<p>Сайт: """
+        + html.escape(site.origin)
+        + """</p>
+<p id="library-status" role="status">Проверяем вход…</p>
+<a href="/account/" target="_blank" rel="noopener">Вход и регистрация</a>
+<button id="library-refresh" type="button">Обновить</button>
+<p>В редактор передаётся только выбранная вами ссылка.</p>
+<h2>Избранное</h2><ul id="library-favorites"></ul>
+<h2>Мои точки</h2><ul id="library-points"></ul>
+<button id="library-more" type="button" hidden>Ещё</button>
+<noscript>Нужен JavaScript.</noscript></main></body></html>""",
+        headers=HEADERS,
+    )
+
+
+@router.get("/editor/library.js")
+def library_script():
+    return Response(
+        files("node06_service").joinpath("ui/editor-library.js").read_text(),
+        media_type="application/javascript",
+        headers=HEADERS,
+    )
+
+
 @router.get("/editor/confirm.js")
 def confirm_script():
     return Response(

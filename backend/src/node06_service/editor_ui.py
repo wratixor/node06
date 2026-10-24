@@ -25,6 +25,7 @@ PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <button id="more-history" type="button" hidden>Ещё версии</button></details>
 <a id="open-point" hidden>Открыть точку</a></div>
 <section id="tag-tools" aria-label="Связи и избранное" hidden>
+<button id="open-library" type="button" hidden>Мои точки и избранное</button>
 <div id="tag-search"></div><ul id="point-links" aria-label="Выбранные связи"></ul>
 <div id="favorite-wrap" hidden><span class="editor-caption">Избранное</span>
 <ul id="favorite-tags"></ul></div></section>

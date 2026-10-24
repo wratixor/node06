@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from .auth_api import authenticated_mutation
 from .author_api import Content, PointID, RevisionID
@@ -16,11 +16,13 @@ from .models import (
     inbox,
     influence_runs,
     point_blocks,
+    points,
     proposals,
     root_entries,
     social_events,
     social_user_state,
     subscriptions,
+    user_blocks,
     user_geometry,
     user_trust,
     users,
@@ -95,6 +97,93 @@ def vote(proposal_id: ProposalID, payload: Vote, request: Request):
 @router.post("/people/{user_id}/trust")
 def trust(user_id: UserID, payload: Trust, request: Request):
     return mutate(request, "trust", user_id, payload)
+
+
+@router.post("/people/{user_id}/block")
+def block_person(user_id: UserID, payload: Trust, request: Request):
+    return mutate(request, "person_block", user_id, payload)
+
+
+@router.get("/me/people/blocks")
+def blocked_people(request: Request, after: UserID | None = None):
+    _, _, actor = manager(request, mutation=False)
+    with request.app.state.database.connect() as c:
+        rows = (
+            c.execute(
+                select(users.c.id, users.c.handle)
+                .join(user_blocks, user_blocks.c.target_user_id == users.c.id)
+                .where(user_blocks.c.source_user_id == actor.user_id, users.c.id > (after or ""))
+                .order_by(users.c.id)
+                .limit(31)
+            )
+            .mappings()
+            .all()
+        )
+    return {
+        "items": [dict(r) for r in rows[:30]],
+        "next_cursor": rows[29]["id"] if len(rows) > 30 else None,
+    }
+
+
+@router.get("/me/people/{user_id}")
+def own_person(user_id: UserID, request: Request):
+    _, _, actor = manager(request, mutation=False)
+    with request.app.state.database.connect() as c:
+        following = c.scalar(
+            select(user_trust.c.target_user_id).where(
+                user_trust.c.source_user_id == actor.user_id, user_trust.c.target_user_id == user_id
+            )
+        )
+        blocked = c.scalar(
+            select(user_blocks.c.target_user_id).where(
+                user_blocks.c.source_user_id == actor.user_id,
+                user_blocks.c.target_user_id == user_id,
+            )
+        )
+    return {"user_id": user_id, "following": bool(following), "blocked": bool(blocked)}
+
+
+@router.get("/people/{user_id}")
+def person(user_id: UserID, request: Request, response: Response):
+    response.headers.update(PUBLIC_HEADERS)
+    public = public_service(request, set())
+    from .geometry import color
+
+    with public.database.connect() as c:
+        row = (
+            c.execute(
+                select(users.c.id, users.c.handle).where(
+                    users.c.id == user_id, users.c.state == "active"
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if not row:
+            raise PublicPointError("USER_NOT_FOUND", 404)
+        coords = c.scalar(
+            select(user_geometry.c.coordinates).where(user_geometry.c.user_id == user_id)
+        )
+    return {**dict(row), "color": color(coords or [128] * 6)}
+
+
+@router.get("/people/{user_id}/points")
+def person_points(
+    user_id: UserID, request: Request, response: Response, after: PointID | None = None
+):
+    response.headers.update(PUBLIC_HEADERS)
+    public = public_service(request, {"after"})
+    with public.database.connect() as c:
+        if not c.scalar(select(users.c.id).where(users.c.id == user_id, users.c.state == "active")):
+            raise PublicPointError("USER_NOT_FOUND", 404)
+        query = public._query().where(public.author.c.id == user_id)
+        if after:
+            query = query.where(points.c.id.collate("C") > after)
+        rows = c.execute(query.order_by(points.c.id.collate("C")).limit(21)).mappings().all()
+    return {
+        "items": [public._convert(row, full=False) for row in rows[:20]],
+        "next_cursor": rows[19]["id"] if len(rows) > 20 else None,
+    }
 
 
 @router.post("/me/inbox/{event_seq}/read")
@@ -249,11 +338,18 @@ def own(
                 .limit(100)
             ).mappings()
         ]
+        trust_profiles = [
+            dict(row)
+            for row in c.execute(
+                select(users.c.id, users.c.handle).where(users.c.id.in_(trust))
+            ).mappings()
+        ]
         items = [reaction_preview(public, c, row) for row in rows[:limit]]
     return {
         "items": items,
         "next_cursor": rows[limit - 1]["point_id"] if len(rows) > limit else None,
         "trust": trust,
+        "trust_profiles": trust_profiles,
         "ballots": choices,
     }
 
@@ -269,7 +365,19 @@ def notifications(
         query = (
             select(social_events, inbox.c.read_at)
             .join(inbox, inbox.c.event_seq == social_events.c.seq)
-            .where(inbox.c.user_id == actor.user_id)
+            .outerjoin(points, points.c.id == social_events.c.point_id)
+            .where(
+                inbox.c.user_id == actor.user_id,
+                ~select(user_blocks.c.target_user_id)
+                .where(
+                    user_blocks.c.source_user_id == actor.user_id,
+                    or_(
+                        user_blocks.c.target_user_id == social_events.c.actor_user_id,
+                        user_blocks.c.target_user_id == points.c.author_user_id,
+                    ),
+                )
+                .exists(),
+            )
         )
         if before:
             query = query.where(social_events.c.seq < before)

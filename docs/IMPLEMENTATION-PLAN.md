@@ -1471,3 +1471,41 @@ personal pages, color deep links/legacy alias/reload/browser Back and normal
 same-origin/external publication. Six raw components and color-only labels remain
 covered. Ruff/format,51-root build, JS syntax, protocol and diff checks passed.
 No production write performed; owner review/main deployment remains required.
+
+
+### Radar, author profiles and trusted tag library — 23 October 2026
+
+Owner-requested six-axis draggable color input replaces the default numeric form;
+exact values remain collapsible. Fixed logarithmic display scaling covers the
+existing raw range without altering color/T1 calculations. Mouse, touch and
+keyboard operate each component independently. The field VIEW arrow buttons are
+removed; the geometry refresh button is now in the field controls.
+
+Post attribution now links a real user to a public author profile with visible
+points, T1 subscribe/unsubscribe and explicit author blocking. Owner confirmed
+that following an author equals T1 trust. Blocking removes outgoing trust and
+hides their events/posts from the existing personal inbox; it does not mass-block
+points, add negative trust or restore trust on unblock. Migration0014 adds only
+personal author blocks. See [AUTHOR-PROFILES-V1](AUTHOR-PROFILES-V1.md).
+
+The next external-library packet now implements trusted selection of own points
+and favorite tags: a top-level private library exports only an explicitly chosen
+public ID, re-read by the anonymous editor before linking. No authenticated embed
+capability, external inline edit, automatic list export or third-party cookie.
+Contract: [EMBEDDED-DRAFTS-V1](EMBEDDED-DRAFTS-V1.md). External inline own-point
+editing, self-service Git source proof/preview/accept, diff refinement, devlogs
+and remote profile synchronization remain subsequent work.
+
+Acceptance — 24 October 2026: final full disposable PostgreSQL suite242 passed.
+Populated0013→0014 upgrade/downgrade/re-upgrade preserved the published revision;
+block/unblock, T1 edge removal, idempotent replay, CSRF/origin rejection, inbox
+filtering and retained point subscriptions passed. Final installed-wheel HTTPS
+Chromium passed mouse/touch/keyboard radar input, independent/full-range raw
+values, profile links/T1/block controls, selected-only private library export,
+wrong-source rejection, two-link external publication with lost-response retry,
+mobile layout and absence of global cookies on embed requests. Ruff/format,
+51-root build, JS syntax, protocol and diff checks passed. No production write.
+
+Normal deployment applies0014 using existing `alembic upgrade head`; Nginx already
+proxies the wiki's routes and needs no new exception. External inline own-point
+editing remains planned. Source readiness does not establish live deployment.

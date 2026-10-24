@@ -31,6 +31,7 @@ from .models import (
     subscription_intervals,
     subscriptions,
     support_history,
+    user_blocks,
     user_geometry,
     user_trust,
     users,
@@ -530,11 +531,33 @@ class Social:
             )
         return {"event_seq": seq, "read": True}
 
+    def _person_block(self, c, actor, target, payload):
+        if target == actor or not c.scalar(select(users.c.id).where(users.c.id == target)):
+            raise SocialError("INVALID_TRUST_TARGET")
+        where = (user_blocks.c.source_user_id == actor) & (user_blocks.c.target_user_id == target)
+        if payload["active"]:
+            # Remove the existing T1 edge atomically; no negative edge is added.
+            self._trust(c, actor, target, {"active": False})
+            c.execute(
+                pg_insert(user_blocks)
+                .values(source_user_id=actor, target_user_id=target)
+                .on_conflict_do_nothing()
+            )
+        else:
+            c.execute(delete(user_blocks).where(where))
+        return {"target_user_id": target, "blocked": payload["active"]}
+
     def _trust(self, c, actor, target, payload):
         if target == actor or not c.scalar(
             select(users.c.id).where(users.c.id == target, users.c.state == "active")
         ):
             raise SocialError("INVALID_TRUST_TARGET")
+        if payload["active"] and c.scalar(
+            select(user_blocks.c.target_user_id).where(
+                user_blocks.c.source_user_id == actor, user_blocks.c.target_user_id == target
+            )
+        ):
+            raise SocialError("AUTHOR_BLOCKED", 409)
         where = (user_trust.c.source_user_id == actor) & (user_trust.c.target_user_id == target)
         had = c.scalar(select(user_trust.c.target_user_id).where(where)) is not None
         if had != payload["active"]:

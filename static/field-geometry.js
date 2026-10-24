@@ -5,7 +5,9 @@
   let ids=[],ticket=0,timer;
   const status=document.createElement("p"), label=document.createElement("span"), refresh=document.createElement("button");
   status.className="field-geometry-status";label.setAttribute("role","status");refresh.type="button";refresh.textContent="↻";refresh.title="Refresh geometry";refresh.setAttribute("aria-label","Refresh geometry");
-  status.append(label," ",refresh);
+  status.append(label);
+  const controls=document.getElementById("field-controls");if(controls)controls.append(refresh);
+  refresh.id="field-refresh";
   async function load(){
     const sequence=++ticket, targets=[...ids];
     if(!targets.length||!window.readNode06Public||!window.applyNode06Geometry)return;

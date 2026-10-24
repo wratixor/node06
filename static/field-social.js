@@ -18,7 +18,14 @@
     const labels={support:[text('Subscribe','Подписаться'),text('Unsubscribe','Отписаться')],block:[text('Block','Заблокировать'),text('Unblock','Снять блокировку')],related:[text('New related post','Новый связанный пост')],favorite:[text('Add to favorites','Добавить в избранное'),text('Remove from favorites','Удалить из избранного')]};
     function address(kind){const url=new URL(kind==='related'?'/editor/':'/community/',origin());url.search=new URLSearchParams(kind==='related'?{from:id,return_to:window.node06ReturnPath?.()||'/'}:{p:id,intent:kind});return url.href;}
     function fail(message){status.hidden=false;status.textContent=message;}
-    function setAuthor(value){const name=value?.kind==='source'?text('Git source','Источник Git'):value?.kind==='system'?text('System','Система'):value?.name;author.textContent=text('Author: ','Автор: ')+(name||text('Git source','Источник Git'));}
+    function setAuthor(value){
+      const name=value?.kind==='source'?text('Git source','Источник Git'):value?.kind==='system'?text('System','Система'):value?.name;
+      author.textContent=text('Author: ','Автор: ');
+      if(value?.kind==='user'&&/^u_[0-9a-f]{32}$/.test(value.id||'')&&origin()){
+        const a=node('a',name||value.id,author);a.href=new URL('/people/'+value.id+'/',origin()).href;
+        if(!firstParty()){a.target='_blank';a.rel='noopener noreferrer';}
+      }else author.append(document.createTextNode(name||text('Git source','Источник Git')));
+    }
     function state(){
       for(const [kind,control] of Object.entries(controls)){
         const active=kind==='support'?Boolean(own?.subscription?.active):kind==='block'?Boolean(own?.block):kind==='favorite'?favorite:false;

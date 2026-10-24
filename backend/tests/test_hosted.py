@@ -444,6 +444,13 @@ def test_embedded_draft_is_anonymous_scoped_and_confirmation_unframeable(hosted,
     assert confirmation.headers["x-frame-options"] == "DENY"
     assert "frame-ancestors 'none'" in confirmation.headers["content-security-policy"]
     assert client.get(EMBED + approval).status_code == 404
+    library = f"/editor/library/{active.site_id}/"
+    assert client.get(library).status_code == 200
+    assert client.get(library).headers["x-frame-options"] == "DENY"
+    assert client.get(EMBED + library).status_code == 404
+    assert client.get(f"/editor/library/{pending.site_id}/").status_code == 404
+    assert client.get(EMBED + "/people/u_" + "1" * 32 + "/").status_code == 404
+
     assert client.get(EMBED + "/api/v1/me").status_code == 404
     assert client.post(EMBED + "/api/v1/points", json={}).status_code == 404
     with pg_database.begin() as connection:

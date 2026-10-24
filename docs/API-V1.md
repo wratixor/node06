@@ -346,3 +346,18 @@ notification retry/cutoff/bulk import; explicit reaffirm/remove; stale snapshot
 revision gating; semantic search homonyms/RU/EN/unlinked word/repeated targets;
 source ownership/SSRF/limits; unsafe Markdown; trusted auth/iframe policies;
 conservation with pending holds; root source rollback retains global history.
+
+## Public author profiles and personal author blocks
+
+Author following is the existing directed T1 trust edge, not an additional
+budget. Public author/profile and point-list routes, private relationship reads,
+explicit author blocking and migration0014 are specified in
+[AUTHOR-PROFILES-V1](AUTHOR-PROFILES-V1.md). The public social summary now carries
+the already public attribution ID so field cards can link to the author; it
+still omits subscriber and ballot-participant identities. New meta capability
+names: `public_author_profiles`, `author_blocks`, `trusted_tag_library`.
+
+The trusted external-editor library is a UI selection flow, not a credentialed
+API grant. Its only outbound data is one explicitly chosen public point ID;
+protocol and origin/window checks are specified in
+[EMBEDDED-DRAFTS-V1](EMBEDDED-DRAFTS-V1.md). `embed_auth` remains unimplemented.
