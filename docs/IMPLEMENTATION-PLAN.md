@@ -1606,3 +1606,21 @@ and both home links are covered by the existing targeted PostgreSQL test.
 Field toolbar buttons, including geometry refresh, share a40px height; static
 Chromium checks desktop/mobile dimensions alongside51-root navigation.
 No schema, content or influence change; ordinary application/static deploy.
+
+### Explicit inline link insertion — 24 October 2026
+
+The editor action is now labelled «Вставить ссылку». It captures the selection
+or empty caret before focusing point search. Choosing a point wraps selected
+words or inserts its short label as `[text](md://point/id)` at that caret,
+then places the caret after the markup. The point is declared once among links,
+even when used repeatedly in the text. Changed drafts are not overwritten by
+an old explicit insertion request; bracket/newline selections get a short error.
+Ordinary tag selection without a text selection still only adds a graph link.
+No new write API, influence or schema change; hosted/external editor share code.
+
+Installed-wheel HTTPS Chromium passed selection wrapping, empty-caret insertion,
+caret placement and one declared pin for repeated mentions, plus the existing
+publication, external drafting, profiles, moderation and anonymous bridge flows.
+The first added browser assertion selected an arbitrary matching result; the
+final test targets the exact root ID and passed. JS/Ruff/format/diff checks passed.
+No production change; normal app deploy after owner merge.

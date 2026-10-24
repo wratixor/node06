@@ -260,3 +260,14 @@ original map. Management-host editing stays in its same-origin modal. Account
 favorites/own-point editing remain first-party. Compact profile lists are grouped
 in tabs. Exact boundaries, replay/migration and acceptance:
 [EMBEDDED-DRAFTS-V1](EMBEDDED-DRAFTS-V1.md). This is not broad embed authentication.
+
+### Explicit text links
+
+«Вставить ссылку» opens point selection after saving the textarea selection/caret.
+A chosen point inserts `[caption](md://point/id)` into the text: selected words
+are kept as caption, or the point's short label is used at an empty caret.
+The caret moves after the inserted markup. The target is also declared among
+connections, once per ID; repeated mentions do not consume extra target slots.
+Selections containing brackets or line breaks are rejected with a short message.
+An explicit stale insertion does not overwrite a changed draft. Plain tag
+selection without selected text continues to add only a graph connection.
