@@ -17,6 +17,8 @@ from .community_ui import router as community_router
 from .compose_ui import router as compose_router
 from .config import Settings, get_settings
 from .db import Database
+from .directory import router as directory_router
+from .directory_ui import router as directory_ui_router
 from .editor_ui import router as editor_router
 from .feed_api import router as feed_router
 from .geometry_api import router as geometry_router
@@ -82,6 +84,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(editor_router)
     app.include_router(compose_router)
     app.include_router(people_ui_router)
+    app.include_router(directory_router)
+    app.include_router(directory_ui_router)
     app.include_router(point_router)
     app.include_router(site_ui_router)
 
@@ -169,7 +173,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response.headers["X-Request-ID"] = request.state.request_id
         if (
             request.url.path.startswith(
-                ("/api/v1/auth/", "/api/v1/me", "/editor/confirm/", "/api/v1/moderation")
+                (
+                    "/api/v1/auth/",
+                    "/api/v1/me",
+                    "/editor/confirm/",
+                    "/api/v1/moderation",
+                    "/api/v1/directory",
+                )
             )
             or request.url.path.endswith("/manage")
             or request.url.path == "/api/v1/ui-config"
@@ -235,6 +245,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "embedded_draft_confirmation",
                 "compact_profile",
                 "public_author_profiles",
+                "public_directory_rankings",
                 "author_blocks",
                 "trusted_tag_library",
                 "authored_point_history",

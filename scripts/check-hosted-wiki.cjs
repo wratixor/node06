@@ -800,10 +800,10 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.screenshot({path:'/tmp/node06-compact-profile-mobile.png',fullPage:true});
     // Every trusted personal page has the same navigation and current-page marker.
-    for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/moderation/','moderation'],['/community/','profile']]){
+    for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/moderation/','moderation'],['/directory/','directory'],['/community/','profile']]){
       await page.goto(base+path);
       const nav=page.locator('.personal-header nav');
-      assert.equal(await nav.locator('a').count(),6);
+      assert.equal(await nav.locator('a').count(),7);
       assert.equal(await nav.locator('[aria-current=page]').count(),1);
       assert.equal(await nav.locator('[aria-current=page]').getAttribute('href'),path);
       assert.equal(await nav.locator('a[target]').count(),key==='editor'?1:0);
@@ -855,8 +855,25 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#restore-point').click();
     await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
     assert.equal((await page.request.get(base+'/api/v1/points/'+socialPoint+'?site='+active)).status(),200);
-    await page.locator('#roles summary').click();
-    await page.locator('#role-user').fill(authorSession.user_id);
+    await page.locator('#user-query').fill(handle);
+    await page.locator('#user-search-form button').click();
+    await page.waitForFunction(()=>!document.querySelector('#user-query').disabled);
+    await page.waitForFunction(()=>document.querySelector('#user-results button'));
+    assert.equal(await page.locator('#user-results a').getAttribute('href'),'/people/'+authorSession.user_id+'/');
+    assert((await page.locator('#user-results small').textContent()).includes('активен'));
+    await page.locator('#user-results button').click();
+    assert.equal(await page.locator('#role-user').inputValue(),authorSession.user_id);
+    // Controls share a baseline on desktop; mobile uses a full-width scope row.
+    await page.setViewportSize({width:1000,height:850});
+    const aligned=await page.locator('#scope-form').evaluate(form=>{
+      const boxes=[...form.querySelectorAll('input,select,button')].map(n=>n.getBoundingClientRect());
+      return Math.max(...boxes.map(b=>b.bottom))-Math.min(...boxes.map(b=>b.bottom))<2;
+    });
+    assert(aligned,'Scope input, status and submit align');
+    await page.screenshot({path:'/tmp/node06-moderation-desktop-directory.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'User search fits mobile');
+    await page.screenshot({path:'/tmp/node06-moderation-users-mobile.png',fullPage:true});
     await page.locator('#role-form button').click();
     await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
     const delegated=await browser.newContext({ignoreHTTPSErrors:true});
@@ -866,6 +883,25 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
     assert.equal((await delegated.request.get(base+'/api/v1/moderation/cases?scope='+active)).status(),403);
     await delegated.close();
+    const discovery=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:390,height:844}});
+    const directoryPage=await discovery.newPage();
+    await directoryPage.goto(base+'/directory/');
+    await directoryPage.locator('#directory-query').fill(handle);
+    await directoryPage.locator('#directory-form button').click();
+    await directoryPage.waitForFunction(()=>document.querySelector('#directory-results a'));
+    assert.equal(await directoryPage.locator('#directory-results a').textContent(),handle);
+    assert.equal(await directoryPage.locator('#directory-results a').getAttribute('href'),'/people/'+authorSession.user_id+'/');
+    await directoryPage.locator('#directory-results a').click();
+    await directoryPage.locator('#author-points a').first().waitFor();
+    assert.equal(await directoryPage.locator('#author-name').textContent(),handle);
+    await directoryPage.goto(base+'/directory/');
+    await directoryPage.locator('#directory-kind').selectOption('users');
+    await directoryPage.waitForFunction(()=>document.querySelector('#directory-results a')||document.querySelector('#directory-status').textContent.includes('Расчёт'));
+    assert.equal(await directoryPage.locator('#directory-query').isVisible(),false);
+    assert(await directoryPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Public directory fits mobile');
+    await directoryPage.screenshot({path:'/tmp/node06-directory-mobile.png',fullPage:true});
+    assert.equal((await discovery.request.get(embed+'/directory/')).status(),404);
+    await discovery.close();
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);

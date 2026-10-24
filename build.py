@@ -270,7 +270,7 @@ def service_navigation(lang="en") -> str:
     return '<!--service-nav-->' + ''.join(
         f'<a href="{origin}{path}" target="_blank" rel="noopener noreferrer">{label} ↗</a>'
         for path, label in (("/account/", "АККАУНТ" if lang == "ru" else "ACCOUNT"), ("/sites/", "МОИ САЙТЫ" if lang == "ru" else "MY SITES"),
-                            ("/community/", "СООБЩЕСТВО" if lang == "ru" else "COMMUNITY"), ("/editor/", "НОВАЯ ТОЧКА" if lang == "ru" else "NEW POINT"))
+                            ("/directory/", "РЕЙТИНГИ" if lang == "ru" else "RANKINGS"), ("/community/", "СООБЩЕСТВО" if lang == "ru" else "COMMUNITY"), ("/editor/", "НОВАЯ ТОЧКА" if lang == "ru" else "NEW POINT"))
     ) + '<!--/service-nav-->'
 
 

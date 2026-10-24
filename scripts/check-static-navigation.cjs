@@ -33,7 +33,7 @@ function neighborhood(points, id) {
     const points = await (await fetch(`${base}/data/points.json`)).json();
     const connection = await (await fetch(`${base}/assets/connection.json`)).json();
     await page.goto(base + '/');
-    for (const path of ['/account/', '/sites/', '/community/', '/editor/']) {
+    for (const path of ['/account/', '/sites/', '/directory/', '/community/', '/editor/']) {
       await page.locator(`nav a[href="${connection.serviceOrigin}${path}"]`).waitFor();
     }
     await page.locator('nav a[href="/setup/en/"]').click();

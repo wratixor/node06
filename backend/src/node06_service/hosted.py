@@ -75,6 +75,8 @@ def management_path(path: str, method: str) -> bool:
                 "/moderation",
                 "/api/v1/moderation",
                 "/people",
+                "/directory",
+                "/api/v1/directory",
                 "/community",
                 "/editor",
                 "/account",

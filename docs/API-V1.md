@@ -381,3 +381,14 @@ report/visibility/close/role writes are implemented; see
 Public reads accept optional `site=s_<uuid>` as a display context. Server hides
 always apply; site hides only in the selected/default site. Hosted and iframe
 readers carry their site context. Independent static copies remain independent.
+
+### User discovery and public influence rankings
+
+`GET /api/v1/directory/users?q=&after=` lists/searches active public handles,
+20/page, ID cursor. `GET /api/v1/directory/rankings?kind=users|points&after=`
+reads the persisted T1 snapshot: total user weight or confirmed positive
+current-version point support. No private graph edges or registration dates.
+Pending/stale snapshots return an empty pending result; changed snapshot cursors
+return409. Current site/server visibility applies. UI `/directory/` links to
+public author profiles. Moderator-only `GET /api/v1/moderation/users` adds
+registration date/state after scope authorization. [Contract](DIRECTORY-V1.md).

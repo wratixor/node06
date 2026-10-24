@@ -228,3 +228,19 @@ def inspect_point(point_id: PointID, request: Request, scope: Scope = "server"):
         "roles_more": len(members) > 100,
         "audit": [dict(r) for r in audit_rows],
     }
+
+
+@router.get("/users")
+def find_users(
+    request: Request,
+    scope: Scope = "server",
+    q: Annotated[str, Query(max_length=64)] = "",
+    after: Annotated[str, Query(pattern=r"^(?:u_[0-9a-f]{32})?$")] = "",
+):
+    from .directory import user_rows
+
+    service(request, {"scope", "q", "after"})
+    _, _, actor = manager(request, mutation=False)
+    with request.app.state.database.connect() as c:
+        role = require(c, actor.user_id, scope)
+        return {"role": role, **user_rows(c, q, after, private=True)}
