@@ -72,12 +72,17 @@
     const input = el("point-body");
     if (links.size >= 16 && !links.has(pin.id)) { status("Не больше 16 связей."); return; }
     if (pin.id === pid) { status("Точку нельзя связать с собой."); return; }
-    links.set(pin.id, { id: pin.id, preview: pin.preview, revision_id: pin.revision_id, content_digest: pin.content_digest });
     const position = selection || { start: input.selectionStart, end: input.selectionEnd, text: input.value };
     const selected = position.text.slice(position.start, position.end);
-    if (selected && input.value === position.text && !/[\[\]\n]/.test(selected)) {
-      input.value = position.text.slice(0, position.start) + `[${selected}](md://point/${pin.id})` + position.text.slice(position.end);
-      input.setSelectionRange(position.start, position.start);
+    const insertLink = Boolean(position.insert) || Boolean(selected && !/[\[\]\n]/.test(selected));
+    if(position.insert && input.value !== position.text){selection=null;status("Текст изменился. Нажмите «Вставить ссылку» ещё раз.");return;}
+    if(position.insert && /[\[\]\r\n]/.test(selected)){selection=null;status("Выделите слова без скобок и переноса строки.");input.focus();return;}
+    links.set(pin.id, { id: pin.id, preview: pin.preview, revision_id: pin.revision_id, content_digest: pin.content_digest });
+    if (insertLink && input.value === position.text) {
+      const caption = selected || label(pin).replace(/[\[\]\r\n]/g," ").trim() || pin.id;
+      const markup = `[${caption}](md://point/${pin.id})`;
+      input.setRangeText(markup,position.start,position.end,"end");
+      status("Ссылка вставлена.");
     }
     selection = null; dirty = true; renderLinks(); input.focus();
   }
@@ -87,11 +92,12 @@
   el("point-picker-query").setAttribute("aria-label", "Найти связанную точку / тег");
   window.setNode06PickerSelection(selectPin);
   el("point-body").addEventListener("input", () => {selection = null;});
-  el("point-body").addEventListener("select", () => {selection = null;});
+  el("point-body").addEventListener("select", () => {if(document.activeElement===el("point-body"))selection = null;});
   el("link-word").addEventListener("click", () => {
     if (busy || receipt) return;
     const input = el("point-body");
-    selection = { start: input.selectionStart, end: input.selectionEnd, text: input.value };
+    selection = { start: input.selectionStart, end: input.selectionEnd, text: input.value, insert: true };
+    status("Выберите точку для ссылки.");
     window.openNode06Picker({ onSelect: selectPin });
   });
   function renderFavorites() {

@@ -31,7 +31,7 @@ PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <ul id="favorite-tags"></ul></div></section>
 <form id="editor-form" hidden>
 <div class="editor-toolbar"><button id="link-word" type="button"
-title="Связать выделенные слова с точкой">Ссылка</button></div>
+title="Вставить ссылку на точку в текст">Вставить ссылку</button></div>
 <textarea id="point-body" aria-label="Текст" placeholder="Текст точки…"
 maxlength="8192" rows="14" required></textarea>
 <button id="publish" type="submit">Опубликовать</button></form>

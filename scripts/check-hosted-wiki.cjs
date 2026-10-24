@@ -594,6 +594,24 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await editorFrame.getByRole('button',{name:'Убрать связь',exact:true}).click();
     await editorFrame.locator('#favorite-tags button').first().click();
     await page.frames().find(f=>f.url().includes("editor_channel=")).waitForFunction(()=>document.querySelectorAll('#point-links li').length === 1);
+    // Link action wraps selected words and also inserts at an empty caret.
+    const linkedBody=editorFrame.locator('#point-body');
+    await linkedBody.fill('Before meaning after');
+    await linkedBody.evaluate(n=>{n.focus();n.setSelectionRange(7,14);});
+    await editorFrame.locator('#link-word').click();
+    await editorFrame.locator('#point-picker-query').fill('skills-ru');
+    await editorFrame.locator('#point-picker-results li[data-point-id="skills-ru"] button').click();
+    await editorDocument.waitForFunction(()=>document.querySelector('#point-body').value.includes('md://point/skills-ru'));
+    assert.equal(await linkedBody.inputValue(),'Before [meaning](md://point/skills-ru) after');
+    const caret=await linkedBody.evaluate(n=>n.selectionStart);
+    assert.equal(caret,'Before [meaning](md://point/skills-ru)'.length);
+    await linkedBody.fill('Before  after');
+    await linkedBody.evaluate(n=>{n.focus();n.setSelectionRange(7,7);});
+    await editorFrame.locator('#link-word').click();
+    await editorFrame.locator('#point-picker-results li[data-point-id="skills-ru"] button').click();
+    await editorDocument.waitForFunction(()=>document.querySelector('#point-body').value.includes('md://point/skills-ru'));
+    assert.match(await linkedBody.inputValue(),/^Before \[[^\]]+\]\(md:\/\/point\/skills-ru\) after$/);
+    assert.equal(await editorFrame.locator('#point-links li').count(),1,'Repeated inline target shares one declared link');
     await editorFrame.locator('#point-body').fill('A related point from the current meaning');
     await page.screenshot({path:'/tmp/node06-editor-overlay-mobile.png',fullPage:true});
     await editorFrame.locator('#publish').click();
