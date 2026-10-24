@@ -26,7 +26,7 @@ METHODS = ["capabilities.get", "site.get", "point.get", "points.search", *CURREN
 MAX_RESPONSE_BYTES = 255 * 1024
 
 
-def current_read(app, method, params):
+def current_read(app, method, params, site_id=None):
     if method == "points.geometry":
         if set(params) != {"point_ids"} or not 1 <= len(params["point_ids"]) <= 6207:
             raise PublicPointError("INVALID_PARAMS", 400)
@@ -40,6 +40,7 @@ def current_read(app, method, params):
                 app.state.database,
                 roots=app.state.hosted_bundle.roots,
                 build_revision=app.state.settings.build_revision,
+                site_id=site_id,
             ),
             parts,
         )
@@ -62,6 +63,7 @@ def current_read(app, method, params):
         app.state.database,
         roots=app.state.hosted_bundle.roots,
         build_revision=app.state.settings.build_revision,
+        site_id=site_id,
     )
     if method == "point.social":
         from .social_read import point_summary
@@ -143,7 +145,7 @@ def register_bridge(app: FastAPI) -> None:
             if method not in METHODS:
                 return error("METHOD_NOT_ALLOWED")
             if method in CURRENT_METHODS:
-                data = current_read(app, method, params)
+                data = current_read(app, method, params, site.id)
             elif method in ("capabilities.get", "site.get"):
                 if params:
                     return error("INVALID_PARAMS")
@@ -157,7 +159,7 @@ def register_bridge(app: FastAPI) -> None:
                 value = params.get(key, "")
                 if set(params) != {key} or not 1 <= len(value) <= 128:
                     return error("INVALID_PARAMS")
-                graph = app.state.hosted_bundle.graph(request)
+                graph = app.state.hosted_bundle.graph(request, site.id)
                 if method == "point.get":
                     data = next((point for point in graph if point["id"] == value), None)
                     if data is None:

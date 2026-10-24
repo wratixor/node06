@@ -20,6 +20,7 @@ from .models import (
 from .root_import import digest
 from .root_render import render_root
 from .site_registry import ALL_SITES_ID
+from .visibility import hidden_ids, visible
 
 TOKEN = re.compile(r"[^\W_]+", re.UNICODE)
 SIMPLE = literal_column("'simple'::regconfig")
@@ -49,7 +50,8 @@ def preview(body):
 
 
 class PublicPoints:
-    def __init__(self, database, *, roots=(), build_revision="dev"):
+    def __init__(self, database, *, roots=(), build_revision="dev", site_id=None, moderation=True):
+        self.site_id, self.moderation = site_id, moderation
         self.database = database
         self.build_revision = build_revision
         self.core = {}
@@ -134,6 +136,7 @@ class PublicPoints:
             )
             .where(
                 points.c.lifecycle == "active",
+                visible(points.c.id, self.site_id) if self.moderation else True,
                 or_(
                     points.c.id == ALL_SITES_ID,
                     self.site_valid,
@@ -200,13 +203,13 @@ class PublicPoints:
 
     def _raw(self, point_id):
         self._check()
-        if point_id in self.core:
-            return {k: v for k, v in self.core[point_id].items() if not k.startswith("_")}
         with self.database.connect() as connection:
             return self.raw_on(connection, point_id)
 
     def raw_on(self, connection, point_id):
         """Read current visibility on a caller's transaction, after its row locks."""
+        if self.moderation and hidden_ids(connection, [point_id], self.site_id):
+            raise PublicPointError("POINT_NOT_FOUND")
         if point_id in self.core:
             return {k: v for k, v in self.core[point_id].items() if not k.startswith("_")}
         row = (
@@ -261,6 +264,12 @@ class PublicPoints:
                 ),
             )
         with self.database.connect() as connection:
+            hidden = (
+                hidden_ids(connection, [p["id"] for p in core], self.site_id)
+                if self.moderation
+                else set()
+            )
+            core = [p for p in core if p["id"] not in hidden]
             rows = (
                 connection.execute(
                     self._query()
@@ -292,6 +301,8 @@ class PublicPoints:
         core_ids = set(self.core.get(point_id, {}).get("declared_links", []))
         with self.database.connect() as connection:
             core_ids.update(connection.execute(ids.where(other.in_(list(self.core)))).scalars())
+            if self.moderation:
+                core_ids -= hidden_ids(connection, core_ids, self.site_id)
             rows = (
                 connection.execute(
                     self._query()

@@ -12,6 +12,7 @@ from .models import authored_points, authored_revisions, point_revisions, points
 from .point_api import service as public_service
 from .public_points import PublicPointError, preview
 from .site_api import manager
+from .visibility import visible
 
 router = APIRouter(prefix="/api/v1")
 PointID = Annotated[str, StringConstraints(strict=True, pattern=r"^[a-z0-9][a-z0-9_-]{0,95}$")]
@@ -150,6 +151,7 @@ def own_points(
             .where(
                 points.c.author_user_id == actor.user_id,
                 points.c.lifecycle == "active",
+                visible(points.c.id),
             )
         )
         if after:

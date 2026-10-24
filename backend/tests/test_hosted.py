@@ -256,7 +256,9 @@ def test_bridge_revoked_site_and_oversize_reads_fail_closed(hosted, pg_database,
     app, client, active, _pending = hosted
     api = EMBED + f"/bridge/v1/{active.site_id}/read"
     monkeypatch.setattr(
-        app.state.hosted_bundle, "graph", lambda _: [{"id": "large", "html": "x" * 270000}]
+        app.state.hosted_bundle,
+        "graph",
+        lambda _, site_id=None: [{"id": "large", "html": "x" * 270000}],
     )
     assert client.get(api, params={"method": "point.get", "point_id": "large"}).status_code == 413
     with pg_database.begin() as connection:

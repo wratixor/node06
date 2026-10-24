@@ -9,6 +9,7 @@ def navigation(current: str) -> str:
         ("profile", "/community/", "Профиль"),
         ("sites", "/sites/", "Мои сайты"),
         ("editor", "/editor/", "Новая точка"),
+        ("moderation", "/moderation/", "Жалобы"),
         ("account", "/account/", "Вход и безопасность"),
     )
     links = []

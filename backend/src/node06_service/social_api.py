@@ -31,6 +31,7 @@ from .point_api import service as public_service
 from .public_points import PublicPointError
 from .site_api import manager
 from .social import Social, SocialError
+from .visibility import visible
 
 router = APIRouter(prefix="/api/v1")
 ProposalID = Annotated[str, StringConstraints(strict=True, pattern=r"^q_[0-9a-f]{32}$")]
@@ -361,6 +362,7 @@ def notifications(
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
 ):
     _, _, actor = manager(request, mutation=False)
+    public = public_service(request, {"before", "limit"})
     with request.app.state.database.connect() as c:
         query = (
             select(social_events, inbox.c.read_at)
@@ -368,6 +370,7 @@ def notifications(
             .outerjoin(points, points.c.id == social_events.c.point_id)
             .where(
                 inbox.c.user_id == actor.user_id,
+                visible(social_events.c.point_id, public.site_id),
                 ~select(user_blocks.c.target_user_id)
                 .where(
                     user_blocks.c.source_user_id == actor.user_id,
@@ -395,7 +398,9 @@ def news(request: Request, response: Response, before: Annotated[int | None, Que
     response.headers.update(PUBLIC_HEADERS)
     public = public_service(request, {"before"})
     with public.database.connect() as c:
-        query = select(social_events).where(social_events.c.public.is_(True))
+        query = select(social_events).where(
+            social_events.c.public.is_(True), visible(social_events.c.point_id, public.site_id)
+        )
         if before:
             query = query.where(social_events.c.seq < before)
         rows = c.execute(query.order_by(social_events.c.seq.desc()).limit(21)).mappings().all()

@@ -72,6 +72,8 @@ def management_path(path: str, method: str) -> bool:
     return (
         path.startswith(
             (
+                "/moderation",
+                "/api/v1/moderation",
                 "/people",
                 "/community",
                 "/editor",
@@ -99,7 +101,7 @@ class HostedBundle:
         if len(ids) != len(self.roots) or ALL_SITES_ID in ids:
             raise ValueError("Root IDs conflict with the provisional site directory")
 
-    def graph(self, request: Request) -> list[dict]:
+    def graph(self, request: Request, site_id=None) -> list[dict]:
         database = request.app.state.database
         if not database.configured:
             raise GraphUnavailable("DATABASE_NOT_CONFIGURED")
@@ -279,6 +281,16 @@ class HostedBundle:
             for a, b in edges:
                 by_id[a]["links"] = sorted(set(by_id[a]["links"]) | {b})
                 by_id[b]["links"] = sorted(set(by_id[b]["links"]) | {a})
+        from .visibility import hidden_ids
+
+        scope = (
+            site_id
+            or request.query_params.get("site")
+            or request.app.state.settings.default_site_id
+        )
+        with database.connect() as connection:
+            hidden = hidden_ids(connection, by_id, scope)
+        by_id = {pid: point for pid, point in by_id.items() if pid not in hidden}
         # Retired/missing local roots do not leave visible dangling links.
         for point in by_id.values():
             point["links"] = [target for target in point["links"] if target in by_id]
@@ -300,6 +312,7 @@ class HostedBundle:
         attributes = {
             "field-path": field_path,
             "home-point": home,
+            "view-site": home,
             "home-page": "true",
             "hosted": "true",
             "management-origin": settings.management_origin or "",
@@ -445,6 +458,14 @@ def register_hosted(app: FastAPI, settings: Settings) -> None:
                 return JSONResponse(
                     {"code": "GRAPH_UNAVAILABLE"}, status_code=503, headers=PUBLIC_HEADERS
                 )
+        if selected:
+            from .visibility import hidden_ids
+
+            with request.app.state.database.connect() as connection:
+                if hidden_ids(connection, [selected], selected):
+                    return JSONResponse(
+                        {"code": "POINT_NOT_FOUND"}, status_code=404, headers=PUBLIC_HEADERS
+                    )
         source = bundle.render(
             settings,
             field_path=field_path,
@@ -464,6 +485,11 @@ def register_hosted(app: FastAPI, settings: Settings) -> None:
 
     @app.get("/data/points.json")
     def graph(request: Request):
+        from .visibility import SCOPE
+
+        selected = request.query_params.get("site")
+        if selected and (not SCOPE.fullmatch(selected) or selected == "server"):
+            return JSONResponse({"code": "INVALID_SCOPE"}, status_code=422, headers=PUBLIC_HEADERS)
         try:
             return JSONResponse(bundle.graph(request), headers=PUBLIC_HEADERS)
         except GraphUnavailable as exc:

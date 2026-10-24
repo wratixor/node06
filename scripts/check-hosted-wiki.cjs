@@ -4,6 +4,7 @@ const { chromium } = require('playwright');
 const base = process.env.NODE06_PREVIEW_URL || 'https://localhost:8846';
 const embed = process.env.NODE06_EMBED_URL || 'https://embed.localhost:8847';
 const active = process.env.NODE06_TEST_ACTIVE_SITE;
+const otherSite=process.env.NODE06_TEST_OTHER_SITE;
 for (const url of [base, embed]) {
   const host = new URL(url).hostname;
   assert(host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1', 'Local fixtures only');
@@ -529,7 +530,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
 
     // Late summaries cannot replace another point, and unavailable data is not zero.
     let started, finished;
-    const slowStarted=new Promise(resolve=>{started=resolve;});
+    const slowStarted=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Expected summary request was not observed')),15000);started=()=>{clearTimeout(timer);resolve();};});
     const slowFinished=new Promise(resolve=>{finished=resolve;});
     await page.route(base+'/api/v1/points/skills-ru/social-summary',async route=>{
       const response=await route.fetch(); started();
@@ -799,10 +800,10 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.screenshot({path:'/tmp/node06-compact-profile-mobile.png',fullPage:true});
     // Every trusted personal page has the same navigation and current-page marker.
-    for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/community/','profile']]){
+    for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/moderation/','moderation'],['/community/','profile']]){
       await page.goto(base+path);
       const nav=page.locator('.personal-header nav');
-      assert.equal(await nav.locator('a').count(),5);
+      assert.equal(await nav.locator('a').count(),6);
       assert.equal(await nav.locator('[aria-current=page]').count(),1);
       assert.equal(await nav.locator('[aria-current=page]').getAttribute('href'),path);
       assert.equal(await nav.locator('a[target]').count(),key==='editor'?1:0);
@@ -825,6 +826,46 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
     assert.equal(await page.locator('#color-form').isVisible(),true);
     await page.screenshot({path:'/tmp/node06-profile-color-navigation.png',fullPage:true});
+    // The trusted report panel is reached from a site-context point action.
+    await page.goto(base+'/sites/'+active+'/?p='+socialPoint+'&open='+socialPoint);
+    await page.locator('.point-report[href]').waitFor();
+    assert.equal(new URL(await page.locator('.point-report').getAttribute('href')).searchParams.get('scope'),active);
+    await page.locator('.point-report').click();
+    await page.waitForURL('**/moderation/**');
+    await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
+    await page.locator('#report-reason').fill('Needs review <script>window.moderationUnsafe=true</script>');
+    await page.locator('#report-form button').click();
+    await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
+    await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#reports li'));
+    assert.equal(await page.locator('#reports script').count(),0);
+    assert.equal(await page.evaluate(()=>window.moderationUnsafe),undefined);
+    await page.locator('#decision-reason').fill('Browser site-only hide');
+    await page.route(base+'/api/v1/moderation/visibility/*',async route=>{
+      assert.equal((await route.fetch()).status(),200);await route.abort();
+    },{times:1});
+    await page.locator('#hide-point').click();
+    await page.waitForFunction(()=>!document.querySelector('#hide-point').disabled);
+    await page.locator('#hide-point').click();
+    await page.waitForFunction(()=>document.querySelector('#hidden-since').textContent.includes('только на этом сайте'));
+    assert.equal((await page.request.get(base+'/api/v1/points/'+socialPoint+'?site='+active)).status(),404);
+    assert.equal((await page.request.get(base+'/api/v1/points/'+socialPoint+'?site='+otherSite)).status(),200);
+    await page.screenshot({path:'/tmp/node06-moderation-mobile.png',fullPage:true});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Moderation fits mobile');
+    await page.locator('#restore-point').click();
+    await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
+    assert.equal((await page.request.get(base+'/api/v1/points/'+socialPoint+'?site='+active)).status(),200);
+    await page.locator('#roles summary').click();
+    await page.locator('#role-user').fill(authorSession.user_id);
+    await page.locator('#role-form button').click();
+    await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
+    const delegated=await browser.newContext({ignoreHTTPSErrors:true});
+    assert.equal((await delegated.request.post(base+'/api/v1/auth/login',{headers:{Origin:base},data:{handle,password}})).status(),200);
+    assert.equal((await delegated.request.get(base+'/api/v1/moderation/cases?scope='+active)).status(),200);
+    await page.locator('#role').selectOption('');await page.locator('#role-form button').click();
+    await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
+    assert.equal((await delegated.request.get(base+'/api/v1/moderation/cases?scope='+active)).status(),403);
+    await delegated.close();
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);

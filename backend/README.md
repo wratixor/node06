@@ -137,3 +137,12 @@ are globally bound to actor/site/content for safe popup reload/account-change
 retries. The configured application deploy performs the normal backup/migration
 sequence; no new proxy/API exposure or third-party cookie is required. See
 [embedded drafting contract](../docs/EMBEDDED-DRAFTS-V1.md).
+
+
+Scoped reports/moderation: [contract](../docs/MODERATION-V1.md). Migration0016
+adds roles, cases, unique reporters, reversible hides and audit. No purge or ban
+worker is enabled. The initial server admin is an exact existing user ID granted
+by the owner-run `python -m node06_service.moderation_admin --user-id …` command
+inside the configured service environment; no handle is implicitly privileged.
+Downgrading or running an old binary can expose hidden content: read the rollback
+boundary before release. Neocities static files are outside server read control.

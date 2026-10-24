@@ -468,3 +468,57 @@ compose_receipts = Table(
     Column("request_digest", String(64), nullable=False),
     Column("created_at", DateTime(timezone=True), server_default=func.now(), nullable=False),
 )
+
+# Scope is either the literal "server" or an active s_<uuid> entrance.
+moderation_roles = Table(
+    "moderation_roles",
+    metadata,
+    Column("scope", String(34), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("role", String(16), nullable=False),
+    CheckConstraint("role IN ('admin', 'moderator')", name="ck_moderation_role"),
+)
+point_hides = Table(
+    "point_hides",
+    metadata,
+    Column("scope", String(34), primary_key=True),
+    Column("point_id", String(96), primary_key=True),
+    Column("active", Boolean, nullable=False),
+    Column("hidden_since", DateTime(timezone=True), nullable=True),
+    Column("updated_by", ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+moderation_cases = Table(
+    "moderation_cases",
+    metadata,
+    Column("scope", String(34), primary_key=True),
+    Column("point_id", String(96), primary_key=True),
+    Column("status", String(16), nullable=False, server_default="open"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint("status IN ('open', 'closed')", name="ck_moderation_case_status"),
+)
+moderation_reports = Table(
+    "moderation_reports",
+    metadata,
+    Column("scope", String(34), primary_key=True),
+    Column("point_id", String(96), primary_key=True),
+    Column("reporter_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("reason", Text, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    ForeignKeyConstraint(
+        ["scope", "point_id"],
+        ["moderation_cases.scope", "moderation_cases.point_id"],
+        ondelete="CASCADE",
+    ),
+)
+moderation_audit = Table(
+    "moderation_audit",
+    metadata,
+    Column("id", String(34), primary_key=True),
+    Column("scope", String(34), nullable=False),
+    Column("actor_id", ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    Column("action", String(16), nullable=False),
+    Column("target", String(96), nullable=False),
+    Column("detail", JSON, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
