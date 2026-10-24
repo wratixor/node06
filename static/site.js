@@ -179,7 +179,7 @@
     body.dataset.currentPoint = point.id;
     body.dataset.currentRevision = point.revision_id || "";
     body.dataset.currentDigest = point.content_digest || "";
-    window.dispatchEvent(new CustomEvent('node06:point', {detail:{id:point.id, revision_id:point.revision_id, content_digest:point.content_digest,author:point.author}}));
+    window.dispatchEvent(new CustomEvent('node06:point', {detail:{id:point.id, revision_id:point.revision_id, content_digest:point.content_digest,author:point.author,preview:point.preview}}));
     if(push) updateUrl();
   }
 

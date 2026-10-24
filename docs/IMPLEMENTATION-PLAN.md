@@ -1672,3 +1672,30 @@ existing hosted/embed/profile/moderation flows. Static51-root checks passed at
 survival, wheel/Escape dismissal and no page overflow. A focused disposable
 HTTPS check also passed Space activation/replay with explicit button focus.
 JS/protocol, Ruff/format and diff checks passed. No production action performed.
+
+
+### 24 October 2026 — public point clipboard
+
+Copy-link and remembered public references share viewer/context actions. The
+browser collection survives reloads, is registrar-scoped and transfers through
+an origin/source/channel-bound editor overlay handshake. Bulk graph links and
+inline semantic links refresh public pins before changing the draft; a missing
+point never adds a partial set. URL paste resolves local IDs without fetching
+an arbitrary URL. No new authenticated endpoint or database migration.
+Contract: [POINT-CLIPBOARD-V1](POINT-CLIPBOARD-V1.md).
+
+Next moderation packet was audited against current schema and writers:
+[PURGE-TOMBSTONES-PLAN](PURGE-TOMBSTONES-PLAN.md). Automatic cleanup is not yet
+implemented; the audit covers revision/search bodies, structured root snapshots,
+proposal candidates, core fallback, imports and retained ID references.
+
+
+Clipboard validation: storage/URL sanitation and quota/denial checks passed;
+installed-wheel HTTPS Chromium passed URL paste, bulk semantic links, missing
+point rollback, overlay collection removal and external parent transfer with
+spoof rejection. Static51-root checks passed persistence after reload plus copy
+success/denial fallback. Focused390px/1440px layout checks passed long labels,
+inert HTML and a bounded64-item list. Backend Ruff/format, JS/protocol, build
+execution and diff checks passed. Optional legacy build.py Ruff remains at the
+same49 diagnostics as origin/main; no new diagnostics were introduced there.
+No production change or migration performed.

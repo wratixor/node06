@@ -299,6 +299,7 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <script src="{asset_url("site.js")}" defer></script>
 <script src="{asset_url("node06-client.js")}" defer></script>
 <script src="{asset_url("point-picker.js")}" defer></script>
+<script src="{asset_url("point-clipboard.js")}" defer></script>
 <script src="{asset_url("field-social.js")}" defer></script>
 <script src="{asset_url("field-geometry.js")}" defer></script>
 <script src="{asset_url("editor-overlay.js")}" defer></script>

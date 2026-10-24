@@ -14,6 +14,7 @@ router = APIRouter(prefix="/editor")
 PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width"><title>NODE06 — точка</title>
 <link rel="stylesheet" href="/assets/site.css"><link rel="stylesheet" href="/editor/style.css">
+<script src="/assets/point-clipboard.js" defer></script>
 <script src="/assets/point-picker.js" defer></script><script src="/editor/client.js" defer></script>
 </head><body data-page="editor" data-hosted="true" data-point-picker="true">
 {personal_navigation}
@@ -27,6 +28,15 @@ PAGE = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <a id="open-point" hidden>Открыть точку</a></div>
 <section id="tag-tools" aria-label="Связи и избранное" hidden>
 <button id="open-library" type="button" hidden>Мои точки и избранное</button>
+<details id="clipboard-wrap"><summary>Подборка <span id="clipboard-count"></span></summary>
+<form id="clipboard-url-form" class="clipboard-toolbar">
+<input id="clipboard-url" type="url" aria-label="Ссылка на точку" placeholder="Ссылка на точку">
+<button type="submit">＋</button></form>
+<div class="clipboard-toolbar">
+<button id="clipboard-add-all" type="button" aria-label="Связать выбранные">Связать</button>
+<button id="clipboard-insert-all" type="button">Вставить ссылки</button>
+<button id="clipboard-clear" type="button">Очистить</button></div>
+<ul id="clipboard-points"></ul></details>
 <div id="tag-search"></div><ul id="point-links" aria-label="Выбранные связи"></ul>
 <div id="favorite-wrap" hidden><span class="editor-caption">Избранное</span>
 <ul id="favorite-tags"></ul></div></section>
@@ -53,7 +63,7 @@ def editor(request: Request):
         )
     bundle = getattr(request.app.state, "hosted_bundle", None)
     if bundle:
-        for name in ("site.css", "point-picker.js"):
+        for name in ("site.css", "point-picker.js", "point-clipboard.js"):
             version = sha256((bundle.directory / "assets" / name).read_bytes()).hexdigest()[:12]
             page = page.replace(f"/assets/{name}", f"/assets/{name}?v={version}")
     headers = {
@@ -89,14 +99,26 @@ body[data-page=editor] h1{font-size:28px;margin:8px 0}
 .editor-meta details[open]{flex-basis:100%}
 body[data-page=editor] #tag-tools{border:1px solid var(--line);padding:10px;margin:12px 0}
 body[data-page=editor] #tag-search .point-search{max-width:none;width:100%;margin:0}
-body[data-page=editor] #point-links,body[data-page=editor] #favorite-tags{
+body[data-page=editor] #point-links,body[data-page=editor] #favorite-tags,
+body[data-page=editor] #clipboard-points{
 list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;gap:6px}
 body[data-page=editor] #point-links:empty{display:none}
-body[data-page=editor] #point-links li,body[data-page=editor] #favorite-tags li{
+body[data-page=editor] #point-links li,body[data-page=editor] #favorite-tags li,
+body[data-page=editor] #clipboard-points li{
 display:inline-flex;align-items:center;border:1px solid var(--line);max-width:100%}
 body[data-page=editor] #point-links a{padding:4px 8px;overflow-wrap:anywhere}
-body[data-page=editor] #point-links button,body[data-page=editor] #favorite-tags button{
+body[data-page=editor] #point-links button,body[data-page=editor] #favorite-tags button,
+body[data-page=editor] #clipboard-points button{
 border:0;padding:4px 7px;margin:0;min-width:28px;font-size:13px}
+#clipboard-wrap{margin-bottom:8px}
+.clipboard-toolbar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+#clipboard-url{flex:1;min-width:0}
+#clipboard-points{max-height:180px;overflow:auto}
+body[data-page=editor] .clipboard-toolbar button{padding:4px 7px;font-size:13px}
+body[data-page=editor] #clipboard-points li{padding:0;margin:0}
+#clipboard-points label{min-width:0;font-size:13px;line-height:1.4}
+#clipboard-points label{display:inline-flex;align-items:center;padding:4px 7px}
+#clipboard-points input[type=checkbox]{width:auto;min-width:0;padding:0;margin:0 6px 0 0}
 #favorite-wrap{margin-top:8px}.editor-caption{font-size:12px;color:var(--muted)}
 body[data-page=editor] #editor-form{padding:10px;border:1px solid var(--line)}
 .editor-toolbar{margin-bottom:6px}.editor-toolbar button{padding:3px 9px}

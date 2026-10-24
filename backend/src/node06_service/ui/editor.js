@@ -69,6 +69,7 @@
       star.addEventListener("click", () => saveFavorite(pin.id, !favorites.has(pin.id)));
       li.append(" ", ...(external?[]:[star]), remove); el("point-links").append(li);
     }
+    renderCollection();
   }
   function selectPin(pin) {
     if (busy || receipt) return;
@@ -89,6 +90,87 @@
     }
     selection = null; dirty = true; renderLinks(); input.focus();
   }
+
+  const clipboard=window.node06PointClipboard,clipboardScope=external?document.body.dataset.managementOrigin:location.origin;
+  let parentCollection=null,selectedClipboard=new Set(),knownClipboard=new Set();
+  function collection(){return parentCollection===null?clipboard.read(clipboardScope).items:parentCollection;}
+  function removeCollected(ids){
+    if(overlay)notify('clipboard-remove',{ids});
+    else clipboard.write(clipboardScope,collection().filter(pin=>!ids.includes(pin.id)));
+  }
+  function rememberCollected(pin){
+    if(collection().length>=clipboard.limit&&!collection().some(item=>item.id===pin.id)){status('В подборке уже 64 точки.');return;}
+    if(overlay)notify('clipboard-add',{item:pin});
+    else clipboard.write(clipboardScope,[...collection().filter(item=>item.id!==pin.id),pin]);
+  }
+  function renderCollection(){
+    const items=collection(),present=new Set(items.map(pin=>pin.id));
+    for(const id of selectedClipboard)if(!present.has(id))selectedClipboard.delete(id);
+    for(const pin of items)if(!knownClipboard.has(pin.id))selectedClipboard.add(pin.id);
+    const newlyCollected=[...present].some(id=>!knownClipboard.has(id));
+    knownClipboard=present;
+    el('clipboard-count').textContent=items.length?`(${items.length})`:'';
+    if(items.length&&newlyCollected)el('clipboard-wrap').open=true;
+    el('clipboard-points').replaceChildren();
+    for(const pin of items){
+      const li=document.createElement('li'),labelNode=document.createElement('label'),check=document.createElement('input'),remove=document.createElement('button');
+      check.type='checkbox';check.checked=selectedClipboard.has(pin.id);check.disabled=busy||Boolean(receipt);
+      check.addEventListener('change',()=>check.checked?selectedClipboard.add(pin.id):selectedClipboard.delete(pin.id));
+      labelNode.append(check,document.createTextNode(label(pin)));li.append(labelNode);li.dataset.pointId=pin.id;
+      remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Убрать из подборки');remove.disabled=busy||Boolean(receipt);
+      remove.addEventListener('click',()=>removeCollected([pin.id]));li.append(remove);el('clipboard-points').append(li);
+    }
+    for(const id of ['clipboard-add-all','clipboard-insert-all','clipboard-clear'])el(id).disabled=busy||Boolean(receipt)||!items.length;
+    el('clipboard-url').disabled=busy||Boolean(receipt);
+    el('clipboard-url-form').querySelector('button').disabled=busy||Boolean(receipt);
+  }
+  async function applyCollection(insert){
+    if(busy||receipt)return;
+    const picked=collection().filter(pin=>selectedClipboard.has(pin.id));
+    if(!picked.length){status('Выберите точки из подборки.');return;}
+    if(picked.some(pin=>pin.id===pid)){status('Точку нельзя связать с собой.');return;}
+    if(new Set([...links.keys(),...picked.map(pin=>pin.id)]).size>16){status('Не больше 16 связей.');return;}
+    const input=el('point-body'),position={start:input.selectionStart,end:input.selectionEnd,text:input.value};
+    busy=true;el('publish').disabled=true;renderCollection();renderLinks();renderFavorites();
+    try{
+      const current=[];
+      for(let at=0;at<picked.length;at+=4){
+        const values=await Promise.all(picked.slice(at,at+4).map(pin=>api('/points/'+pin.id)));current.push(...values);
+      }
+      if(insert&&input.value!==position.text){status('Текст изменился. Повторите вставку ссылок.');return;}
+      if(insert){
+        const selected=position.text.slice(position.start,position.end);
+        const single=current.length===1&&selected&&!/[\\\[\]\r\n]/.test(selected);
+        const markup=current.map(pin=>`[${single?selected:label(pin).replace(/[\\\[\]\r\n]/g,' ').trim()||pin.id}](md://point/${pin.id})`).join(' ');
+        const start=current.length>1?position.end:position.start;
+        if(input.value.length-(position.end-start)+markup.length>8192){status('Текст со ссылками слишком длинный.');return;}
+        input.setRangeText(markup,start,position.end,'end');
+      }
+      for(const pin of current)links.set(pin.id,{id:pin.id,preview:pin.preview,revision_id:pin.revision_id,content_digest:pin.content_digest});
+      selection=null;dirty=true;status(insert?'Ссылки вставлены.':'Связи добавлены.');input.focus();
+    }catch{status('Одна из точек недоступна. Подборка и текст сохранены; уберите её из выбора и повторите.');}
+    finally{busy=false;el('publish').disabled=false;renderCollection();renderLinks();renderFavorites();}
+  }
+  el('clipboard-add-all').addEventListener('click',()=>void applyCollection(false));
+  el('clipboard-insert-all').addEventListener('click',()=>void applyCollection(true));
+  el('clipboard-clear').addEventListener('click',()=>removeCollected(collection().map(pin=>pin.id)));
+  el('clipboard-url-form').addEventListener('submit',async event=>{
+    event.preventDefault();if(busy||receipt)return;
+    try{
+      const url=new URL(el('clipboard-url').value),id=url.searchParams.get('p')||url.searchParams.get('open');
+      if(!/^https?:$/.test(url.protocol)||url.username||url.password||!/^[a-z0-9][a-z0-9_-]{0,95}$/.test(id||''))throw new Error('INVALID_URL');
+      const pin=await api('/points/'+id);url.searchParams.set('p',id);
+      rememberCollected({id,preview:pin.preview||id,url:url.href});el('clipboard-url').value='';renderCollection();
+    }catch{status('Нужна ссылка на доступную точку этого сервера.');}
+  });
+  window.addEventListener('node06:clipboard',renderCollection);
+  if(overlay)window.addEventListener('message',event=>{
+    const message=event.data;
+    if(event.source!==parent||event.origin!==parentOrigin||message?.protocol!=='node06-editor/1'||message.channel!==editorChannel||message.kind!=='clipboard'||clipboard.scope(message.scope)!==clipboard.scope(clipboardScope))return;
+    parentCollection=clipboard.clean(message.items);renderCollection();
+  });
+  renderCollection();if(overlay)notify('clipboard-request');
+
   const search = document.querySelector(".point-search");
   el("tag-search").append(search);
   el("point-picker-query").placeholder = "Найти тег / смысл";
@@ -200,7 +282,7 @@
       failure(error);
       if (receipt) status("Ответ о публикации не получен. Нажмите Опубликовать ещё раз для безопасной проверки. Текст сохранён и временно защищён от изменения.");
     }
-    finally { busy = false; el("publish").disabled = false; el("link-word").disabled = Boolean(receipt); el("point-body").readOnly = Boolean(receipt); renderLinks(); renderFavorites(); }
+    finally { busy = false; el("publish").disabled = false; el("link-word").disabled = Boolean(receipt); el("point-body").readOnly = Boolean(receipt); renderLinks(); renderFavorites(); renderCollection(); }
   });
   el("retry-login").addEventListener("click", () => location.reload());
   (async () => {
