@@ -21,6 +21,8 @@ from .editor_ui import router as editor_router
 from .feed_api import router as feed_router
 from .geometry_api import router as geometry_router
 from .hosted import management_path, register_hosted, request_origin
+from .moderation_api import router as moderation_router
+from .moderation_ui import router as moderation_ui_router
 from .people_ui import router as people_ui_router
 from .point_api import router as point_router
 from .public_points import PublicPointError
@@ -72,6 +74,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(site_router)
     app.include_router(social_router)
     app.include_router(feed_router)
+    app.include_router(moderation_router)
+    app.include_router(moderation_ui_router)
     app.include_router(geometry_router)
     app.include_router(community_router)
     app.include_router(author_router)
@@ -164,7 +168,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         if (
-            request.url.path.startswith(("/api/v1/auth/", "/api/v1/me", "/editor/confirm/"))
+            request.url.path.startswith(
+                ("/api/v1/auth/", "/api/v1/me", "/editor/confirm/", "/api/v1/moderation")
+            )
             or request.url.path.endswith("/manage")
             or request.url.path == "/api/v1/ui-config"
             or (
@@ -225,6 +231,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "user_coordinates",
                 "private_inbox",
                 "creation_feed",
+                "scoped_moderation",
                 "embedded_draft_confirmation",
                 "compact_profile",
                 "public_author_profiles",
@@ -265,6 +272,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         try:
+            from .visibility import hidden_ids
+
+            with app.state.database.connect() as connection:
+                if hidden_ids(
+                    connection,
+                    [site_id],
+                    request.query_params.get("site") or current_settings.default_site_id,
+                ):
+                    raise SiteNotFoundError(site_id)
             site = SiteRegistry(app.state.database).get_public_site(site_id)
         except SiteNotFoundError:
             return JSONResponse(

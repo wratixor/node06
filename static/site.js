@@ -1,7 +1,7 @@
 (async()=>{
   const body=document.body;
   if(!body||body.dataset.page!=='field') return;
-  const res=await fetch('/data/points.json');
+  const res=await fetch('/data/points.json'+(body.dataset.viewSite?'?'+new URLSearchParams({site:body.dataset.viewSite}):''));
   if(!res.ok) throw new Error('Field unavailable ('+res.status+'). Reload to retry.');
   const all=await res.json();
   const byId=new Map(all.map(p=>[p.id,p]));

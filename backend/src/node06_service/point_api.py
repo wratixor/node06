@@ -18,14 +18,27 @@ def service(request, allowed):
     origin = request.app.state.settings.management_origin
     if origin and request_origin(request) != origin:
         raise PublicPointError("PUBLIC_ORIGIN_REQUIRED", 404)
+    allowed = allowed | {"site"}
     params = request.query_params.multi_items()
     if len(params) != len(dict(params)) or set(request.query_params) - allowed:
         raise PublicPointError("INVALID_PARAMS", 400)
+    site = request.query_params.get("site", request.app.state.settings.default_site_id)
+    if site:
+        from .site_registry import SiteNotFoundError, SiteRegistry
+        from .visibility import SCOPE
+
+        if not SCOPE.fullmatch(site) or site == "server":
+            raise PublicPointError("INVALID_SCOPE", 422)
+        try:
+            SiteRegistry(request.app.state.database).get_public_site(site)
+        except SiteNotFoundError as exc:
+            raise PublicPointError("SCOPE_NOT_FOUND", 404) from exc
     bundle = getattr(request.app.state, "hosted_bundle", None)
     return PublicPoints(
         request.app.state.database,
         roots=bundle.roots if bundle else (),
         build_revision=request.app.state.settings.build_revision,
+        site_id=site,
     )
 
 

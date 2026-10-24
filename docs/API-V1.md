@@ -371,3 +371,13 @@ point `items`, `next_cursor`, `next_day`. Current author trust OR original links
 to subscribed points; blocks/visibility apply. Revision notifications remain
 `/me/inbox`. No embed/bridge grant. Capability: `creation_feed`.
 See [CREATION-FEED-V1](CREATION-FEED-V1.md) for cursor and historical semantics.
+
+
+### Scoped moderation
+
+First-party `/api/v1/moderation/{scopes,cases,inspect/...}` reads and explicit
+report/visibility/close/role writes are implemented; see
+[MODERATION-V1](MODERATION-V1.md). No framing or anonymous iframe capability.
+Public reads accept optional `site=s_<uuid>` as a display context. Server hides
+always apply; site hides only in the selected/default site. Hosted and iframe
+readers carry their site context. Independent static copies remain independent.

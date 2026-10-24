@@ -4,10 +4,11 @@
 операторская Git-публикация, hosted/full iframe/public bridge, редактор точек,
 версии/голосования/уведомления, T1 и социальная геометрия, публичные профили,
 блокировки авторов и доверенный выбор личных тегов для внешних черновиков.
-Текущий пакет добавляет личную ленту создания и компактную цветную диаграмму:
+Личная лента создания и компактная цветная диаграмма также реализованы:
 [CREATION-FEED-V1](CREATION-FEED-V1.md). Готовность исходников не доказывает деплой.
 Scoped authenticated embed, внешний inline edit своих точек, self-service Git,
-модерация и синхронизация ещё впереди. Последние решения:
+баны/удаление и синхронизация ещё впереди. Роли, жалобы и скрытие реализованы:
+[MODERATION-V1](MODERATION-V1.md). Последние решения:
 [MODERATION-PLAN](MODERATION-PLAN.md). Исторические записи Progress ниже сохраняют
 состояние на свою дату; актуальные контракты и последние пакеты имеют приоритет.
 Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
@@ -984,7 +985,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; P04 source proof/transport/DB preview/accept ещё не готовы |
 | P04 operator publication | Accepted immutable Git roots/provenance/retirement and manifest home already in main; self-service ownership/transport/private preview still pending |
 | P05a public reads | Current point API, indexed full-body prefix search and bounded neighbor pages; authoring, voting, UI/bridge are implemented by subsequent packets. See [contract](PUBLIC-POINTS-V1.md) |
-| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, moderation/sync/tariffs ещё впереди; operator imports and T1/social geometry implemented |
+| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, bans/purge/sync/tariffs ещё впереди; scoped moderation implemented; operator imports and T1/social geometry implemented |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1539,3 +1540,35 @@ No production writes or authenticated embed grants.
 Static Chromium regression also passed all51 roots, shared multilingual
 neighborhoods, canonical/legacy URLs, setup language links, feed handoff,
 overlay close and WASD. Ruff/format, JS syntax, protocol and diff checks passed.
+
+
+### Scoped moderation first packet — 24 October 2026
+
+Реализованы делегированные moderator/admin для server/site, собственник активного
+сайта как администратор его области, отдельная доверенная панель жалоб и флаг
+в карточке точки. Уникальные заявители увеличивают один случай, без fanout
+в inbox. Решения об обратимом скрытии/восстановлении и ролях атомарны,
+идемпотентны и аудируются; bootstrap server-admin только оператором по ID.
+
+Общий фильтр закрывает backend static fallback, hosted/public reads, поиск,
+историю, bridge, geometry, feed и preview списков. Site-контекст выбирается
+явно, серверное скрытие отменить выбором другого сайта нельзя. Независимые
+файлы Neocities/чужие Git и кэши вне контроля сервиса. Миграция0016 добавляет
+таблицы без переписывания публикаций. Clock серверного скрытия хранится,
+автоудаление не включено. Баны/общий карантин, purge/tombstones и полноценная
+пагинация всех причин/аудита — следующие пакеты.
+Контракт и выпуск/откат: [MODERATION-V1](MODERATION-V1.md).
+
+Acceptance: the full249-case backend run passed248 tests; its single failure
+was an old graph-size mock accepting no site argument. Updated mock and all29
+hosted/moderation regressions passed, including the additional Git reimport case
+(250 tests now collected). Tests cover role revocation before replay, unique
+reporters, site/server isolation, static-core fallback, read/history/geometry/
+feed/bridge filtering, stable hide time in UTC, restore of retired sources and
+populated0015↔0016 roundtrip. Offline SQL, Ruff/format, JS/protocol/diff passed.
+Final installed-wheel HTTPS Chromium passed safe report rendering, point-to-panel
+site context, lost-response idempotent hide/retry, other-site visibility,
+restore, delegate/revoke controls and mobile layout, alongside existing editor,
+profiles, full iframe, anonymous bridge and cookie isolation regressions.
+Static Chromium passed all51 roots, shared neighborhoods, canonical/legacy
+navigation, third-language fixture, feed, overlay and WASD. No production write.

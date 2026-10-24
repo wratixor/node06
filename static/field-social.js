@@ -46,6 +46,13 @@
       const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',icons[kind]);svg.append(path);control.append(svg);
       if(!link)control.addEventListener('click',()=>void act(kind));
     }
+    const report=node('a','⚑',tools);report.className='point-report';report.title=text('Report point','Пожаловаться на точку');report.setAttribute('aria-label',report.title);
+    async function reportAddress(){
+      let scope=body.dataset.viewSite||body.dataset.searchSite;
+      try{scope ||= (await window.node06EditorConnection?.())?.siteId;}catch{}
+      if(!origin())return;const url=new URL('/moderation/',origin());url.search=new URLSearchParams({point:id,scope:scope||'server'});report.href=url.href;
+    }
+    void reportAddress();if(!firstParty()){report.target='_blank';report.rel='noopener noreferrer';}
     setAuthor(displayed.author);state();
     async function fetchPrivate(path,options={}){
       const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),15000);

@@ -74,6 +74,9 @@
     return errors[error.message] || label("Search unavailable. Please retry.","Поиск недоступен. Повторите попытку.");
   }
   async function read(url) {
+    if(body.dataset.hosted==='true'&&body.dataset.viewSite&&body.dataset.fieldPath!=='/'&&url.startsWith('/api/v1/')){
+      const scoped=new URL(url,location.origin);scoped.searchParams.set('site',body.dataset.viewSite);url=scoped.pathname+scoped.search;
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {

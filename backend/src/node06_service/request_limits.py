@@ -11,6 +11,7 @@ class AuthBodyLimit:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or not scope["path"].startswith(
             (
+                "/api/v1/moderation/",
                 "/api/v1/auth/",
                 "/editor/confirm/",
                 "/api/v1/sites",

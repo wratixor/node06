@@ -76,6 +76,16 @@ try:
         connection.execute(
             update(sites).where(sites.c.id == site.site_id).values(theme={"bg": "#123"})
         )
+    other_site = registry.create_pending_site(
+        owner_user_id=owner,
+        origin="https://other.localhost",
+        welcome_body="Other fixture",
+    )
+    registry.verify_site(
+        other_site.site_id,
+        actor_user_id=owner,
+        proof_fetcher=lambda _: other_site.proof_document.encode(),
+    )
     db.dispose()
     env["NODE06_DEFAULT_SITE_ID"] = site.site_id
     run(
@@ -174,6 +184,7 @@ try:
     env.update(
         {
             "NODE06_TEST_ACTIVE_SITE": site.site_id,
+            "NODE06_TEST_OTHER_SITE": other_site.site_id,
             "NODE06_PREVIEW_URL": "https://localhost:8846",
             "NODE06_EMBED_URL": "https://embed.localhost:8847",
         }
