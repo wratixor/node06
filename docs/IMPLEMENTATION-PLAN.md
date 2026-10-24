@@ -1655,3 +1655,20 @@ quarantined editor output, authenticated cohort reading and other-site visibilit
 XSS/mobile checks plus existing social/editor/bridge flows. Static51-root
 regressions, Ruff/format, JS/protocol, offline SQL and diff passed. No production
 operation performed. Existing deploy script upgrades Alembic before restart.
+
+
+### 24 October 2026 — sphere actions menu
+
+Sphere right-click opens a square 3×3 action grid sharing the viewer toolbar;
+both include edit, with protected Git/system points disabled. Own point editing
+uses the existing management overlay; proposals/external editing stay on the
+trusted host. Native sphere tooltips no longer cover custom previews. Pending
+reaction receipts are shared between both surfaces. No migration is required.
+
+Validation: installed-wheel HTTPS Chromium passed the shared menu/viewer,
+protected roots, overlay editing, lost-response retry between surfaces and
+existing hosted/embed/profile/moderation flows. Static51-root checks passed at
+1440px/390px, including square bounds, native-title removal, programmatic scroll
+survival, wheel/Escape dismissal and no page overflow. A focused disposable
+HTTPS check also passed Space activation/replay with explicit button focus.
+JS/protocol, Ruff/format and diff checks passed. No production action performed.

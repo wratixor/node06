@@ -443,7 +443,12 @@
         }
         defs.append(gradient);c.style.fill=`url(#${gid})`;g.dataset.color=p.color;
       }
-      const title=document.createElementNS(svgNS,'title');title.textContent=`${p.id} · ${p.coordinate_source||'seed'}${basePos.get(p.id)?.displayFallback?' · display direction fallback':''}${p.geometry_pending?' · recalculation pending':''}`;g.append(title);
+      g.setAttribute('aria-label',p.preview||p.id);
+      g.addEventListener('contextmenu',event=>{
+        if(!window.openNode06PointMenu)return;
+        event.preventDefault();card.hidden=true;
+        window.openNode06PointMenu(p,event.clientX,event.clientY,g);
+      });
       g.appendChild(c);
       g.addEventListener('mouseenter',()=>{card.hidden=false;card.innerHTML=`${escapeHtml(p.preview)}<span class="id">${escapeHtml(p.id)} · ${p.degree} links</span>`;});
       g.addEventListener('mousemove',e=>{const r=host.getBoundingClientRect();card.style.left=Math.min(e.clientX-r.left+16,r.width-360)+'px';card.style.top=Math.max(8,e.clientY-r.top+16)+'px';});
@@ -475,6 +480,7 @@
     lastX=e.clientX;lastY=e.clientY;
   });
   host.addEventListener('pointerup',e=>{
+    if(e.button!==0)return;
     const id=pointerTargetId;
     dragging=false;host.classList.remove('dragging');
     try{host.releasePointerCapture(e.pointerId);}catch(_){}

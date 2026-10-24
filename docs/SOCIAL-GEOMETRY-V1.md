@@ -152,8 +152,8 @@ Old clients can ignore additive fields; old bridges reject only the new method.
 ## Compact point actions and authors
 
 The field/search detail replaces the former support explanation panel with a
-four-icon toolbar: subscribe, block, related post, favorite. Active states use
-aria-pressed; each icon has a single-language tooltip/accessible name. Normal
+six-icon toolbar: subscribe, block, related post, favorite, edit, report. Active
+states use aria-pressed; each icon has a single-language tooltip/accessible name. Normal
 support/status paragraphs are removed. Only failure/stale-text messages appear.
 The main Community link follows the selected point for revision comparison.
 
@@ -221,3 +221,20 @@ for the separate alias between author subscriptions and T1 trust.
 Уточнение интерфейса 24 октября 2026: SVG-диаграмма ограничена230px по ширине;
 её область залита текущим вычисленным цветом с прозрачностью. Это изменение
 представления, без пересчёта исходных шести значений и без видимых имён статов.
+
+### Sphere context menu
+
+Right-clicking a sphere opens the same action renderer in a fixed square 3×3
+layout (six actions and three empty cells). It does not change the field center.
+Escape, outside click, user scroll gestures or viewport resize dismiss it.
+Programmatic scrolling after focus/layout does not dismiss a newly opened menu.
+Position is clamped to the viewport. SVG spheres keep an accessible label and the custom
+text preview; native SVG titles are removed so they cannot obscure that preview.
+
+Edit opens the existing overlay for the current author's user point on the
+management host; other user points lead to the existing revision proposal UI.
+External/static copies use that trusted first-party UI. Git/system points keep
+the edit icon disabled. Existing backend ownership and subscriber-voting guards
+remain authoritative. No new write endpoint or editor privilege is introduced.
+Both action surfaces on a page share the per-point pending request and busy state, so a
+lost acknowledgment can be retried from either surface without a second toggle.
