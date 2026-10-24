@@ -1596,3 +1596,13 @@ alongside prior editor/profile/moderation/bridge/cookie-isolation scenarios.
 Static Chromium passed51 roots, canonical/legacy paths, third-language points,
 feed, overlay and WASD. Ruff/format, JS/protocol and diff checks passed.
 No production writes; publication follows owner review/merge and normal deploy.
+
+### Field heading and toolbar correction — 24 October 2026
+
+Hosted map headings now use the same instance/Git-home brand as the navigation
+and return to `/`, including tenant point views. Embedded maps keep the tenant
+name and iframe-local home. Static NODE06 headings remain NODE06. Escaped title
+and both home links are covered by the existing targeted PostgreSQL test.
+Field toolbar buttons, including geometry refresh, share a40px height; static
+Chromium checks desktop/mobile dimensions alongside51-root navigation.
+No schema, content or influence change; ordinary application/static deploy.

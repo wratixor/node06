@@ -62,6 +62,14 @@ function neighborhood(points, id) {
       await page.goto(`${base}/?p=${point.id}&open=${point.id}`);
       await checkField(point.id);
     }
+    for(const width of [1440,390]){
+      await page.setViewportSize({width,height:1000});
+      const heights=await page.locator('#field-controls button').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));
+      assert(heights.length>1&&heights.every(height=>Math.abs(height-40)<.1),'Uniform toolbar height at '+width);
+      assert.equal(await page.locator('#field-refresh').evaluate(n=>n.getBoundingClientRect().height),40);
+      await page.screenshot({path:'/tmp/node06-field-controls-'+width+'.png'});
+    }
+    await page.setViewportSize({width:1440,height:1000});
     for (const prefix of ['ru', 'en']) {
       await page.goto(`${base}/${prefix}/?p=field-ru&open=field-ru`);
       await checkField('field-ru');

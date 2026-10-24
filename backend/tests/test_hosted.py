@@ -499,12 +499,18 @@ def test_hosted_corner_uses_instance_git_home_not_current_tenant(hosted, pg_data
         assert response.status_code == 200
         corner = re.search(r'<a class="site-home-link" href="([^"]*)">(.*?)</a>', response.text)
         assert corner.groups() == ("/", "Geno-Dice: Wiki &lt;safe&gt;")
+        field = re.search(
+            r'<h1><a class="field-home-link" href="([^"]*)">(.*?)</a></h1>', response.text
+        )
+        assert field.groups() == corner.groups()
     tenant = client.get(f"/sites/{current.site_id}/").text
     assert "<h1>Other tenant</h1>" in tenant
     frame = client.get(EMBED + f"/embed/v1/{current.site_id}/").text
     corner = re.search(r'<a class="site-home-link" href="([^"]*)">(.*?)</a>', frame)
     assert corner.group(1) == f"/embed/v1/{current.site_id}/"
     assert "Geno-Dice: Wiki" not in corner.group(2)
+    field = re.search(r'<h1><a class="field-home-link" href="([^"]*)">(.*?)</a></h1>', frame)
+    assert field.groups() == corner.groups()
     with pg_database.begin() as c:
         c.execute(
             update(sites)
