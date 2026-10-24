@@ -63,7 +63,11 @@ def test_summary_separates_version_mass_and_explicit_votes(manager, static_bundl
     assert current["influence"]["subscribed"] == "1"
     with pg_database.connect() as c:
         ids = c.scalars(select(users.c.id)).all()
-    assert not any(uid in json.dumps(current) for uid in ids)
+    assert current["author"]["id"] == manager.user
+    # Only public attribution identifies a person, never reaction participants.
+    anonymous = {key: value for key, value in current.items() if key != "author"}
+    assert not any(uid in json.dumps(anonymous) for uid in ids)
+    assert all(uid == manager.user or uid not in json.dumps(current) for uid in ids)
     assert "New meaning" not in json.dumps(current)
     with pg_database.begin() as c:
         c.execute(update(proposals).values(closes_at=datetime.now(UTC) - timedelta(seconds=1)))

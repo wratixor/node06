@@ -233,14 +233,7 @@
     if(modeButton){setMode(modeButton.dataset.mode);return;}
     const layoutButton=e.target.closest('[data-layout]');
     if(layoutButton){setLayout(layoutButton.dataset.layout);return;}
-    const viewButton=e.target.closest('[data-view]');
-    if(viewButton){
-      if(viewButton.dataset.view==='reset'){rotX=-0.28;rotY=0.55;zoom=1;renderMap();}
-      if(viewButton.dataset.view==='left'){rotY-=0.18;renderMap();}
-      if(viewButton.dataset.view==='right'){rotY+=0.18;renderMap();}
-      if(viewButton.dataset.view==='up'){rotX-=0.18;renderMap();}
-      if(viewButton.dataset.view==='down'){rotX+=0.18;renderMap();}
-    }
+
   });
 
   function clamp(value,min,max){return Math.max(min,Math.min(max,value));}

@@ -351,6 +351,13 @@ user_trust = Table(
     Column("target_user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
     CheckConstraint("source_user_id != target_user_id", name="ck_trust_no_self"),
 )
+user_blocks = Table(
+    "user_blocks",
+    metadata,
+    Column("source_user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("target_user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    CheckConstraint("source_user_id != target_user_id", name="ck_user_blocks_no_self"),
+)
 social_events = Table(
     "social_events",
     metadata,

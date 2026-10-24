@@ -71,7 +71,15 @@ def validate_embed_origin(settings: Settings) -> None:
 def management_path(path: str, method: str) -> bool:
     return (
         path.startswith(
-            ("/community", "/editor", "/account", "/sites", "/api/v1/auth/", "/api/v1/me")
+            (
+                "/people",
+                "/community",
+                "/editor",
+                "/account",
+                "/sites",
+                "/api/v1/auth/",
+                "/api/v1/me",
+            )
         )
         or (path.startswith(("/api/v1/proposals", "/api/v1/people")) and method != "GET")
         or (path.startswith("/api/v1/points") and method != "GET")

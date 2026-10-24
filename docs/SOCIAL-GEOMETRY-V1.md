@@ -169,7 +169,8 @@ Public point detail/graph exposes author attribution: original user ID/handle,
 site owner for site points, source maintainer for imported Git roots, system for
 the shared directory. Static roots without a recorded person identify their Git
 source rather than inventing a personal author. The small public social summary
-includes attribution name/kind, but no author ID or subscriber IDs. These are
+includes attribution name/kind and the already public author ID for profile
+links, but no subscriber IDs. These are
 source/maintenance attributions, not a claim about individual Git commit authors.
 
 After successful creation or editing, the editor opens the published point with
@@ -196,3 +197,22 @@ Migration upgrade and populated downgrade/re-upgrade use the actual psycopg path
 Lint, formatting, JS syntax, protocol checks and static build passed. These are
 local fixture checks; production deployment and real Neocities post-release
 verification remain separate.
+
+
+## Dragging color coordinates — 23 October 2026
+
+The primary color control is a six-axis SVG with independently draggable colored
+handles. Opposite pairs remain red/cyan, green/magenta, blue/yellow. The diagram
+has no visible stat names; accessible slider names identify colors. Keyboard
+arrows change the selected raw component by1 (Shift by16), Page keys by128,
+Home/End select1/65535. Mouse and touch use pointer capture. Busy/pending writes
+lock the controls along with the existing numeric inputs.
+
+To cover the complete stored range without normalizing or truncating existing
+values, distance uses a fixed logarithmic display mapping:
+`radius = 16 + 110 * ln(component)/ln(65535)`. This is only input/display scaling;
+the six raw positive coordinates, derived color, point geometry and T1 formula
+are unchanged. The collapsible exact-value inputs remain available. Loading,
+opening the diagram and saving without changes preserve every raw component.
+Invalid exact input never becomes a request. See [author profiles](AUTHOR-PROFILES-V1.md)
+for the separate alias between author subscriptions and T1 trust.

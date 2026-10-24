@@ -20,6 +20,7 @@ from .db import Database
 from .editor_ui import router as editor_router
 from .geometry_api import router as geometry_router
 from .hosted import management_path, register_hosted, request_origin
+from .people_ui import router as people_ui_router
 from .point_api import router as point_router
 from .public_points import PublicPointError
 from .request_limits import AuthBodyLimit
@@ -74,6 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(author_router)
     app.include_router(editor_router)
     app.include_router(compose_router)
+    app.include_router(people_ui_router)
     app.include_router(point_router)
     app.include_router(site_ui_router)
 
@@ -222,6 +224,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "private_inbox",
                 "embedded_draft_confirmation",
                 "compact_profile",
+                "public_author_profiles",
+                "author_blocks",
+                "trusted_tag_library",
                 "authored_point_history",
                 "bounded_neighbors",
                 "account_sessions",

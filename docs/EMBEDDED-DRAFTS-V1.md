@@ -10,7 +10,9 @@ bridge capabilities remain read-only; `embed_auth` stays unimplemented.
    `/compose/v1/{site_id}/` on the configured embed origin. The exact source
    point is read again and its current revision/digest becomes the initial link.
 2. Text and tag search work without cookies or login. Account favorites and own
-   post editing remain on the first-party editor; they are not exposed to frames.
+   post editing remain on the first-party editor. A trusted library window can
+   send one explicitly selected public point ID; private lists are not exposed
+   to frames.
 3. **Check and publish** explicitly opens a trusted management window. The user
    sees the immutable plain text, selected point IDs, registered site origin and
    publishing account. Login/registration stays in trusted top-level account UI.
@@ -20,7 +22,7 @@ bridge capabilities remain read-only; `embed_auth` stays unimplemented.
    windows. Merely opening the editor or confirmation page publishes nothing.
 
 Management-host maps retain their same-origin modal and direct publication.
-External own-point editing, private favorites and broad scoped embed grants are
+External inline own-point editing and broad scoped embed grants remain
 future work. This bounded creation flow does not claim to implement all P03.
 If popups are blocked, the draft stays on screen and offers an explicit retry.
 
@@ -54,6 +56,27 @@ If popups are blocked, the draft stays on screen and offers an explicit retry.
   write warns that publication may already have succeeded.
 - No draft or session is stored in parent storage, URLs or public logs. Random
   channels/operation keys are correlation IDs, not account credentials.
+
+## Trusted tag library
+
+The external draft's library button opens `/editor/library/{site_id}/` as a
+trusted top-level window. It displays the registered destination site, the
+current account, own points and favorite tags. Sign-in stays first-party. The
+page is unframeable, private API calls use only its own session, and selecting a
+row checks that the account has not changed before re-reading public visibility.
+No automatic export occurs on open, sign-in, refresh or pagination.
+
+`node06-library/1` sends only `{protocol, kind: selected, channel, site, id}` after
+an explicit click. The anonymous editor accepts only its exact library window,
+management origin, site and per-opening random channel. It re-reads the public
+point through the anonymous bridge and adds a current revision/digest link using
+the normal tag selection path. A pending publication cannot be modified. No
+username, favorites list, draft, cookie, CSRF or private profile crosses windows.
+Wrong channels/sources cannot select a tag. Popup failure leaves the draft intact.
+
+This is explicit tag selection, not authenticated embed access or external
+own-point editing. Private library management and ordinary own-point editing
+remain on the trusted host; `embed_auth` remains unimplemented.
 
 ## Static point opening
 

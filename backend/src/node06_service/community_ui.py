@@ -40,7 +40,9 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <section data-profile-panel="color" hidden>
 <details id="my-color" open hidden>
 <summary>Мой цвет</summary>
-<form id="color-form">
+<form id="color-form" novalidate>
+<svg id="color-radar" viewBox="0 0 300 300" role="group" aria-label="Мой цвет"></svg>
+<details id="color-values"><summary>Точные значения</summary>
 <div class="profile-stats">
 <label class="coordinate coordinate-0"><span aria-hidden="true"></span>
 <input id="coordinate-0" data-coordinate="0" aria-label="Красная координата"
@@ -60,7 +62,7 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <label class="coordinate coordinate-5"><span aria-hidden="true"></span>
 <input id="coordinate-5" data-coordinate="5" aria-label="Жёлтая координата"
  type="number" min="1" max="65535" step="1" value="128" required></label>
-</div>
+</div></details>
 <output id="color-preview" aria-label="Итоговый цвет">#808080</output>
 <button type="submit" data-requires-auth="true">Сохранить</button>
 </form>
@@ -104,8 +106,10 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 </section>
 <section data-profile-panel="blocks">
 <h2>Блокировки</h2>
-<ul id="my-blocks"></ul>
+<h3>Точки</h3><ul id="my-blocks"></ul>
 <button id="more-blocks" hidden type="button">Ещё блокировки</button>
+<h3>Авторы</h3><ul id="my-blocked-people"></ul>
+<button id="more-people-blocks" hidden type="button">Ещё авторы</button>
 </section><section data-profile-panel="inbox">
 <h2>Лента</h2>
 <ul id="inbox">
@@ -113,7 +117,7 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <button id="more-inbox" hidden>Ещё уведомления</button>
 </section>
 <section data-profile-panel="trust">
-<h2>Доверие</h2>
+<h2>Подписки на авторов</h2>
 <p id="my-influence">
 </p>
 <form id="people-form">
@@ -188,6 +192,14 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-profile-panel]{border-top:1px solid var(--line);padding:8px 0}
 body[data-page=community] #my-color{font-size:14px;margin:8px 0}
 body[data-page=community] #color-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#color-radar{display:block;width:min(100%,320px);height:auto;flex-basis:100%;touch-action:none}
+#color-radar .radar-ring{fill:none;stroke:var(--line);stroke-width:1}
+#color-radar .radar-area{fill:var(--ink);fill-opacity:.08;stroke:var(--muted);stroke-width:1}
+#color-radar [role=slider]{cursor:grab;outline:none}
+#color-radar [role=slider]:focus .radar-dot{stroke:var(--ink);stroke-width:3}
+#color-radar [aria-disabled=true]{opacity:.5;cursor:default}
+#color-values{flex-basis:100%;margin:0 0 6px}
+#color-values summary{cursor:pointer;font-size:13px;margin-bottom:8px}
 .profile-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;
 width:100%;max-width:420px}
 body[data-page=community] #color-form label{font-size:13px;margin:0;min-width:0}

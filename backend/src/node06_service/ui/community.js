@@ -2,7 +2,7 @@
 (() => {
   const el = id => document.getElementById(id);
   let me = null, point = null, social = null, ownPin = null, ownFavorite = false, links = new Map();
-  let blocksCursor, pointsCursor;
+  let blocksCursor, pointsCursor, peopleBlocksCursor;
   let subsCursor, inboxCursor, newsCursor, busy = false, draftDirty = false, mutationConfirmed = false;
   // Retain uncertain intent across network retries; switching accounts cannot replay it.
   const receipts = new Map();
@@ -11,6 +11,7 @@
     PENDING_REQUEST: "Сначала повторите прежнее действие, чтобы проверить его результат. Текст сохранён.",
     AUTH_REQUIRED: "Откройте «Вход и безопасность». Текст на этой странице сохранён.",
     ACCOUNT_CHANGED: "Аккаунт сменился. Вернитесь в исходный аккаунт для проверки предыдущего действия.",
+    AUTHOR_BLOCKED: "Сначала разблокируйте автора в разделе блокировок.",
     POINT_PROTECTED: "Эта точка управляется через Git или системой и защищена от голосований.",
     PROPOSAL_ALREADY_OPEN: "Для этой точки уже есть открытое предложение.",
     PROPOSAL_DAILY_LIMIT: "Вы уже предложили правку за последние 24 часа.",
@@ -31,7 +32,7 @@
     const value = node("button", text, parent); value.type = "button"; value.dataset.requiresAuth = "true"; value.disabled = !me || busy;
     value.addEventListener("click", () => act(handler)); return value;
   }
-  const tabs=[['points','Мои точки'],['subscriptions','Подписки'],['blocks','Блокировки'],['favorites','Избранное'],['inbox','Лента'],['trust','Доверие'],['news','Обновления'],['color','Мой цвет']];
+  const tabs=[['points','Мои точки'],['subscriptions','Подписки'],['blocks','Блокировки'],['favorites','Избранное'],['inbox','Лента'],['trust','Авторы'],['news','Обновления'],['color','Мой цвет']];
   function showTab(name, remember=true){
     if(!tabs.some(([key])=>key===name))name='subscriptions';
     el('profile-filter').hidden=['color','trust'].includes(name);
@@ -116,7 +117,7 @@
     if (busy) return; busy = true; mutationConfirmed = false;
     document.querySelectorAll("button").forEach(b => { if (b.id !== "point-picker-open") b.disabled = true; });
     el("proposal-body").readOnly = true;
-    el("color-form").querySelectorAll("input").forEach(input=>{input.disabled=true;});
+    el("color-form").querySelectorAll("input").forEach(input=>{input.disabled=true;});drawRadar();
     try { await action(); } catch (error) {
       if (mutationConfirmed) status("Действие сохранено сервером. Не удалось обновить отображение; нажмите Обновить.");
       else failure(error);
@@ -124,7 +125,7 @@
     finally {
       busy = false;
       document.querySelectorAll("button").forEach(b => { b.disabled = !me && b.dataset.requiresAuth === "true"; });
-      el("color-form").querySelectorAll("input").forEach(input=>{input.disabled=receipts.has("/me/geometry");});
+      el("color-form").querySelectorAll("input").forEach(input=>{input.disabled=receipts.has("/me/geometry");});drawRadar();
       const unresolved = point && receipts.has(`/points/${point.id}/proposals`);
       el("proposal-body").readOnly = Boolean(unresolved);
       el("proposal-link").disabled = Boolean(unresolved);
@@ -228,11 +229,58 @@
   // Same order as the root seed and the six-coordinate API. No pair is
   // reconstructed from RGB, and changing one stat never changes its opposite.
   const statOrder=[0,1,2,3,4,5];
+  // Fixed logarithmic display scale covers the existing 1..65535 raw range.
+  // This only maps pointer distance to a component; influence math is unchanged.
+  const radar=el('color-radar'), ns='http://www.w3.org/2000/svg';
+  const axisOrder=[0,5,2,1,4,3], vectors=[], handles=[];
+  const colors=['#ee484a','#00d2dc','#3ece70','#d646d6','#4170ee','#f0cd2c'];
+  function svgNode(tag,attrs,parent=radar){const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));parent.append(n);return n;}
+  for(const radius of [16,43.5,71,98.5,126])svgNode('polygon',{class:'radar-ring',points:axisOrder.map((_,i)=>{const a=-Math.PI/2+i*Math.PI/3;return `${150+radius*Math.cos(a)},${150+radius*Math.sin(a)}`;}).join(' ')});
+  axisOrder.forEach((stat,i)=>{const a=-Math.PI/2+i*Math.PI/3;vectors[stat]=[Math.cos(a),Math.sin(a)];const [x,y]=vectors[stat];svgNode('line',{x1:150,y1:150,x2:150+126*x,y2:150+126*y,stroke:colors[stat],'stroke-opacity':.65});});
+  const area=svgNode('polygon',{class:'radar-area'});
+  for(const stat of statOrder){
+    const h=svgNode('g',{'data-axis':stat,role:'slider',tabindex:0,'aria-label':el('coordinate-'+stat).getAttribute('aria-label'),'aria-valuemin':1,'aria-valuemax':65535});
+    svgNode('circle',{r:18,fill:'transparent'},h);svgNode('circle',{r:7,fill:colors[stat],class:'radar-dot'},h);handles[stat]=h;
+    h.addEventListener('keydown',event=>{
+      const input=el('coordinate-'+stat);if(input.disabled)return;
+      const steps={ArrowUp:1,ArrowRight:1,ArrowDown:-1,ArrowLeft:-1,PageUp:128,PageDown:-128};
+      if(!(event.key in steps)&&!['Home','End'].includes(event.key))return;
+      event.preventDefault();const value=event.key==='Home'?1:event.key==='End'?65535:input.valueAsNumber+steps[event.key]*(event.shiftKey?16:1);
+      input.value=String(Math.max(1,Math.min(65535,value)));previewColor();
+    });
+  }
+  function drawRadar(){
+    const points=[];
+    for(const stat of axisOrder){const input=el('coordinate-'+stat),value=input.valueAsNumber,h=handles[stat];
+      h.setAttribute('aria-disabled',String(input.disabled));
+      if(!Number.isInteger(value)||value<1||value>65535){h.removeAttribute('aria-valuenow');area.setAttribute('points','');return;}
+      const r=16+110*Math.log(value)/Math.log(65535),[x,y]=vectors[stat],px=150+r*x,py=150+r*y;
+      h.setAttribute('transform',`translate(${px} ${py})`);h.setAttribute('aria-valuenow',String(value));points.push(`${px},${py}`);
+    }
+    area.setAttribute('points',points.join(' '));
+  }
+  let drag=null;
+  function moveRadar(event){
+    if(drag===null)return;const input=el('coordinate-'+drag);if(input.disabled)return;
+    const matrix=radar.getScreenCTM();if(!matrix)return;
+    const p=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse()),[x,y]=vectors[drag];
+    const f=Math.max(0,Math.min(1,((p.x-150)*x+(p.y-150)*y-16)/110));
+    input.value=String(Math.max(1,Math.min(65535,Math.round(Math.exp(f*Math.log(65535))))));previewColor();
+  }
+  radar.addEventListener('pointerdown',event=>{
+    const h=event.target.closest('[data-axis]');if(!h||event.button!==0)return;
+    const stat=Number(h.dataset.axis);if(el('coordinate-'+stat).disabled)return;
+    event.preventDefault();drag=stat;h.focus();radar.setPointerCapture(event.pointerId);
+  });
+  radar.addEventListener('pointermove',moveRadar);
+  const endDrag=()=>{drag=null;};
+  radar.addEventListener('pointerup',endDrag);radar.addEventListener('pointercancel',endDrag);radar.addEventListener('lostpointercapture',endDrag);
   function readStats(){
     const values=statOrder.map(stat=>el('coordinate-'+stat).valueAsNumber);
     return values.every(value=>Number.isInteger(value)&&value>=1&&value<=65535)?values:null;
   }
   function previewColor() {
+    drawRadar();
     const values=readStats();
     if(!values){el('color-preview').textContent='';return;}
     const hex=[0,2,4].map(j=>Math.round(255*values[j]/(values[j]+values[j+1])).toString(16).padStart(2,"0")).join("");
@@ -244,7 +292,7 @@
   }
   for(const stat of statOrder)el('coordinate-'+stat).addEventListener('input',previewColor);
   el("color-form").addEventListener("submit",event=>{
-    event.preventDefault();const values=readStats();if(!values){el('color-form').reportValidity();return;}
+    event.preventDefault();const values=readStats();if(!values){el('color-values').open=true;el('color-form').reportValidity();return;}
     act(async()=>{
       const saved=await write("/me/geometry",{coordinates:values});showStats(saved.coordinates);
       status("Координаты сохранены. Позиции обновятся после пересчёта влияния.");
@@ -255,8 +303,17 @@
     const profile=await api("/me/geometry");showStats(profile.coordinates);
     el("my-color").hidden=false;
   }
+  async function refreshBlockedPeople(append=false){
+    if(!me)return;
+    if(!append){peopleBlocksCursor=null;el('my-blocked-people').replaceChildren();}
+    const page=await api('/me/people/blocks'+(peopleBlocksCursor?'?'+new URLSearchParams({after:peopleBlocksCursor}):''));
+    for(const user of page.items){const li=node('li','',el('my-blocked-people')),a=node('a',user.handle,li);a.className='profile-point';a.href='/people/'+user.id+'/';button('Разблокировать',li,async()=>{await write('/people/'+user.id+'/block',{active:false});await refreshBlockedPeople();});}
+    peopleBlocksCursor=page.next_cursor;el('more-people-blocks').hidden=!peopleBlocksCursor;
+  }
+  el('more-people-blocks').addEventListener('click',()=>act(()=>refreshBlockedPeople(true)));
   async function refreshBlocks(append=false) {
     if(!me)return;
+    if(!append)await refreshBlockedPeople();
     if(!append){blocksCursor=null;el("my-blocks").replaceChildren();}
     const page=await api("/me/blocks?"+new URLSearchParams(blocksCursor?{after:blocksCursor}:{}));
     for(const row of page.items){const li=node("li",'',el("my-blocks"));
@@ -299,7 +356,7 @@
     }
     subsCursor=own.next_cursor;el("more-subscriptions").hidden=!subsCursor;
     if (!append) for (const target of own.trust) {
-      const li=node("li",target+" ",el("my-trust"));button("Снять доверие",li,async()=>{await write(`/people/${target}/trust`,{active:false});await refreshMine();});
+      const li=node("li","",el("my-trust")),a=node("a",own.trust_profiles?.find(u=>u.id===target)?.handle||target,li);a.className="profile-point";a.href="/people/"+target+"/";button("Отписаться",li,async()=>{await write(`/people/${target}/trust`,{active:false});await refreshMine();});
     }
     const influence=await api("/me/influence");
     el("my-influence").textContent=influence ? `Ваше влияние: ${influence.weight}. На поддержку точек: ${influence.point_budget}${influence.pending ? "; ожидается пересчёт" : ""}.` : "Расчёт влияния ещё не опубликован.";
@@ -329,7 +386,7 @@
   el("more-news").addEventListener("click",()=>act(()=>refreshNews(true)));
   el("people-form").addEventListener("submit",event=>{event.preventDefault();act(async()=>{
     const page=await api("/people?"+new URLSearchParams({q:el("people-query").value}));el("people-results").replaceChildren();
-    for (const user of page.items) {const li=node("li",user.handle+" ",el("people-results"));if(user.id!==me?.user_id) button("Доверять",li,async()=>{await write(`/people/${user.id}/trust`,{active:true});await refreshMine();});}
+    for (const user of page.items) {const li=node("li","",el("people-results")),a=node("a",user.handle,li);a.href="/people/"+user.id+"/";if(user.id!==me?.user_id) button("Подписаться",li,async()=>{await write(`/people/${user.id}/trust`,{active:true});await refreshMine();});}
   });});
   el("community-refresh").addEventListener("click",()=>act(async()=>{
     if(point)await load(point.id,false);
@@ -345,7 +402,7 @@
       await refreshColor();await refreshMine();await refreshBlocks();await refreshPoints();await refreshFavorites();await refreshInbox();await refreshNews();
     } catch(error){failure(error);}
     finally {
-      busy=false;
+      busy=false;drawRadar();
       document.querySelectorAll("button").forEach(b=>{b.disabled=!me && b.dataset.requiresAuth==="true";});
       if(social){renderProposals();applyBudget();}
       const intent=new URLSearchParams(location.search).get("intent");

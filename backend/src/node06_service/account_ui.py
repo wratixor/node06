@@ -60,7 +60,13 @@ border:1px solid #8292a2;background:#131b25;color:inherit}input,select,textarea{
 width:100%}button{cursor:pointer;margin:.3rem 0}button:focus-visible,input:focus-visible,
 select:focus-visible,textarea:focus-visible{outline:3px solid #8ee4ea;outline-offset:2px}
 [hidden]{display:none!important}#recovery-result{border:2px solid #8ee4ea;padding:1rem}
-textarea{min-height:5rem;overflow-wrap:anywhere}p{overflow-wrap:anywhere}"""
+textarea{min-height:5rem;overflow-wrap:anywhere}p,h1{overflow-wrap:anywhere}
+a{color:#b9e5ec}
+#author-points{list-style:none;padding:0}
+#author-points li{padding:8px 0;border-bottom:1px solid #293442}
+#author-points a{display:block;overflow-wrap:anywhere}
+#author-actions{display:flex;flex-wrap:wrap;gap:8px}
+#author-actions button{font-size:14px;padding:7px 10px}"""
     + PERSONAL_CSS
 )
 

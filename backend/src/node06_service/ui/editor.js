@@ -2,7 +2,7 @@
 (() => {
   const external=document.body.dataset.externalEditor==='true';
   const parentOrigin=external?document.body.dataset.parentOrigin:location.origin;
-  let publishWindow=null,publishChannel=null,externalReceipt=null;
+  let publishWindow=null,publishChannel=null,externalReceipt=null,libraryWindow=null,libraryChannel=null;
   const el = id => document.getElementById(id);
   let pid = new URLSearchParams(location.search).get("p"), revision = null, csrf, loadedActor=null, language = "und";
   const requestedReturn = new URLSearchParams(location.search).get("return_to") || "/";
@@ -194,7 +194,7 @@
     try {
       if(external){
         document.querySelector('.site-header').hidden=true;
-        document.querySelector('.editor-meta').hidden=true;
+        document.querySelector('.editor-meta').hidden=true;el('open-library').hidden=false;
       }
       const me = external?null:await api('/me');
       if(me){csrf=me.csrf_token;loadedActor=me.user_id;}
@@ -244,6 +244,24 @@
       el('point-body').readOnly=false;el('link-word').disabled=false;renderLinks();
       status(errors[m.code]||'Публикация отклонена. Исправьте текст и повторите.');
     }
+  });
+  el('open-library').addEventListener('click',()=>{
+    if(!external||busy||receipt)return;
+    if(libraryWindow&&!libraryWindow.closed){libraryWindow.focus();return;}
+    selection={start:el('point-body').selectionStart,end:el('point-body').selectionEnd,text:el('point-body').value};
+    libraryChannel=crypto.randomUUID().replaceAll('-','');
+    const url=new URL('/editor/library/'+document.body.dataset.searchSite+'/',document.body.dataset.managementOrigin);
+    url.searchParams.set('channel',libraryChannel);
+    libraryWindow=window.open(url.href,'_blank','popup,width=720,height=800');
+    if(!libraryWindow)status('Разрешите окно библиотеки и повторите. Текст сохранён.');
+  });
+  if(external)window.addEventListener('message',async event=>{
+    const m=event.data;
+    if(!libraryWindow||!libraryChannel||event.source!==libraryWindow||event.origin!==document.body.dataset.managementOrigin||m?.protocol!=='node06-library/1'||m.channel!==libraryChannel||m.site!==document.body.dataset.searchSite||m.kind!=='selected'||!/^[a-z0-9][a-z0-9_-]{0,95}$/.test(m.id||'')||busy||receipt)return;
+    // Only a public ID crosses windows. Re-read the public point before adding it.
+    const channel=libraryChannel;libraryChannel=null;
+    try{const pin=await api('/points/'+m.id);if(busy||receipt)return;selectPin(pin);libraryWindow?.close();libraryWindow=null;status('Связь добавлена.');}
+    catch(_){libraryChannel=channel;status('Точка недоступна. Выберите другую в библиотеке.');}
   });
   window.addEventListener("beforeunload", event => { if (dirty || receipt) { event.preventDefault(); } });
 })();
