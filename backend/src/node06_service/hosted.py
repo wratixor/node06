@@ -336,6 +336,10 @@ class HostedBundle:
         source = source.replace(
             '<a href="/">NODE06</a>', f'<a class="site-home-link" href="/">{brand}</a>', 1
         )
+        source = source.replace(
+            '<h1><a href="/">NODE06</a></h1>',
+            f'<h1><a class="field-home-link" href="/">{brand}</a></h1>',
+        )
         start = source.index('<section id="start-page"')
         end = source.index('<section id="root-field"', start)
         welcome = render_home(
@@ -346,10 +350,9 @@ class HostedBundle:
             source = source.replace('href="/"', f'href="{html.escape(field_path, quote=True)}"')
         if not embedded:
             source = re.sub(
-                r'(<a class="site-home-link" href=")[^"]*(")',
+                r'(<a class="(?:site|field)-home-link" href=")[^"]*(")',
                 r"\1/\2",
                 source,
-                count=1,
             )
         feed = field_path + "?" + urlencode({"p": ALL_SITES_ID, "mode": "feed"})
         source = source.replace('href="/recent/"', f'href="{html.escape(feed, quote=True)}"')
