@@ -216,3 +216,8 @@ are unchanged. The collapsible exact-value inputs remain available. Loading,
 opening the diagram and saving without changes preserve every raw component.
 Invalid exact input never becomes a request. See [author profiles](AUTHOR-PROFILES-V1.md)
 for the separate alias between author subscriptions and T1 trust.
+
+
+Уточнение интерфейса 24 октября 2026: SVG-диаграмма ограничена230px по ширине;
+её область залита текущим вычисленным цветом с прозрачностью. Это изменение
+представления, без пересчёта исходных шести значений и без видимых имён статов.

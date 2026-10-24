@@ -32,12 +32,13 @@
     const value = node("button", text, parent); value.type = "button"; value.dataset.requiresAuth = "true"; value.disabled = !me || busy;
     value.addEventListener("click", () => act(handler)); return value;
   }
-  const tabs=[['points','Мои точки'],['subscriptions','Подписки'],['blocks','Блокировки'],['favorites','Избранное'],['inbox','Лента'],['trust','Авторы'],['news','Обновления'],['color','Мой цвет']];
+  const tabs=[['points','Мои точки'],['subscriptions','Подписки'],['blocks','Блокировки'],['favorites','Избранное'],['feed','Лента'],['inbox','Уведомления'],['trust','Авторы'],['news','Обновления'],['color','Мой цвет']];
   function showTab(name, remember=true){
     if(!tabs.some(([key])=>key===name))name='subscriptions';
-    el('profile-filter').hidden=['color','trust'].includes(name);
-    el('choose-point').hidden=['color','trust'].includes(name);
+    el('profile-filter').hidden=['color','trust','feed'].includes(name);
+    el('choose-point').hidden=['color','trust','feed'].includes(name);
     el('selected-point').open=false;
+    if(name==='feed'&&window.renderNode06CreationFeed&&!el('creation-feed').dataset.mounted)window.renderNode06CreationFeed(el('creation-feed'),{language:'ru'});
     if(remember&&location.hash!==('#'+name))history.pushState(null,'','#'+name);
     for(const panel of document.querySelectorAll('[data-profile-panel]'))panel.hidden=panel.dataset.profilePanel!==name;
     for(const b of el('profile-tabs').children){const active=b.dataset.tab===name;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;}
@@ -282,8 +283,9 @@
   function previewColor() {
     drawRadar();
     const values=readStats();
-    if(!values){el('color-preview').textContent='';return;}
+    if(!values){el('color-preview').textContent='';radar.style.removeProperty('--radar-color');return;}
     const hex=[0,2,4].map(j=>Math.round(255*values[j]/(values[j]+values[j+1])).toString(16).padStart(2,"0")).join("");
+    radar.style.setProperty('--radar-color','#'+hex);
     el("color-preview").textContent="#"+hex;el("color-preview").style.backgroundColor="#"+hex;
   }
   function showStats(values){

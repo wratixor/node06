@@ -295,6 +295,7 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <header class="site-header"><nav>{nav}</nav><span class="status">ROOT ERA / STATIC FIELD</span></header>
 <main>{body}</main>
 <footer>node06 · static root field · shared social service · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer>
+<script src="{asset_url("personal-feed.js")}" defer></script>
 <script src="{asset_url("site.js")}" defer></script>
 <script src="{asset_url("node06-client.js")}" defer></script>
 <script src="{asset_url("point-picker.js")}" defer></script>

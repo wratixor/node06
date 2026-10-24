@@ -401,6 +401,20 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       await page.waitForTimeout(1000);
     }
     assert((await page.locator('#inbox').textContent()).includes('proposal-adopted'), 'Background outbox delivers without operator commands');
+    const feedTopic=await (await page.request.get(base+'/api/v1/points/skills-ru')).json();
+    assert.equal((await page.request.post(base+'/api/v1/points/skills-ru/subscription',{
+      headers:{Origin:base,'X-CSRF-Token':socialSession.csrf_token,'Idempotency-Key':'browser-feed-subscription'},
+      data:{revision_id:feedTopic.revision_id,content_digest:feedTopic.content_digest,active:true}
+    })).status(),200);
+    // The creation feed is separate from revision notifications and mounted lazily.
+    await page.locator('[data-tab=feed]').click();
+    await page.locator('#creation-feed .creation-feed-item').first().waitFor();
+    assert((await page.locator('#creation-feed').textContent()).includes('Browser social new text'));
+    assert(!(await page.locator('#creation-feed').textContent()).includes('proposal-adopted'));
+    const feedCount=await page.locator('#creation-feed .creation-feed-item').count();
+    await page.locator('#creation-feed button').first().click();
+    await page.waitForFunction(()=>!document.querySelector('#creation-feed button').disabled);
+    assert.equal(await page.locator('#creation-feed .creation-feed-item').count(),feedCount);
     // Six raw stats survive loading/saving. No RGB slider may reconstruct the
     // opposite stat or erase large values accepted by the coordinate API.
     const statOrder=['body','spirit','onslaught','composure','reaction','technique'];
@@ -414,6 +428,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(()=>!document.querySelector('#choose-point').disabled);
     await page.locator('[data-tab=color]').click();
     assert.equal(await page.locator('#color-radar [role=slider]').count(),6);
+    assert((await page.locator('#color-radar').boundingBox()).width<=230);
     const radarHandle=page.locator('#color-radar [data-axis="0"]');
     const dragBox=await radarHandle.boundingBox();
     const dragTarget=await page.locator('#color-radar').evaluate(svg=>{const p=new DOMPoint(150,65).matrixTransform(svg.getScreenCTM());return {x:p.x,y:p.y};});
@@ -444,6 +459,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     const stats=[90,10,40,60,20,80];
     for(const [index,stat] of statOrder.entries())await page.locator('#coordinate-'+index).fill(String(stats[index]));
     assert.equal(await page.locator('#color-preview').textContent(),'#e66633');
+    assert.equal(await page.locator('#color-radar .radar-area').evaluate(el=>getComputedStyle(el).fill),'rgb(230, 102, 51)');
     let invalidStatWrites=0;
     const statRequest=r=>{if(r.method()==='POST'&&r.url()===base+'/api/v1/me/geometry')invalidStatWrites++;};
     page.on('request',statRequest);
@@ -691,6 +707,17 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await staticPage.locator('.point-create-related').waitFor();
     assert.equal(await staticPage.locator('[data-view]').count(),0);
     assert.equal(await staticPage.locator('#field-controls #field-refresh').count(),1);
+    let externalPrivateFeedReads=0;
+    const externalFeedRequest=request=>{if(new URL(request.url()).pathname==='/api/v1/me/feed')externalPrivateFeedReads++;};
+    staticPage.on('request',externalFeedRequest);
+    await staticPage.locator('[data-mode=feed]').click();
+    await staticPage.locator('.creation-feed-status').waitFor();
+    assert.equal(new URL(await staticPage.locator('.creation-feed-status + a').getAttribute('href')).pathname,'/community/');
+    assert.equal(externalPrivateFeedReads,0,'Static copy cannot read the personal feed');
+    await staticPage.locator('[data-mode=read]').click();
+    await staticPage.goto('https://garden.localhost/picker-parent?p=point-ru&open=point-ru');
+    await staticPage.locator('.point-create-related').waitFor();
+    staticPage.off('request',externalFeedRequest);
     const pagesBefore=context.pages().length;
     await staticPage.locator('.point-create-related').click();
     const externalEditor=staticPage.frameLocator('#point-editor-overlay iframe');

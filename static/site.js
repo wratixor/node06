@@ -184,10 +184,9 @@
   }
 
   function showFeed(){
-    const sorted=[...local].sort((a,b)=>b.last_interaction_at.localeCompare(a.last_interaction_at));
-    panel.hidden=false;
-    panelBody.innerHTML=`<div class="eyebrow">FEED / LATEST CHANGES</div>
-      <ul class="feed-list">${sorted.map(p=>`<li><time>${p.last_interaction_at.slice(0,10)}</time><a href="${fieldPath}?p=${encodeURIComponent(p.id)}" data-feed-id="${escapeHtml(p.id)}">${escapeHtml(p.preview)}</a><span>${p.degree} links</span></li>`).join('')}</ul>`;
+    panel.hidden=false;const container=document.createElement('div');panelBody.replaceChildren(container);
+    if(window.renderNode06CreationFeed)window.renderNode06CreationFeed(container,{language:'en'});
+
   }
 
   function closePanel(){

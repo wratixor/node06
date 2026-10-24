@@ -112,7 +112,7 @@ The field is the primary interface. Selecting a sphere always makes it the new c
 
 - **READ** (default): recenter and open the selected point text.
 - **EXPLORE**: recenter only, without automatically opening text.
-- **FEED**: keep the map visible and show points ordered by latest interaction.
+- **FEED**: personal creation-only stream on the trusted server, with older occupied UTC days loaded explicitly. Static/iframe copies link to that private feed. See [contract](docs/CREATION-FEED-V1.md).
 - Text can be docked **RIGHT** (default), **BELOW**, or **OVERLAY**.
 - Drag the field or use arrow keys / WASD to rotate it; mouse wheel or Q/E changes zoom.
 - Six coloured axis rays are orientation aids in the static era. Their labels are intentionally absent from the public field. The root-era seed is stored in `content/root-coordinates-v1.json`; future social coordinates remain separately derived and attributable.

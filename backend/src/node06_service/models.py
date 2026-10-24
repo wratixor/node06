@@ -66,6 +66,11 @@ points = Table(
 )
 
 
+Index("ix_points_created_feed", points.c.created_at.desc(), points.c.id.collate("C").desc()).ddl_if(
+    dialect="postgresql"
+)
+
+
 def revision_search_text(context):
     return context.get_current_parameters()["body"].casefold()
 

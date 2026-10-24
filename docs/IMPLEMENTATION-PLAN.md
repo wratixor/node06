@@ -1,14 +1,15 @@
 # NODE06 — сервис общей вики для независимых сайтов
 
-Статус: настраиваемые главные входов и Git-главные с выбором приоритета
-реализованы в исходниках, см.
-[HOME-BLOCKS-V1](HOME-BLOCKS-V1.md); production rollout отдельно. Операторская публикация Git-контента через деплой описана в
-[OPERATOR-CONTENT-DEPLOY](OPERATOR-CONTENT-DEPLOY.md); self-service importer ещё
-не реализован. P00/P01, реестр P02, P03a аккаунты/сессии/восстановление и P03b HTTP
-управления сайтами реализованы. P03c добавляет UI, hosted-вики и read-only full
-iframe; P03d добавляет публичный маленький API bridge и SDK. Scoped embed auth
-и социальный слой ещё впереди. Текущие проверки — в Progress ниже; implemented
-contracts — [AUTH-V1.md](AUTH-V1.md) и [SITE-MANAGEMENT-V1.md](SITE-MANAGEMENT-V1.md).
+Статус на 24 октября 2026: реализованы аккаунты/восстановление, сайты и главные,
+операторская Git-публикация, hosted/full iframe/public bridge, редактор точек,
+версии/голосования/уведомления, T1 и социальная геометрия, публичные профили,
+блокировки авторов и доверенный выбор личных тегов для внешних черновиков.
+Текущий пакет добавляет личную ленту создания и компактную цветную диаграмму:
+[CREATION-FEED-V1](CREATION-FEED-V1.md). Готовность исходников не доказывает деплой.
+Scoped authenticated embed, внешний inline edit своих точек, self-service Git,
+модерация и синхронизация ещё впереди. Последние решения:
+[MODERATION-PLAN](MODERATION-PLAN.md). Исторические записи Progress ниже сохраняют
+состояние на свою дату; актуальные контракты и последние пакеты имеют приоритет.
 Создан: 12 сентября 2026. Пересобран: 13 сентября 2026, Europe/Moscow.
 Редакция 2: общая сеть сайтов, bridge + full embed + hosted frontend + GitHub roots.
 Владелец продуктовых решений: Wratixor.
@@ -921,7 +922,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | D13 | Fork Markdown roots | Включено по запросу; manifest/proof/preview/id namespace предложены в ROOT-IMPORT-V1 |
 | D14 | Open lore | Решено: свой entry в shared space, не отдельный world; editing ACL independent |
 | D15 | Donation/tariffs | Позже wallet link; quotas сейчас как architecture, цены и billing отдельно |
-| D16 | Правки и уведомление поддержавших | 23.10 владелец подтвердил: поддержка версии, новая требует подтверждения; старый вес не переносится. Уведомления/held budget ещё не реализованы |
+| D16 | Правки и уведомление поддержавших | 23.10 владелец подтвердил: поддержка версии, новая требует подтверждения; старый вес не переносится. Version-bound support/уведомления реализованы; Git-обновление переносит поддержку автоматически по последующему решению владельца |
 | D17 | Ссылка на слово-смысл | 23.10 подтверждено: ссылка и поддержка — разные действия; автоматического голоса нет |
 | D18 | Географическая модерация | Идея владельца на потом; MVP авторство/явные роли, без proximity ACL |
 | D19 | Свой коренной набор/старт каждого входа | Требование 22.10: облако/индекс/карта из собственных Git-корней; профиль входа предложен, общий граф не разделяется |
@@ -982,8 +983,8 @@ import queue fairness/memory и диск. Это цели исследовани
 | P03d | Public read bridge/SDK: site/point/search/capabilities, локальный HTTPS browser acceptance |
 | P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; P04 source proof/transport/DB preview/accept ещё не готовы |
 | P04 operator publication | Accepted immutable Git roots/provenance/retirement and manifest home already in main; self-service ownership/transport/private preview still pending |
-| P05a public reads | Current point API, indexed full-body prefix search and bounded neighbor pages; source prepared, no authoring/votes/UI/bridge upgrade yet. See [contract](PUBLIC-POINTS-V1.md) |
-| P03 remainder–P14 | Scoped embed grants/consent/authenticated bridge, imports/social math/tariffs ещё впереди |
+| P05a public reads | Current point API, indexed full-body prefix search and bounded neighbor pages; authoring, voting, UI/bridge are implemented by subsequent packets. See [contract](PUBLIC-POINTS-V1.md) |
+| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, moderation/sync/tariffs ещё впереди; operator imports and T1/social geometry implemented |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1509,3 +1510,32 @@ mobile layout and absence of global cookies on embed requests. Ruff/format,
 Normal deployment applies0014 using existing `alembic upgrade head`; Nginx already
 proxies the wiki's routes and needs no new exception. External inline own-point
 editing remains planned. Source readiness does not establish live deployment.
+
+
+### Creation feed and compact color — 24 October 2026
+
+Лента теперь означает только создание новых точек от доверенных авторов или
+с исходной связью на подписанную точку. Редактирование не поднимает пост.
+Текущие подписки позволяют отматывать историю по непустым дням UTC; уведомления
+о версиях отдельно. First-party read API, actor-bound keyset, migration0015
+(index only); anonymous embeds открывают доверенный профиль, без private export.
+Диаграмма уменьшена до230px, область залита текущим вычисленным цветом;
+шесть независимых значений и расчёты T1/геометрии не изменены.
+Контракт: [CREATION-FEED-V1](CREATION-FEED-V1.md).
+
+Решения по областям модерации, 30-дневному удалению с ID, общему карантину
+забаненных, Git-политикам, баннеру/поддержке и синхронизации записаны в
+[MODERATION-PLAN](MODERATION-PLAN.md). Эти функции остаются запланированными.
+
+Acceptance: PostgreSQL feed filters/history/cursors, private access, point/author
+blocks and populated0014↔0015 roundtrip passed. Initial full245-case backend run
+found four SQLite schema failures from PostgreSQL C collation; index DDL was
+restricted to PostgreSQL like the existing search index. All13 affected/new
+regressions then passed (including the extra access case;246 cases now collected).
+Installed-wheel HTTPS Chromium passed the creation-feed section, unchanged
+revision notifications, static-origin private-read exclusion,230px radar and
+computed polygon fill, plus the existing authoring/bridge/cookie isolation flow.
+No production writes or authenticated embed grants.
+Static Chromium regression also passed all51 roots, shared multilingual
+neighborhoods, canonical/legacy URLs, setup language links, feed handoff,
+overlay close and WASD. Ruff/format, JS syntax, protocol and diff checks passed.

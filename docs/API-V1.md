@@ -361,3 +361,13 @@ The trusted external-editor library is a UI selection flow, not a credentialed
 API grant. Its only outbound data is one explicitly chosen public point ID;
 protocol and origin/window checks are specified in
 [EMBEDDED-DRAFTS-V1](EMBEDDED-DRAFTS-V1.md). `embed_auth` remains unimplemented.
+
+
+### Personal creation feed
+
+`GET /api/v1/me/feed` — private first-party creation-only feed; `cursor`,
+`before_day`, `limit` (1–30, default20). Response: `viewer_id`, UTC `day`, public
+point `items`, `next_cursor`, `next_day`. Current author trust OR original links
+to subscribed points; blocks/visibility apply. Revision notifications remain
+`/me/inbox`. No embed/bridge grant. Capability: `creation_feed`.
+See [CREATION-FEED-V1](CREATION-FEED-V1.md) for cursor and historical semantics.

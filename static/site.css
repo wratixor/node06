@@ -59,3 +59,11 @@ border-bottom:1px solid var(--line)}
 .editor-discard button{margin-right:8px}
 
 .field-geometry-status:has(span:empty){display:none}
+.creation-feed-controls{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.creation-feed-controls button{font-size:13px;padding:6px 9px}
+.creation-feed-controls button[hidden]{display:none}
+.creation-feed-status{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.creation-feed-item{padding:10px 0;border-bottom:1px solid var(--line)}
+.creation-feed-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;
+font-size:12px;color:var(--muted)}
+.creation-feed-point{display:block;padding:6px 0;overflow-wrap:anywhere}

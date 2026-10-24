@@ -36,7 +36,10 @@ function neighborhood(points, id) {
     for (const path of ['/account/', '/sites/', '/community/', '/editor/']) {
       await page.locator(`nav a[href="${connection.serviceOrigin}${path}"]`).waitFor();
     }
-    await page.locator('nav a[href="/setup/"]').click();
+    await page.locator('nav a[href="/setup/en/"]').click();
+    await page.waitForURL('**/setup/en/');
+    assert.match(await page.locator('main').innerText(), /Mode 5/);
+    await page.locator('main a[href="/setup/"]').click();
     await page.waitForURL('**/setup/');
     assert.match(await page.locator('main').innerText(), /Режим 5/);
     await page.setViewportSize({ width: 390, height: 844 });
@@ -75,7 +78,9 @@ function neighborhood(points, id) {
     await page.goto(`${base}/?p=skills-ru&open=skills-ru`);
     await checkField('skills-ru');
     await page.locator('[data-mode="feed"]').click();
-    assert.equal(await page.locator('[data-feed-id]').count(), points.length);
+    await page.locator('.creation-feed-status').waitFor();
+    assert.equal(new URL(await page.locator('.creation-feed-status + a').getAttribute('href')).pathname, '/community/');
+    assert.equal(await page.locator('[data-feed-id]').count(), 0);
     await page.locator('[data-mode="read"]').click();
     await page.locator('.field-head h1 a').click();
     await page.waitForURL(`${base}/`);
