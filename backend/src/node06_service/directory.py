@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import func, select
 
+from .bans import EMPTY_EPOCH, epoch
 from .influence import amount
 from .models import influence_runs, social_events, users
 from .point_api import respond, service
@@ -72,7 +73,8 @@ def ranking(public, kind, after):
         latest = c.scalar(select(func.max(social_events.c.seq))) or 0
         result["snapshot_id"] = run["id"]
         if (
-            "geometry" not in data
+            data.get("ban_epoch", EMPTY_EPOCH) != epoch(c)
+            or "geometry" not in data
             or "point_mass" not in data
             or data.get("cutoff_seq") != latest
             or set(active) != set(data.get("weights", {}))

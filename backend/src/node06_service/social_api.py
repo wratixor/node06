@@ -9,6 +9,8 @@ from sqlalchemy import func, or_, select
 
 from .auth_api import authenticated_mutation
 from .author_api import Content, PointID, RevisionID
+from .bans import EMPTY_EPOCH, epoch
+from .bans import mask as ban_mask
 from .hosted import PUBLIC_HEADERS
 from .models import (
     ballots,
@@ -228,7 +230,10 @@ def point_social(point_id: PointID, request: Request, response: Response):
         rows = (
             c.execute(
                 select(proposals)
-                .where(proposals.c.point_id == point_id)
+                .where(
+                    proposals.c.point_id == point_id,
+                    ~ban_mask(proposals.c.author_user_id, proposals.c.created_at, public.site_id),
+                )
                 .order_by(proposals.c.created_at.desc(), proposals.c.id.desc())
                 .limit(10)
             )
@@ -254,8 +259,10 @@ def point_social(point_id: PointID, request: Request, response: Response):
                     select(users.c.id).where(users.c.state == "active").limit(10001)
                 ).scalars()
             )
-            pending = run["data"].get("cutoff_seq") != latest or active != set(
-                run["data"]["weights"]
+            pending = (
+                run["data"].get("ban_epoch", EMPTY_EPOCH) != epoch(c)
+                or run["data"].get("cutoff_seq") != latest
+                or active != set(run["data"]["weights"])
             )
             tally = {}
             for row in rows:

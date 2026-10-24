@@ -306,7 +306,8 @@ def test_custom_home_blocks_and_scoped_links_for_all_entrances(hosted, pg_databa
     assert 'data-home-page="true"' in response.text
     assert "<h2>Механики</h2>" in response.text and "<h2>World</h2>" in response.text
     assert f'href="{path}?p=skills-ru&amp;open=skills-ru"' in response.text
-    assert f'href="{path}"' in response.text
+    # The instance heading returns home; semantic links remain tenant-scoped.
+    assert '<a class="field-home-link" href="/">' in response.text
     assert "Точка Geno-Dice" not in response.text
     embedded = client.get(EMBED + f"/embed/v1/{active.site_id}/")
     assert f'href="/embed/v1/{active.site_id}/?p=skills-ru&amp;open=skills-ru"' in embedded.text

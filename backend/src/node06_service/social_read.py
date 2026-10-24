@@ -2,6 +2,8 @@
 
 from sqlalchemy import func, select
 
+from .bans import EMPTY_EPOCH, epoch
+from .bans import mask as ban_mask
 from .influence import amount
 from .models import influence_runs, proposals, root_entries, social_events, users
 from .public_points import PublicPointError
@@ -20,7 +22,11 @@ def point_summary(public, point_id):
         proposal = (
             c.execute(
                 select(proposals)
-                .where(proposals.c.point_id == point_id, proposals.c.state == "open")
+                .where(
+                    proposals.c.point_id == point_id,
+                    proposals.c.state == "open",
+                    ~ban_mask(proposals.c.author_user_id, proposals.c.created_at, public.site_id),
+                )
                 .limit(1)
             )
             .mappings()
@@ -55,7 +61,8 @@ def point_summary(public, point_id):
             )
             latest = c.scalar(select(func.max(social_events.c.seq))) or 0
             pending = (
-                "geometry" not in data
+                data.get("ban_epoch", EMPTY_EPOCH) != epoch(c)
+                or "geometry" not in data
                 or "point_mass" not in data
                 or data.get("cutoff_seq") != latest
                 or active != set(data["weights"])

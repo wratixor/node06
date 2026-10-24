@@ -170,6 +170,9 @@ class SiteRegistry:
             with self.database.begin() as connection:
                 lock_graph(connection)
                 self._authorize(connection, owner_user_id)
+                from .bans import publication
+
+                publication(connection, owner_user_id, None, proposal=True)
                 owner = connection.execute(
                     select(users.c.id)
                     .where(users.c.id == owner_user_id, users.c.state == "active")
@@ -283,6 +286,9 @@ class SiteRegistry:
         with self.database.begin() as connection:
             lock_graph(connection)
             self._authorize(connection, actor_user_id)
+            from .bans import publication
+
+            publication(connection, actor_user_id, site_id, proposal=True)
             site = (
                 connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
                 .mappings()
@@ -332,6 +338,9 @@ class SiteRegistry:
             with self.database.begin() as connection:
                 lock_graph(connection)
                 self._authorize(connection, actor_user_id)
+                from .bans import publication
+
+                publication(connection, actor_user_id, site_id, proposal=True)
                 site = (
                     connection.execute(select(sites).where(sites.c.id == site_id).with_for_update())
                     .mappings()
@@ -567,6 +576,9 @@ class SiteRegistry:
         with self.database.begin() as connection:
             lock_graph(connection)
             self._authorize(connection, actor_user_id)
+            from .bans import publication
+
+            publication(connection, actor_user_id, site_id, proposal=True)
             site = self._managed_site(connection, site_id, actor_user_id)
             if (
                 site["settings_revision"] != expected_settings_revision
@@ -647,6 +659,9 @@ class SiteRegistry:
         with self.database.begin() as connection:
             lock_graph(connection)
             self._authorize(connection, actor_user_id)
+            from .bans import publication
+
+            publication(connection, actor_user_id, site_id, proposal=True)
             site = self._managed_site(connection, site_id, actor_user_id)
             if site["settings_revision"] != expected_settings_revision:
                 raise SiteConflictError(

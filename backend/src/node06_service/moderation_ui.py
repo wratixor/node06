@@ -40,6 +40,19 @@ pattern="server|s_[0-9a-f]{{32}}" value="server"></label><datalist id="scopes"><
 <input id="user-query" type="search" maxlength="64" placeholder="Поиск"></label>
 <button>Найти</button></form>
 <ul id="user-results"></ul><button id="users-more" hidden>Ещё</button></section>
+<section id="bans" hidden><h2>Баны</h2>
+<form id="ban-form"><label>Пользователь<input id="ban-user" required
+pattern="u_[0-9a-f]{{32}}"></label><label>Режим<select id="ban-mode">
+<option value="block">Запрет публикации и показа</option>
+<option value="quarantine">Карантин новых и изменённых точек</option>
+<option value="">Отменить бан</option></select></label>
+<label>Срок<select id="ban-duration"><option value="3600">Час</option>
+<option value="86400" selected>Сутки</option><option value="604800">Неделя</option>
+<option value="2592000">30 дней</option><option value="">Бессрочно</option></select></label>
+<label>Причина<input id="ban-reason" required maxlength="2000"></label>
+<button>Применить</button></form><ul id="ban-results"></ul>
+<button id="bans-more" hidden>Ещё</button>
+<a id="quarantine-link" href="/quarantine/">Открыть карантин</a></section>
 <details id="roles" hidden><summary>Доступ к области</summary>
 <form id="role-form"><label>ID пользователя
 <input id="role-user" required pattern="u_[0-9a-f]{{32}}"></label>
@@ -84,6 +97,7 @@ def style():
         "#user-results a{color:inherit}#user-results button{margin-left:8px}"
         "@media(max-width:520px){#scope-form{grid-template-columns:minmax(0,1fr) auto}"
         "#scope-form label:first-child{grid-column:1/-1}}"
+        "#q-points button{max-width:100%;white-space:normal;overflow-wrap:anywhere}"
         "h2{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:50vh;overflow:auto}"
         "li{padding:8px 0;border-bottom:1px solid #293442;overflow-wrap:anywhere}"
         "#cases button{max-width:100%;white-space:normal;overflow-wrap:anywhere}"

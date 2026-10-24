@@ -1,19 +1,19 @@
 'use strict';
 (() => {
   const el=id=>document.getElementById(id), args=new URLSearchParams(location.search);
-  let me=null,busy=false,pending=null,scope='server',selected=null,cursor=null,userCursor=null;
-  const errors={INVALID_INPUT:'Проверьте заполнение полей.',USER_NOT_FOUND:'Активный пользователь не найден.',MODERATION_FORBIDDEN:'Нет прав в этой области.',AUTH_REQUIRED:'Войдите через раздел «Вход и безопасность».',POINT_NOT_FOUND:'Точка недоступна.',IDEMPOTENCY_CONFLICT:'Ключ операции уже использован. Перезагрузите страницу.',SCOPE_NOT_FOUND:'Сайт не найден.',INVALID_SCOPE:'Неверная область.',SELF_ROLE_CHANGE_FORBIDDEN:'Свою роль здесь изменить нельзя.'};
+  let me=null,busy=false,pending=null,scope='server',selected=null,cursor=null,userCursor=null,banCursor=null;
+  const errors={SELF_BAN_FORBIDDEN:'Себя забанить нельзя.',MODERATION_TARGET_PROTECTED:'У пользователя есть полномочия в этой области. Сначала отзовите назначение.',INVALID_INPUT:'Проверьте заполнение полей.',USER_NOT_FOUND:'Активный пользователь не найден.',MODERATION_FORBIDDEN:'Нет прав в этой области.',AUTH_REQUIRED:'Войдите через раздел «Вход и безопасность».',POINT_NOT_FOUND:'Точка недоступна.',IDEMPOTENCY_CONFLICT:'Ключ операции уже использован. Перезагрузите страницу.',SCOPE_NOT_FOUND:'Сайт не найден.',INVALID_SCOPE:'Неверная область.',SELF_ROLE_CHANGE_FORBIDDEN:'Свою роль здесь изменить нельзя.'};
   function node(tag,text,parent){const item=document.createElement(tag);item.textContent=text;parent.append(item);return item;}
-  function clearPrivate(){selected=null;el('detail').hidden=true;el('cases').replaceChildren();el('reports').replaceChildren();el('audit').replaceChildren();el('point-body').textContent='';el('review').hidden=true;el('roles').hidden=true;el('user-search').hidden=true;el('user-results').replaceChildren();el('users-more').hidden=true;userCursor=null;}
+  function clearPrivate(){selected=null;el('detail').hidden=true;el('cases').replaceChildren();el('reports').replaceChildren();el('audit').replaceChildren();el('point-body').textContent='';el('review').hidden=true;el('roles').hidden=true;el('user-search').hidden=true;el('user-results').replaceChildren();el('users-more').hidden=true;userCursor=null;banCursor=null;el('bans').hidden=true;el('ban-results').replaceChildren();el('bans-more').hidden=true;}
   async function api(path,options={}){
     const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),15000);
     try{const r=await fetch('/api/v1'+path,{...options,credentials:'same-origin',cache:'no-store',signal:abort.signal});const value=await r.json();if(!r.ok){const e=new Error(value.code);e.status=r.status;throw e;}return value;}finally{clearTimeout(timer);}
   }
   async function identity(){const current=await api('/me');if(me&&current.user_id!==me.user_id){clearPrivate();throw new Error('Аккаунт изменился. Перезагрузите страницу.');}me=current;return current;}
-  async function act(task){if(busy)return;busy=true;el('scope').disabled=true;el('case-state').disabled=true;el('user-query').disabled=true;for(const b of document.querySelectorAll('button'))b.disabled=true;el('status').textContent='Загрузка…';
+  async function act(task){if(busy)return;busy=true;el('scope').disabled=true;el('case-state').disabled=true;el('user-query').disabled=true;for(const n of el('ban-form').querySelectorAll('input,select'))n.disabled=true;for(const b of document.querySelectorAll('button'))b.disabled=true;el('status').textContent='Загрузка…';
     try{await identity();await task();el('status').textContent='Готово.';}
     catch(e){if(e.status===401||e.status===403){clearPrivate();if(e.status===401)el('report-form').hidden=true;}el('status').textContent=errors[e.message]||((e instanceof TypeError||e.name==='AbortError')?'Нет ответа. Повторите то же действие с прежними данными.':e.message)||'Ошибка. Повторите действие.';}
-    finally{busy=false;el('scope').disabled=false;el('case-state').disabled=false;el('user-query').disabled=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}
+    finally{busy=false;el('scope').disabled=false;el('case-state').disabled=false;el('user-query').disabled=false;for(const n of el('ban-form').querySelectorAll('input,select'))n.disabled=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}
   }
   async function write(path,data){
     const fingerprint=JSON.stringify([path,data]);
@@ -30,7 +30,7 @@
     if(!append)el('cases').replaceChildren();
     for(const item of result.items){const li=node('li','',el('cases')),b=node('button',item.point_id+' · '+item.reports+(item.hidden?' · скрыта':''),li);b.type='button';b.addEventListener('click',()=>void act(()=>inspect(item.point_id)));}
     cursor=result.next_cursor;el('more').hidden=!cursor;
-    if(!append)await loadUsers();
+    if(!append){await loadUsers();await loadBans();}
   }
   async function loadUsers(append=false){
     if(!append){userCursor=null;el('user-results').replaceChildren();}
@@ -40,6 +40,7 @@
       const li=node('li','',el('user-results')),a=node(item.state==='active'?'a':'span',item.handle,li);
       if(item.state==='active')a.href='/people/'+encodeURIComponent(item.id)+'/';
       node('small',new Date(item.created_at).toLocaleString('ru-RU')+' · '+(item.state==='active'?'активен':'отключён')+' · '+item.id,li);
+      if(item.state==='active'){const b=node('button','Бан',li);b.type='button';b.addEventListener('click',()=>{el('ban-user').value=item.id;el('ban-reason').focus();});}
       if(result.role==='admin'&&item.state==='active'){const b=node('button','Выбрать для доступа',li);b.type='button';b.addEventListener('click',()=>{el('role-user').value=item.id;el('roles').open=true;el('role').focus();});}
     }
     userCursor=result.next_cursor;el('users-more').hidden=!userCursor;
@@ -48,6 +49,15 @@
   el('user-search-form').addEventListener('submit',e=>{e.preventDefault();void act(()=>loadUsers());});
   el('user-query').addEventListener('input',()=>{userCursor=null;el('users-more').hidden=true;});
   el('users-more').addEventListener('click',()=>void act(()=>loadUsers(true)));
+  async function loadBans(append=false){
+    if(!append){banCursor=null;el('ban-results').replaceChildren();}
+    const p=await api(path('bans')+(banCursor?'&'+new URLSearchParams({after:banCursor}):''));
+    el('bans').hidden=false;el('quarantine-link').href='/quarantine/?'+new URLSearchParams({scope});
+    for(const item of p.items){const li=node('li',item.handle+' · '+(item.mode==='block'?'Запрет публикации и показа':'Карантин')+' · '+(item.expires_at?new Date(item.expires_at).toLocaleString('ru-RU'):'Бессрочно')+' · '+item.reason,el('ban-results'));const b=node('button','Изменить / отменить',li);b.type='button';b.addEventListener('click',()=>{el('ban-user').value=item.user_id;el('ban-mode').value='';el('ban-reason').value='';el('ban-reason').focus();});}
+    banCursor=p.next_cursor;el('bans-more').hidden=!banCursor;
+  }
+  el('ban-form').addEventListener('submit',e=>{e.preventDefault();void act(async()=>{await write(path('bans/'+encodeURIComponent(el('ban-user').value)),{mode:el('ban-mode').value||null,duration_seconds:el('ban-duration').value?Number(el('ban-duration').value):null,reason:el('ban-reason').value.trim()});await loadBans();});});
+  el('bans-more').addEventListener('click',()=>void act(()=>loadBans(true)));
   async function inspect(id){
     const result=await api(path('inspect/'+encodeURIComponent(id)));selected=id;el('detail').hidden=false;
     el('point-name').textContent=id;el('point-body').textContent=result.point.display_text??result.point.body??'Текст больше не опубликован.';

@@ -522,3 +522,21 @@ moderation_audit = Table(
     Column("detail", JSON, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
+
+
+moderation_bans = Table(
+    "moderation_bans",
+    metadata,
+    Column("scope", String(34), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("mode", String(16), nullable=False),
+    Column("active", Boolean, nullable=False),
+    Column("starts_at", DateTime(timezone=True), nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=True),
+    Column("reason", Text, nullable=False),
+    Column("updated_by", ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint("mode IN ('block','quarantine')", name="ck_moderation_bans_mode"),
+    CheckConstraint("expires_at IS NULL OR expires_at > starts_at", name="ck_moderation_bans_time"),
+)
+Index("ix_moderation_bans_user", moderation_bans.c.user_id)

@@ -392,3 +392,12 @@ Pending/stale snapshots return an empty pending result; changed snapshot cursors
 return409. Current site/server visibility applies. UI `/directory/` links to
 public author profiles. Moderator-only `GET /api/v1/moderation/users` adds
 registration date/state after scope authorization. [Contract](DIRECTORY-V1.md).
+
+### Scoped bans and private quarantine
+
+Moderator `/api/v1/moderation/bans` reads/writes and first-party
+`/api/v1/me/{bans,quarantine}` reads are implemented with migration0017.
+A site ban changes publication/visibility only in that site; server restrictions
+apply everywhere. Quarantine reads require a current session and scope membership
+or moderator authority; no new anonymous bridge capability. Publication may
+return `quarantined:true,quarantine_scope:…`. [Contract](SCOPED-BANS-V1.md).

@@ -2,6 +2,7 @@
 
 from sqlalchemy import func, select
 
+from .bans import EMPTY_EPOCH, epoch
 from .geometry import MODEL
 from .models import influence_runs, social_events, users
 from .public_points import PublicPointError
@@ -26,7 +27,8 @@ def batch(public, ids):
         cutoff = c.scalar(select(func.max(social_events.c.seq))) or 0
         data = run["data"] if run else {}
         pending = (
-            "geometry" not in data
+            data.get("ban_epoch", EMPTY_EPOCH) != epoch(c)
+            or "geometry" not in data
             or data.get("cutoff_seq") != cutoff
             or active != set(data.get("weights", {}))
         )

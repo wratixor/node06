@@ -58,6 +58,9 @@ class Authoring:
             lock_graph(c)
             # Serializes this actor's receipts and rechecks revocation inside the write.
             self.authorize(c, actor)
+            from .bans import publication
+
+            quarantined = publication(c, actor, compose_site or self.public.site_id)
             if compose_site is not None:
                 active_site = c.scalar(
                     select(sites.c.id).where(
@@ -196,7 +199,15 @@ class Authoring:
                 if c.scalar(select(active_support(pid))):
                     raise AuthoringError("PROPOSAL_REQUIRED", 409)
             else:
-                c.execute(insert(points).values(id=pid, origin="user", author_user_id=actor))
+                c.execute(
+                    insert(points).values(
+                        id=pid,
+                        origin="user",
+                        author_user_id=actor,
+                        created_at=func.clock_timestamp(),
+                        content_updated_at=func.clock_timestamp(),
+                    )
+                )
                 c.execute(insert(authored_points).values(point_id=pid, lang=payload["lang"]))
             revision = "v_" + uuid4().hex
             c.execute(
@@ -218,7 +229,7 @@ class Authoring:
                 .where(points.c.id == pid)
                 .values(
                     current_revision_id=revision,
-                    content_updated_at=func.now(),
+                    content_updated_at=func.clock_timestamp(),
                     last_interaction_at=func.now(),
                 )
             )
@@ -258,7 +269,14 @@ class Authoring:
                     },
                 )
             )
-            result = {"id": pid, "revision_id": revision, "changed": True}
+            result = {
+                "id": pid,
+                "revision_id": revision,
+                "changed": True,
+            }
+            if quarantined:
+                result["quarantined"] = True
+                result["quarantine_scope"] = quarantined
             self._receipt(c, actor, key, request_digest, result)
             return result
 

@@ -985,7 +985,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; P04 source proof/transport/DB preview/accept ещё не готовы |
 | P04 operator publication | Accepted immutable Git roots/provenance/retirement and manifest home already in main; self-service ownership/transport/private preview still pending |
 | P05a public reads | Current point API, indexed full-body prefix search and bounded neighbor pages; authoring, voting, UI/bridge are implemented by subsequent packets. See [contract](PUBLIC-POINTS-V1.md) |
-| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, bans/purge/sync/tariffs ещё впереди; scoped moderation implemented; operator imports and T1/social geometry implemented |
+| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, purge/sync/tariffs ещё впереди; scoped bans/quarantine implemented; operator imports and T1/social geometry implemented |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1624,3 +1624,34 @@ publication, external drafting, profiles, moderation and anonymous bridge flows.
 The first added browser assertion selected an arbitrary matching result; the
 final test targets the exact root ID and passed. JS/Ruff/format/diff checks passed.
 No production change; normal app deploy after owner merge.
+
+### Scoped bans and private quarantine — 24 October 2026
+
+Implemented the owner-confirmed site/server restriction boundary. Moderators can
+set/revoke block or quarantine, timed or indefinite, with role/session/CSRF checks,
+receipts, reasons and audit. Publication rechecks under the graph lock before
+receipt replay. The public filter suppresses user-authored points in the selected
+scope. Quarantine captures newly created/edited posts; private cohort readers
+are all actively banned users and assigned moderators in the applicable area.
+Local membership/roles cannot bypass server quarantine or independent point hides.
+Anonymous bridge/embed gains no private access. Editor preserves site context,
+reports quarantine explicitly and links to first-party private reading.
+
+Server ban expiry invalidates persisted projection freshness even without a new
+event. Global T1 computation and revision decisions now use global visibility,
+so local views do not change shared weights/outcomes. Source-managed roots and
+base user influence remain intact. Migration0017, no new dependency/configuration.
+Contract: [SCOPED-BANS-V1](SCOPED-BANS-V1.md). Next:30-day purge/tombstones;
+self-service sources, federation and devlogs remain separate work.
+
+Validation: full259 tests passed258, with one stale tenant-home link expectation
+from the earlier instance-brand correction. Updated assertion and final25
+bans/social/hosted cases passed. Follow-up3 clock/concurrency cases and2 epoch
+cases passed (263 now collected,10 new ban tests). Parallel PostgreSQL proves
+waiting transactions use post-lock wall time for quarantine; snapshot tests
+reject expiry crossing computation. Populated0016↔0017 roundtrip passed through
+production psycopg. Installed-wheel HTTPS Chromium passed ban/revoke UI,
+quarantined editor output, authenticated cohort reading and other-site visibility,
+XSS/mobile checks plus existing social/editor/bridge flows. Static51-root
+regressions, Ruff/format, JS/protocol, offline SQL and diff passed. No production
+operation performed. Existing deploy script upgrades Alembic before restart.

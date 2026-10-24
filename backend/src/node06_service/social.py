@@ -70,6 +70,10 @@ class Social:
         with self.database.begin() as c:
             lock_graph(c)
             self.authorize(c, actor)
+            if kind == "propose":
+                from .bans import publication
+
+                publication(c, actor, self.public.site_id, proposal=True)
             old = (
                 c.execute(
                     select(point_operations).where(
@@ -248,7 +252,24 @@ class Social:
         return {"point_id": pid, "blocked": True, **pin}
 
     def _subscription(self, c, actor, pid, payload):
-        point = self.pinned(c, pid, payload)
+        prior = None
+        if not payload["active"]:
+            prior = (
+                c.execute(
+                    select(subscriptions).where(
+                        subscriptions.c.user_id == actor,
+                        subscriptions.c.point_id == pid,
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+        # Withdrawing one's own support must remain possible after a hide/ban.
+        point = (
+            {**self.pin(prior), "body": prior["static_body"]}
+            if prior
+            else self.pinned(c, pid, payload)
+        )
         q = (
             c.execute(
                 select(proposals).where(proposals.c.point_id == pid, proposals.c.state == "open")
@@ -287,7 +308,7 @@ class Social:
             active=payload["active"],
             static_body=point.get("body") if point["revision_id"] is None else None,
         )
-        if point["revision_id"] is None:
+        if payload["active"] and point["revision_id"] is None:
             c.execute(
                 pg_insert(core_publications)
                 .values(
@@ -575,12 +596,33 @@ class Social:
         return {"target_user_id": target, "active": payload["active"]}
 
     def _proposal(self, c, qid):
-        q = c.execute(select(proposals).where(proposals.c.id == qid)).mappings().one_or_none()
+        from .bans import mask
+
+        q = (
+            c.execute(
+                select(proposals).where(
+                    proposals.c.id == qid,
+                    ~mask(proposals.c.author_user_id, proposals.c.created_at, self.public.site_id),
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
         if not q:
             raise SocialError("PROPOSAL_NOT_FOUND", 404)
         return q
 
     def _snapshot(self, c):
+        from .bans import epoch
+        from .public_points import PublicPoints
+
+        ban_epoch = epoch(c)
+
+        global_public = PublicPoints(
+            self.database,
+            roots=self.public.core.values(),
+            build_revision=self.public.build_revision,
+        )
         ids = (
             c.execute(
                 select(users.c.id)
@@ -621,7 +663,7 @@ class Social:
             pid = row["point_id"]
             if pid not in current:
                 try:
-                    current[pid] = self.public.raw_on(c, pid)
+                    current[pid] = global_public.raw_on(c, pid)
                 except PublicPointError:
                     current[pid] = None
             if current[pid] is not None:
@@ -680,7 +722,11 @@ class Social:
         geometry = geometry_calculate(profiles, confirmed_support, confirmed_blocks)
         for pid, result in geometry.items():
             result.update(self.pin(current[pid]))
+        if epoch(c) != ban_epoch:
+            raise InfluenceUnavailable("INFLUENCE_MODERATION_CHANGED")
+
         data.update(
+            ban_epoch=ban_epoch,
             point_mass=point_mass,
             mass_units=mass,
             blocked_units=negative,
@@ -693,6 +739,7 @@ class Social:
         identity = digest(
             {
                 "projection": "point-mass/2-geometry/1",
+                "ban_epoch": data["ban_epoch"],
                 "profiles": profiles,
                 "blocks": [
                     dict(
@@ -751,8 +798,21 @@ class Social:
     def _finalize(self, c, q):
         if q["state"] != "open":
             return
+        from .bans import publication
+        from .public_points import PublicPoints
+
         try:
-            current = self.public.raw_on(c, q["point_id"])
+            publication(c, q["author_user_id"], proposal=True)
+        except PublicPointError:
+            self._close(c, q, "stale", {"reason": "author-restricted"})
+            return
+        global_public = PublicPoints(
+            self.database,
+            roots=self.public.core.values(),
+            build_revision=self.public.build_revision,
+        )
+        try:
+            current = global_public.raw_on(c, q["point_id"])
         except PublicPointError:
             current = None
         if not current or self.pin(current) != {

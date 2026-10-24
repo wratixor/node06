@@ -151,3 +151,7 @@ Public discovery: `/directory/`, public handle search and persisted T1 user /
 confirmed current-version point rankings; scoped moderator user search includes
 registration date/state. See [directory contract](../docs/DIRECTORY-V1.md).
 No new migration or dependency; normal application/static deploy.
+
+Scoped bans/quarantine: [contract](../docs/SCOPED-BANS-V1.md). Apply Alembic0017
+before starting the app; `/ready` alone does not establish the schema revision.
+No new configuration/dependency. No automatic purge or account disabling.

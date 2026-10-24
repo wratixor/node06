@@ -821,7 +821,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/moderation/','moderation'],['/directory/','directory'],['/community/','profile']]){
       await page.goto(base+path);
       const nav=page.locator('.personal-header nav');
-      assert.equal(await nav.locator('a').count(),7);
+      assert.equal(await nav.locator('a').count(),8);
       assert.equal(await nav.locator('[aria-current=page]').count(),1);
       assert.equal(await nav.locator('[aria-current=page]').getAttribute('href'),path);
       assert.equal(await nav.locator('a[target]').count(),key==='editor'?1:0);
@@ -879,7 +879,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.waitForFunction(()=>document.querySelector('#user-results button'));
     assert.equal(await page.locator('#user-results a').getAttribute('href'),'/people/'+authorSession.user_id+'/');
     assert((await page.locator('#user-results small').textContent()).includes('активен'));
-    await page.locator('#user-results button').click();
+    await page.getByRole('button',{name:'Выбрать для доступа',exact:true}).click();
     assert.equal(await page.locator('#role-user').inputValue(),authorSession.user_id);
     // Controls share a baseline on desktop; mobile uses a full-width scope row.
     await page.setViewportSize({width:1000,height:850});
@@ -900,6 +900,41 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.locator('#role').selectOption('');await page.locator('#role-form button').click();
     await page.waitForFunction(()=>document.querySelector('#status').textContent==='Готово.');
     assert.equal((await delegated.request.get(base+'/api/v1/moderation/cases?scope='+active)).status(),403);
+    // Site quarantine is private here and remains ordinary public content elsewhere.
+    await page.locator('#ban-user').fill(authorSession.user_id);
+    await page.locator('#ban-mode').selectOption('quarantine');
+    await page.locator('#ban-reason').fill('Browser quarantine <script>window.banUnsafe=true</script>');
+    await page.locator('#ban-form button').click();
+    await page.waitForFunction(()=>!document.querySelector('#ban-user').disabled);
+    assert.equal(await page.locator('#ban-results script').count(),0);
+    assert.equal(await page.evaluate(()=>window.banUnsafe),undefined);
+    const isolatedWriter=await delegated.newPage();
+    await isolatedWriter.goto(base+'/editor/?'+new URLSearchParams({from:'skills-ru',return_to:'/sites/'+active+'/'}));
+    await isolatedWriter.locator('#editor-form[data-ready=true]').waitFor();
+    await isolatedWriter.locator('#point-body').fill('Quarantine browser private <script>unsafe()</script>');
+    const qResponse=isolatedWriter.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname==='/api/v1/points');
+    await isolatedWriter.locator('#publish').click();
+    const qResult=await(await qResponse).json();
+    assert.equal(qResult.quarantined,true);
+    await isolatedWriter.waitForFunction(()=>document.querySelector('#editor-status').textContent==='Точка сохранена в карантине.');
+    assert.equal((await delegated.request.get(base+'/api/v1/points/'+qResult.id+'?site='+active)).status(),404);
+    assert.equal((await delegated.request.get(base+'/api/v1/points/'+qResult.id+'?site='+otherSite)).status(),200);
+    await isolatedWriter.goto(base+'/quarantine/?'+new URLSearchParams({scope:active,point:qResult.id}));
+    await isolatedWriter.locator('#q-article').waitFor({state:'visible'});
+    assert((await isolatedWriter.locator('#q-body').textContent()).includes('unsafe()'));
+    assert.equal(await isolatedWriter.locator('#q-body script').count(),0);
+    await isolatedWriter.setViewportSize({width:390,height:844});
+    assert(await isolatedWriter.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Private quarantine fits mobile');
+    await isolatedWriter.screenshot({path:'/tmp/node06-quarantine-mobile.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Ban panel fits mobile');
+    await page.screenshot({path:'/tmp/node06-scoped-bans-mobile.png',fullPage:true});
+    await page.locator('#ban-mode').selectOption('');
+    await page.locator('#ban-reason').fill('Browser restore');
+    await page.locator('#ban-form button').click();
+    await page.waitForFunction(()=>!document.querySelector('#ban-user').disabled);
+    assert.equal((await delegated.request.get(base+'/api/v1/points/'+qResult.id+'?site='+active)).status(),200);
+    assert.equal((await delegated.request.get(base+'/api/v1/me/quarantine/'+qResult.id+'?scope='+active)).status(),403);
     await delegated.close();
     const discovery=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:390,height:844}});
     const directoryPage=await discovery.newPage();
