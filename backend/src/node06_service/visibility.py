@@ -4,7 +4,8 @@ import re
 
 from sqlalchemy import select
 
-from .models import point_hides
+from .bans import point_mask
+from .models import point_hides, points
 
 SCOPE = re.compile(r"server|s_[0-9a-f]{32}")
 
@@ -15,7 +16,8 @@ def scopes(site=None):
 
 def visible(point_id, site=None):
     return (
-        ~select(point_hides.c.point_id)
+        ~point_mask(point_id, site)
+        & ~select(point_hides.c.point_id)
         .where(
             point_hides.c.point_id == point_id,
             point_hides.c.scope.in_(scopes(site)),
@@ -28,7 +30,7 @@ def visible(point_id, site=None):
 def hidden_ids(connection, ids, site=None):
     if not ids:
         return set()
-    return set(
+    hidden = set(
         connection.scalars(
             select(point_hides.c.point_id).where(
                 point_hides.c.point_id.in_(list(ids)),
@@ -37,3 +39,9 @@ def hidden_ids(connection, ids, site=None):
             )
         )
     )
+    hidden.update(
+        connection.scalars(
+            select(points.c.id).where(points.c.id.in_(list(ids)), point_mask(points.c.id, site))
+        )
+    )
+    return hidden

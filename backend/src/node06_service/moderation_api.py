@@ -40,6 +40,11 @@ class Report(BaseModel):
         return value
 
 
+class Ban(Report):
+    mode: Literal["block", "quarantine"] | None
+    duration_seconds: Annotated[int, Field(strict=True, ge=60, le=31536000)] | None = None
+
+
 class Visibility(Report):
     hidden: bool = Field(strict=True)
 
@@ -173,6 +178,12 @@ def inspect_point(point_id: PointID, request: Request, scope: Scope = "server"):
     public = service(request, {"scope"})
     with public.database.connect() as c:
         role = require(c, actor.user_id, scope)
+        from .bans import restrictions
+        from .moderation import role_on
+
+        for restriction in restrictions(c, point_id, None if scope == "server" else scope):
+            if not role_on(c, actor.user_id, restriction["scope"]):
+                raise ModerationError("MODERATION_FORBIDDEN", 403)
         store = PublicPoints(public.database, roots=public.core.values(), moderation=False)
         try:
             point = store.raw_on(c, point_id)
@@ -244,3 +255,41 @@ def find_users(
     with request.app.state.database.connect() as c:
         role = require(c, actor.user_id, scope)
         return {"role": role, **user_rows(c, q, after, private=True)}
+
+
+@router.post("/bans/{user_id}")
+def set_ban(user_id: str, payload: Ban, request: Request, scope: Scope = "server"):
+    if not re.fullmatch(r"u_[0-9a-f]{32}", user_id):
+        raise ModerationError("INVALID_USER", 422)
+    return mutate(request, scope, "ban", user_id, payload.model_dump())
+
+
+@router.get("/bans")
+def list_bans(
+    request: Request,
+    scope: Scope = "server",
+    after: Annotated[str, Query(pattern=r"^(?:u_[0-9a-f]{32})?$")] = "",
+):
+    from .bans import live
+    from .models import moderation_bans as bans
+    from .models import users
+
+    service(request, {"scope", "after"})
+    _, _, actor = manager(request, mutation=False)
+    with request.app.state.database.connect() as c:
+        require(c, actor.user_id, scope)
+        rows = (
+            c.execute(
+                select(bans, users.c.handle)
+                .join(users, users.c.id == bans.c.user_id)
+                .where(bans.c.scope == scope, live(), bans.c.user_id.collate("C") > after)
+                .order_by(bans.c.user_id.collate("C"))
+                .limit(21)
+            )
+            .mappings()
+            .all()
+        )
+    return {
+        "items": [dict(r) for r in rows[:20]],
+        "next_cursor": rows[19]["user_id"] if len(rows) > 20 else None,
+    }

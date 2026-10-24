@@ -11,6 +11,7 @@ def navigation(current: str) -> str:
         ("sites", "/sites/", "Мои сайты"),
         ("editor", "/editor/", "Новая точка"),
         ("moderation", "/moderation/", "Жалобы"),
+        ("quarantine", "/quarantine/", "Карантин"),
         ("account", "/account/", "Вход и безопасность"),
     )
     links = []

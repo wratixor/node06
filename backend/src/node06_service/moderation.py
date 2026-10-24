@@ -1,6 +1,6 @@
 """Explicit scope roles, one report case and reversible hides under the graph lock."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import delete, func, insert, select, update
@@ -221,3 +221,66 @@ class Moderation:
             c.execute(delete(roles).where(roles.c.scope == scope, roles.c.user_id == target))
         log(c, actor, scope, "role", target, {"role": role})
         return {"scope": scope, "user_id": target, "role": role}
+
+    def _ban(self, c, actor, scope, target, payload):
+        from .bans import live
+        from .models import moderation_bans as bans
+        from .models import social_events
+
+        if target == actor:
+            raise ModerationError("SELF_BAN_FORBIDDEN", 409)
+        if role_on(c, target, scope):
+            raise ModerationError("MODERATION_TARGET_PROTECTED", 403)
+        if not c.scalar(select(users.c.id).where(users.c.id == target)):
+            raise ModerationError("USER_NOT_FOUND", 404)
+        previous = (
+            c.execute(select(bans).where(bans.c.scope == scope, bans.c.user_id == target, live()))
+            .mappings()
+            .one_or_none()
+        )
+        now = c.scalar(select(func.clock_timestamp()))
+        start = previous["starts_at"] if previous else now
+        mode = payload["mode"]
+        end = (
+            now + timedelta(seconds=payload["duration_seconds"])
+            if mode and payload["duration_seconds"]
+            else None
+        )
+        c.execute(
+            pg_insert(bans)
+            .values(
+                scope=scope,
+                user_id=target,
+                mode=mode or "block",
+                active=mode is not None,
+                starts_at=start,
+                expires_at=end,
+                reason=payload["reason"],
+                updated_by=actor,
+            )
+            .on_conflict_do_update(
+                index_elements=[bans.c.scope, bans.c.user_id],
+                set_={
+                    "mode": mode or "block",
+                    "active": mode is not None,
+                    "starts_at": start,
+                    "expires_at": end,
+                    "reason": payload["reason"],
+                    "updated_by": actor,
+                    "updated_at": now,
+                },
+            )
+        )
+        detail = {
+            "mode": mode,
+            "expires_at": end.isoformat() if end else None,
+            "reason": payload["reason"],
+        }
+        log(c, actor, scope, "ban" if mode else "unban", target, detail)
+        # No recipient fanout; invalidate projections without publishing private reasons.
+        c.execute(
+            insert(social_events).values(
+                kind="moderation-ban", actor_user_id=actor, payload={}, public=False, created_at=now
+            )
+        )
+        return {"scope": scope, "user_id": target, **detail}

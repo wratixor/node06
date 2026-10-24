@@ -4,7 +4,7 @@
   const el=id=>document.getElementById(id), channel=new URLSearchParams(location.search).get('channel');
   const embed=document.body.dataset.embedOrigin, site=document.body.dataset.site;
   const peer=window.opener;
-  let draft=null, key=null, actor=null, displayedActor=null, busy=false, confirmed=null;
+  let draft=null, key=null, actor=null, displayedActor=null, busy=false, confirmed=null,quarantined=false;
   const status=text=>{el('confirmation-status').textContent=text;};
   const tell=(kind,extra={})=>peer?.postMessage({protocol:'node06-publish/1',channel,kind,...extra},embed);
   async function api(path,options={}) {
@@ -37,7 +37,7 @@
     if(m.kind==='draft'&&m.site===site&&valid(m.payload)&&/^[0-9a-f-]{36}$/.test(m.key||'')) {
       const encoded=JSON.stringify(m.payload);
       // The displayed operation is immutable, including the idempotency key.
-      if(draft){if(encoded===draft&&m.key===key&&confirmed)tell('published',{id:confirmed});return;}
+      if(draft){if(encoded===draft&&m.key===key&&confirmed)tell('published',{id:confirmed,quarantined});return;}
       draft=encoded;key=m.key;
       el('confirmation-body').textContent=m.payload.body;
       for(const pin of m.payload.links){const li=document.createElement('li');li.textContent=pin.id;el('confirmation-links').append(li);}
@@ -53,7 +53,7 @@
       if((actor&&actor!==me.user_id)||displayedActor!==me.user_id)throw new Error('ACCOUNT_CHANGED');
       actor=me.user_id;
       const r=await api(`/editor/confirm/${site}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':me.csrf_token,'Idempotency-Key':key},body:draft});
-      confirmed=r.id;tell('published',{id:r.id});status('Опубликовано. Можно закрыть это окно.');
+      confirmed=r.id;quarantined=r.quarantined===true;tell('published',{id:r.id,quarantined});status(quarantined?'Сохранено в карантине. Можно закрыть это окно.':'Опубликовано. Можно закрыть это окно.');
       // Never close the editor draft on an unacknowledged or failed write.
     } catch(e) {
       status(e.message==='ACCOUNT_CHANGED'?'Аккаунт сменился. Вернитесь в исходный аккаунт.':

@@ -44,6 +44,8 @@ class EditContent(Content):
 
 def write(request, payload, point_id=None, *, compose_site=None):
     public = public_service(request, set())
+    if compose_site:
+        public.site_id = compose_site
     auth, token = authenticated_mutation(request)
     actor = auth.authenticate(token)
     key = request.headers.get("Idempotency-Key", "")
@@ -143,6 +145,7 @@ def own_points(
     request: Request, after: PointID | None = None, limit: Annotated[int, Query(ge=1, le=30)] = 20
 ):
     _registry, _auth, actor = manager(request, mutation=False)
+    public = public_service(request, {"after", "limit"})
     with request.app.state.database.connect() as c:
         query = (
             select(points.c.id, points.c.current_revision_id, point_revisions.c.body)
@@ -151,7 +154,7 @@ def own_points(
             .where(
                 points.c.author_user_id == actor.user_id,
                 points.c.lifecycle == "active",
-                visible(points.c.id),
+                visible(points.c.id, public.site_id),
             )
         )
         if after:

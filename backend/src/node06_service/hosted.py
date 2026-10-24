@@ -73,6 +73,7 @@ def management_path(path: str, method: str) -> bool:
         path.startswith(
             (
                 "/moderation",
+                "/quarantine",
                 "/api/v1/moderation",
                 "/people",
                 "/directory",

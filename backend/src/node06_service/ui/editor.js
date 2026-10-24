@@ -16,6 +16,7 @@
   let links = new Map(), receipt = null, busy = false, dirty = false, selection, historyCursor, mineCursor;
   const status = text => { el("editor-status").textContent = text; };
   const errors = {
+    PUBLICATION_BANNED: "Публикация ограничена в этой области. Подробности — в разделе «Карантин».",
     POINT_REVISION_CHANGED: "Точка уже изменена. Скопируйте свой текст и откройте свежую версию в другой вкладке.",
     TARGET_REVISION_CHANGED: "Одна из связанных точек изменилась. Удалите её из списка и выберите свежую версию через поиск.",
     TARGET_NOT_PUBLIC: "Одна из связанных точек недоступна. Выберите другую.",
@@ -36,7 +37,9 @@
     }
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch("/api/v1" + path, { ...options, credentials: "same-origin", cache: "no-store", signal: controller.signal });
+      const scoped = new URL("/api/v1"+path,location.origin);
+      if(document.body.dataset.viewSite && path!=="/me")scoped.searchParams.set('site',document.body.dataset.viewSite);
+      const response = await fetch(scoped.pathname+scoped.search, { ...options, credentials: "same-origin", cache: "no-store", signal: controller.signal });
       const value = await response.json();
       if (!response.ok) { const error = new Error(value.code || "REQUEST_FAILED"); error.definite = response.status < 500; throw error; }
       return value;
@@ -187,7 +190,11 @@
       const result = await api(pid ? "/points/" + pid : "/points", { method: pid ? "PATCH" : "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf, "Idempotency-Key": receipt.key }, body: receipt.body });
       pid = result.id; revision = result.revision_id; receipt = null; dirty = false;
       openPoint();
-      if(overlay)notify("published",{id:pid});else location.assign(el("open-point").href);
+      if(result.quarantined){
+        el("open-point").href='/quarantine/?'+new URLSearchParams({scope:result.quarantine_scope||document.body.dataset.viewSite||'server',point:pid});
+        el("open-point").target='_blank';el("open-point").rel='noopener';el("open-point").textContent='Открыть в карантине';
+        status('Точка сохранена в карантине.');
+      }else if(overlay)notify("published",{id:pid});else location.assign(el("open-point").href);
     } catch (error) {
       if (error.definite && attemptedWrite) receipt = null;
       failure(error);
@@ -243,7 +250,9 @@
     if(event.source!==publishWindow||event.origin!==document.body.dataset.managementOrigin||m?.protocol!=='node06-publish/1'||m.channel!==publishChannel||!externalReceipt)return;
     if(m.kind==='ready')publishWindow.postMessage({protocol:'node06-publish/1',channel:publishChannel,kind:'draft',site:document.body.dataset.searchSite,...externalReceipt},document.body.dataset.managementOrigin);
     if(m.kind==='published'&&/^p_[0-9a-f]{32}$/.test(m.id||'')){
-      dirty=false;receipt=null;externalReceipt=null;publishWindow.close();notify('published',{id:m.id});
+      dirty=false;receipt=null;externalReceipt=null;publishWindow.close();
+      if(m.quarantined===true){status('Точка сохранена в карантине. ');const a=document.createElement('a');a.textContent='Открыть в карантине';a.href=document.body.dataset.managementOrigin+'/quarantine/?'+new URLSearchParams({scope:document.body.dataset.searchSite,point:m.id});a.target='_blank';a.rel='noopener';el('editor-status').append(a);el('point-body').readOnly=false;el('link-word').disabled=false;renderLinks();}
+      else notify('published',{id:m.id});
     }
     if(m.kind==='rejected'){
       receipt=null;externalReceipt=null;publishChannel=null;publishWindow.close();publishWindow=null;

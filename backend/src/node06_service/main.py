@@ -28,6 +28,9 @@ from .moderation_ui import router as moderation_ui_router
 from .people_ui import router as people_ui_router
 from .point_api import router as point_router
 from .public_points import PublicPointError
+from .quarantine_api import account_router as ban_account_router
+from .quarantine_api import router as quarantine_router
+from .quarantine_ui import router as quarantine_ui_router
 from .request_limits import AuthBodyLimit
 from .schemas import PublicSiteResponse
 from .site_api import router as site_router
@@ -78,6 +81,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(feed_router)
     app.include_router(moderation_router)
     app.include_router(moderation_ui_router)
+    app.include_router(quarantine_router)
+    app.include_router(ban_account_router)
+    app.include_router(quarantine_ui_router)
     app.include_router(geometry_router)
     app.include_router(community_router)
     app.include_router(author_router)
@@ -242,6 +248,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "private_inbox",
                 "creation_feed",
                 "scoped_moderation",
+                "scoped_bans_quarantine",
                 "embedded_draft_confirmation",
                 "compact_profile",
                 "public_author_profiles",

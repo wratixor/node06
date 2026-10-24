@@ -1,5 +1,6 @@
 """Trusted first-party editor; session credentials never enter an iframe parent."""
 
+import re
 from hashlib import sha256
 from importlib.resources import files
 
@@ -43,6 +44,13 @@ maxlength="8192" rows="14" required></textarea>
 @router.get("/", response_class=HTMLResponse)
 def editor(request: Request):
     page = PAGE
+    context = re.fullmatch(r"/sites/(s_[0-9a-f]{32})/", request.query_params.get("return_to", ""))
+    if context:
+        page = page.replace(
+            'data-point-picker="true"',
+            f'data-point-picker="true" data-view-site="{context[1]}" '
+            f'data-field-path="/sites/{context[1]}/"',
+        )
     bundle = getattr(request.app.state, "hosted_bundle", None)
     if bundle:
         for name in ("site.css", "point-picker.js"):
