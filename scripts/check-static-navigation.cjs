@@ -67,6 +67,21 @@ function neighborhood(points, id) {
       const heights=await page.locator('#field-controls button').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));
       assert(heights.length>1&&heights.every(height=>Math.abs(height-40)<.1),'Uniform toolbar height at '+width);
       assert.equal(await page.locator('#field-refresh').evaluate(n=>n.getBoundingClientRect().height),40);
+      assert.equal(await page.locator('#field-map .node title').count(),0);
+      await page.locator('#field-map .node.center circle').click({button:'right'});
+      const menu=page.locator('#point-context-menu');await menu.waitFor();
+      assert.equal(await menu.locator('.point-actions > *').count(),9);
+      const box=await menu.boundingBox();assert(box.x>=0&&box.y>=0&&box.x+box.width<=width);
+      assert(Math.abs(box.width-box.height)<1,'Square context menu');
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No menu overflow');
+      await page.screenshot({path:'/tmp/node06-sphere-menu-'+width+'.png'});
+      await page.evaluate(()=>window.scrollBy(0,10));
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      assert(await menu.isVisible(),'Programmatic scroll must not dismiss menu');
+      await page.mouse.move(1,1);await page.mouse.wheel(0,20);await menu.waitFor({state:'detached'});
+      await page.locator('#field-map .node.center circle').click({button:'right'});await menu.waitFor();
+      await page.keyboard.press('Escape');await menu.waitFor({state:'detached'});
+
       await page.screenshot({path:'/tmp/node06-field-controls-'+width+'.png'});
     }
     await page.setViewportSize({width:1440,height:1000});
