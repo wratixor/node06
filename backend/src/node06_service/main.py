@@ -18,6 +18,7 @@ from .compose_ui import router as compose_router
 from .config import Settings, get_settings
 from .db import Database
 from .editor_ui import router as editor_router
+from .feed_api import router as feed_router
 from .geometry_api import router as geometry_router
 from .hosted import management_path, register_hosted, request_origin
 from .people_ui import router as people_ui_router
@@ -70,6 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(account_router)
     app.include_router(site_router)
     app.include_router(social_router)
+    app.include_router(feed_router)
     app.include_router(geometry_router)
     app.include_router(community_router)
     app.include_router(author_router)
@@ -222,6 +224,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "point_blocks",
                 "user_coordinates",
                 "private_inbox",
+                "creation_feed",
                 "embedded_draft_confirmation",
                 "compact_profile",
                 "public_author_profiles",

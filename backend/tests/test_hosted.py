@@ -108,6 +108,7 @@ def test_embed_host_denies_all_management_surfaces_even_with_cookie(hosted):
         ("GET", "/sites/"),
         ("GET", "/api/v1/me"),
         ("GET", "/api/v1/me/sites"),
+        ("GET", "/api/v1/me/feed"),
         ("GET", "/api/v1/ui-config"),
         ("GET", f"/api/v1/sites/{active.site_id}/manage"),
         ("POST", "/api/v1/auth/login"),

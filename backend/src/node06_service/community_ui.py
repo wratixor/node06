@@ -20,6 +20,7 @@ PAGE = """<!doctype html>
 <link rel="stylesheet" href="/community/style.css">
 <script src="/assets/point-picker.js" defer>
 </script>
+<script src="/assets/personal-feed.js" defer></script>
 <script src="/community/client.js" defer>
 </script>
 </head>
@@ -98,6 +99,8 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <button id="submit-proposal" type="submit">Предложить версию</button>
 </form>
 </details>
+<section data-profile-panel="feed"><h2>Лента</h2>
+<div id="creation-feed"></div></section>
 <section data-profile-panel="subscriptions">
 <h2>Подписки</h2>
 <ul id="my-subscriptions">
@@ -111,7 +114,7 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <h3>Авторы</h3><ul id="my-blocked-people"></ul>
 <button id="more-people-blocks" hidden type="button">Ещё авторы</button>
 </section><section data-profile-panel="inbox">
-<h2>Лента</h2>
+<h2>Уведомления</h2>
 <ul id="inbox">
 </ul>
 <button id="more-inbox" hidden>Ещё уведомления</button>
@@ -150,7 +153,7 @@ def page(request: Request):
     value = PAGE
     bundle = getattr(request.app.state, "hosted_bundle", None)
     if bundle:
-        for name in ("site.css", "point-picker.js"):
+        for name in ("site.css", "point-picker.js", "personal-feed.js"):
             version = sha256((bundle.directory / "assets" / name).read_bytes()).hexdigest()[:12]
             value = value.replace(f"/assets/{name}", f"/assets/{name}?v={version}")
     return HTMLResponse(value, headers=HEADERS)
@@ -192,9 +195,10 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-profile-panel]{border-top:1px solid var(--line);padding:8px 0}
 body[data-page=community] #my-color{font-size:14px;margin:8px 0}
 body[data-page=community] #color-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-#color-radar{display:block;width:min(100%,320px);height:auto;flex-basis:100%;touch-action:none}
+#color-radar{display:block;width:230px;max-width:100%;height:auto;flex:0 0 auto;touch-action:none}
 #color-radar .radar-ring{fill:none;stroke:var(--line);stroke-width:1}
-#color-radar .radar-area{fill:var(--ink);fill-opacity:.08;stroke:var(--muted);stroke-width:1}
+#color-radar .radar-area{fill:var(--radar-color,var(--ink));fill-opacity:.35;
+stroke:var(--radar-color,var(--muted));stroke-width:1}
 #color-radar [role=slider]{cursor:grab;outline:none}
 #color-radar [role=slider]:focus .radar-dot{stroke:var(--ink);stroke-width:3}
 #color-radar [aria-disabled=true]{opacity:.5;cursor:default}
