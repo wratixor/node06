@@ -146,3 +146,8 @@ by the owner-run `python -m node06_service.moderation_admin --user-id …` comma
 inside the configured service environment; no handle is implicitly privileged.
 Downgrading or running an old binary can expose hidden content: read the rollback
 boundary before release. Neocities static files are outside server read control.
+
+Public discovery: `/directory/`, public handle search and persisted T1 user /
+confirmed current-version point rankings; scoped moderator user search includes
+registration date/state. See [directory contract](../docs/DIRECTORY-V1.md).
+No new migration or dependency; normal application/static deploy.

@@ -1572,3 +1572,27 @@ restore, delegate/revoke controls and mobile layout, alongside existing editor,
 profiles, full iframe, anonymous bridge and cookie isolation regressions.
 Static Chromium passed all51 roots, shared neighborhoods, canonical/legacy
 navigation, third-language fixture, feed, overlay and WASD. No production write.
+
+### User discovery and influence rankings — 24 October 2026
+
+Added `/directory/`: public active-user search, links to author profiles/posts,
+user T1 rankings and positively supported current-version point rankings.
+Reads reuse persisted fixed-point snapshots, bounded paging and fresh visibility;
+pending snapshots do not show obsolete weights as current. Public output omits
+registration dates, account state and private social edges. Scope-authorized
+moderator search includes registration/state and explicit ID selection for the
+existing role assignment form. Scope/status/button layout now uses an aligned
+responsive grid. Personal and static service navigation expose the directory.
+Contract: [DIRECTORY-V1](DIRECTORY-V1.md). No migration/T1 formula change.
+Bans/quarantine and30-day purge remain the next moderation packages.
+
+Validation: full253-case PostgreSQL suite passed; expanded directory tests also
+passed anonymous search/privacy, literal wildcards,20+7 ranking pagination with
+stable ties, scoped role revocation, pending/stale pins and static-root ranking.
+Installed-wheel HTTPS Chromium passed anonymous directory → author/posts,
+private registration/state search → explicit role target selection, aligned
+scope/status/submit controls, responsive mobile pages and embed-host denial,
+alongside prior editor/profile/moderation/bridge/cookie-isolation scenarios.
+Static Chromium passed51 roots, canonical/legacy paths, third-language points,
+feed, overlay and WASD. Ruff/format, JS/protocol and diff checks passed.
+No production writes; publication follows owner review/merge and normal deploy.
