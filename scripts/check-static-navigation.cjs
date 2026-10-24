@@ -74,6 +74,12 @@ function neighborhood(points, id) {
       const box=await menu.boundingBox();assert(box.x>=0&&box.y>=0&&box.x+box.width<=width);
       assert(Math.abs(box.width-box.height)<1,'Square context menu');
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No menu overflow');
+      await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('denied');}}}));
+      await menu.locator('[data-action=copy]').click();
+      await menu.locator('.point-action-status input').waitFor();
+      const notice=await menu.locator('.point-action-status').boundingBox();
+      assert(notice.y+notice.height<=box.y||notice.y>=box.y+box.height,'Copy fallback never covers action icons');
+      assert(notice.x>=0&&notice.x+notice.width<=width,'Copy fallback stays inside viewport');
       await page.screenshot({path:'/tmp/node06-sphere-menu-'+width+'.png'});
       await page.evaluate(()=>window.scrollBy(0,10));
       await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -85,6 +91,18 @@ function neighborhood(points, id) {
       await page.screenshot({path:'/tmp/node06-field-controls-'+width+'.png'});
     }
     await page.setViewportSize({width:1440,height:1000});
+    // Local collection survives navigation/reload; OS clipboard calls are mocked.
+    await page.locator('#point-panel-body [data-action=remember]').click();
+    await page.reload();await page.locator('#point-panel-body [data-action=remember][aria-pressed=true]').waitFor();
+    await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.copiedPoint=value;}}}));
+    await page.locator('#point-panel-body [data-action=copy]').click();
+    await page.waitForFunction(()=>Boolean(window.copiedPoint));
+    assert.equal(new URL(await page.evaluate(()=>window.copiedPoint)).searchParams.get('p'),'welcome');
+    await page.evaluate(()=>navigator.clipboard.writeText=async()=>{throw Error('denied');});
+    await page.locator('#point-panel-body [data-action=copy]').click();
+    const manual=page.locator('#point-panel-body .point-action-status input');await manual.waitFor();
+    assert.equal(new URL(await manual.inputValue()).searchParams.get('p'),'welcome');
+    await page.locator('#point-panel-body [data-action=remember]').click();
     for (const prefix of ['ru', 'en']) {
       await page.goto(`${base}/${prefix}/?p=field-ru&open=field-ru`);
       await checkField('field-ru');

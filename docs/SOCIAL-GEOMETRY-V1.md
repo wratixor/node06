@@ -152,7 +152,8 @@ Old clients can ignore additive fields; old bridges reject only the new method.
 ## Compact point actions and authors
 
 The field/search detail replaces the former support explanation panel with a
-six-icon toolbar: subscribe, block, related post, favorite, edit, report. Active
+eight-icon toolbar: subscribe, block, related post, favorite, edit, copy link,
+remember point, report. Active
 states use aria-pressed; each icon has a single-language tooltip/accessible name. Normal
 support/status paragraphs are removed. Only failure/stale-text messages appear.
 The main Community link follows the selected point for revision comparison.
@@ -225,7 +226,7 @@ for the separate alias between author subscriptions and T1 trust.
 ### Sphere context menu
 
 Right-clicking a sphere opens the same action renderer in a fixed square 3×3
-layout (six actions and three empty cells). It does not change the field center.
+layout (eight actions and one empty cell). It does not change the field center.
 Escape, outside click, user scroll gestures or viewport resize dismiss it.
 Programmatic scrolling after focus/layout does not dismiss a newly opened menu.
 Position is clamped to the viewport. SVG spheres keep an accessible label and the custom
@@ -238,3 +239,5 @@ the edit icon disabled. Existing backend ownership and subscriber-voting guards
 remain authoritative. No new write endpoint or editor privilege is introduced.
 Both action surfaces on a page share the per-point pending request and busy state, so a
 lost acknowledgment can be retried from either surface without a second toggle.
+
+Public reference collection and editor handoff: [POINT-CLIPBOARD-V1](POINT-CLIPBOARD-V1.md).

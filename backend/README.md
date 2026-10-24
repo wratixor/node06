@@ -155,3 +155,6 @@ No new migration or dependency; normal application/static deploy.
 Scoped bans/quarantine: [contract](../docs/SCOPED-BANS-V1.md). Apply Alembic0017
 before starting the app; `/ready` alone does not establish the schema revision.
 No new configuration/dependency. No automatic purge or account disabling.
+
+Public reference collection: [POINT-CLIPBOARD-V1](../docs/POINT-CLIPBOARD-V1.md).
+Local storage checks: `node scripts/check-point-clipboard.cjs` from repository root.

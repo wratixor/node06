@@ -56,9 +56,29 @@
     if(url.origin!==management||url.pathname!=='/editor/')return;
     event.preventDefault();void open(url,link);
   });
+  function clipboardReply(){
+    if(!frame||!peerOrigin||!window.node06PointClipboard)return;
+    const scope=window.node06ManagementOrigin?.()||body.dataset.managementOrigin;
+    const collection=window.node06PointClipboard.read(scope);
+    frame.contentWindow.postMessage({protocol:'node06-editor/1',channel,kind:'clipboard',scope,items:collection.items,persistent:collection.persistent},peerOrigin);
+  }
+  window.addEventListener('node06:clipboard',clipboardReply);
   window.addEventListener('message',async event=>{
     const message=event.data;
     if(!frame||event.origin!==peerOrigin||event.source!==frame.contentWindow||message?.protocol!=='node06-editor/1'||message.channel!==channel)return;
+    if(['clipboard-request','clipboard-remove','clipboard-add'].includes(message.kind)){
+      const clipboard=window.node06PointClipboard;if(!clipboard)return;
+      const scope=window.node06ManagementOrigin?.()||body.dataset.managementOrigin;
+      const items=clipboard.read(scope).items;
+      if(message.kind==='clipboard-remove'&&Array.isArray(message.ids)&&message.ids.length<=clipboard.limit){
+        clipboard.write(scope,items.filter(item=>!message.ids.includes(item.id)));
+      }
+      if(message.kind==='clipboard-add'){
+        const incoming=clipboard.clean([message.item]);
+        if(incoming.length&&(items.length<clipboard.limit||items.some(item=>item.id===incoming[0].id)))clipboard.write(scope,[...items.filter(item=>item.id!==incoming[0].id),incoming[0]]);
+      }
+      clipboardReply();return;
+    }
     clearTimeout(timeout);timeout=null;
     if(message.kind==='close-dirty')offerDiscard();
     if(message.kind==='close-cancel'&&!own&&!dialog.querySelector('.editor-close-status')){
