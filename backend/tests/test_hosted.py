@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -51,13 +52,14 @@ def hosted(pg_database, static_bundle):
         yield app, client, active, pending
 
 
-def test_shared_public_projection_escapes_site_text_and_hides_pending(hosted):
+def test_shared_public_projection_escapes_site_text_and_hides_pending(hosted, static_bundle):
     _app, client, active, pending = hosted
     response = client.get("/data/points.json")
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     points = {point["id"]: point for point in response.json()}
-    assert len(points) == 53
+    static_ids = {p["id"] for p in json.loads((static_bundle / "data/points.json").read_text())}
+    assert set(points) == static_ids | {"all-sites", active.site_id}
     assert "field-ru" in points and "field-en" in points
     assert pending.site_id not in points and "private pending welcome" not in response.text
     assert "nonce=" not in response.text and "challenge_digest" not in response.text

@@ -1761,3 +1761,28 @@ third-language/default/no-JS/storage-denial/embed/mobile cases, static51-root
 navigation, build, JS syntax, protocol/clipboard and backend Ruff/format passed.
 No production deployment. Existing builder-wide lint debt remains outside this
 packet; changed new Python sections add no lint diagnostics.
+
+
+### 25 October 2026 — NODE06 repository devlogs
+
+The first [devlog packet](DEVLOG-PLAN.md) adds four RU/EN stage pairs and an index
+pair covering shared space, Neocities/iframe integration, repository roots/home
+and independent server setup. Static home now links to the correct language's
+index. Core build validates all reciprocal links and explicit seed coverage;
+new neutral display seeds do not change existing point IDs or coordinate entries.
+Public technical claims are grounded in source29135cf and maintained contracts;
+no private deployment data or new lore is published by these files.
+
+The existing UI-managed Neocities entrance remains; these are static/core content
+files, not a new tenant Git import. Merge/build/static publication and backend
+update are separate release actions. Godot devlogs remain the next scoped packet.
+
+Validation: build61 passed reciprocal links and exact coordinate coverage;
+previous seed entries are unchanged. Chromium passed all61 root neighborhoods,
+canonical/legacy links, independent third-language behavior, RU/EN home cards,
+stage/index links and mobile reader. The full iframe snippet is escaped inert
+text in both post projections. PostgreSQL hosted/home-language suite41 passed;
+final projection check passed after prose edits. Backend Ruff/format,
+protocol/clipboard and diff checks passed. Public Wiki home (earlier packet)
+was independently verified through anonymous API/browser reads. No new devlog
+publication or server mutation was performed.

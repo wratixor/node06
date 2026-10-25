@@ -26,7 +26,10 @@ The service implements first-party account/session/recovery routes and owner sit
 management. Set the exact HTTPS `NODE06_MANAGEMENT_ORIGIN` and reviewed proxy
 trust/timeouts before enabling writes. See [AUTH-V1](AUTH-V1.md) and
 [SITE-MANAGEMENT-V1](SITE-MANAGEMENT-V1.md) for cookies, CSRF, budgets and bodies.
-Migration head is `0004_verifier_leases`. The proof verifier uses spawned child
+Discover the selected revision's migration head with `alembic heads` and compare
+it with `alembic current` after upgrading; `/ready` alone does not prove the head
+is current. At the 25 October 2026 source checkpoint the head is `0019_git_sources`.
+The proof verifier uses spawned child
 processes and PostgreSQL admission leases; allow child processes and use consistent
 slot/deadline configuration across instances sharing the database. Confirm actual
 host memory/process limits before opening registration/claims. Owner UI, hosted
