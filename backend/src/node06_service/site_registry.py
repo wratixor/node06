@@ -23,6 +23,7 @@ from .models import (
     sites,
     users,
 )
+from .purge import require_live
 from .site_claims import (
     ClaimMaterial,
     fetch_proof,
@@ -285,6 +286,7 @@ class SiteRegistry:
         # proof cannot erase its attempt by rolling back the activation transaction.
         with self.database.begin() as connection:
             lock_graph(connection)
+            require_live(connection, site_id)
             self._authorize(connection, actor_user_id)
             from .bans import publication
 
@@ -337,6 +339,7 @@ class SiteRegistry:
         try:
             with self.database.begin() as connection:
                 lock_graph(connection)
+                require_live(connection, site_id)
                 self._authorize(connection, actor_user_id)
                 from .bans import publication
 
@@ -527,6 +530,7 @@ class SiteRegistry:
         claim_id = new_claim_id()
         with self.database.begin() as connection:
             lock_graph(connection)
+            require_live(connection, site_id)
             self._authorize(connection, actor_user_id)
             site = self._managed_site(connection, site_id, actor_user_id)
             if site["state"] != "pending" or site["claim_id"] != expected_claim_id:
@@ -575,6 +579,7 @@ class SiteRegistry:
     ) -> dict:
         with self.database.begin() as connection:
             lock_graph(connection)
+            require_live(connection, site_id)
             self._authorize(connection, actor_user_id)
             from .bans import publication
 
@@ -658,6 +663,7 @@ class SiteRegistry:
             raise ValueError("Invalid home source")
         with self.database.begin() as connection:
             lock_graph(connection)
+            require_live(connection, site_id)
             self._authorize(connection, actor_user_id)
             from .bans import publication
 

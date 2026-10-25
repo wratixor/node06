@@ -24,6 +24,12 @@ def make_database() -> Database:
     @event.listens_for(database._engine, "connect")
     def enable_foreign_keys(dbapi_connection, _connection_record) -> None:
         dbapi_connection.execute("PRAGMA foreign_keys=ON")
+        # Production uses PostgreSQL wall time for scoped ban expiry.
+        dbapi_connection.create_function(
+            "clock_timestamp",
+            0,
+            lambda: datetime.now(UTC).replace(tzinfo=None).isoformat(" "),
+        )
 
     metadata.create_all(database._engine)
     return database

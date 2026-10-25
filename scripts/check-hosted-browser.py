@@ -18,7 +18,7 @@ from uuid import uuid4
 from node06_service.auth import AuthService
 from node06_service.config import Settings
 from node06_service.db import Database
-from node06_service.models import sites
+from node06_service.models import point_hides, sites
 from node06_service.site_registry import SiteRegistry
 from sqlalchemy import create_engine, text, update
 from sqlalchemy.engine import make_url
@@ -86,6 +86,35 @@ try:
         actor_user_id=owner,
         proof_fetcher=lambda _: other_site.proof_document.encode(),
     )
+    # Pre-existing 30-day hide: exercise actual cleanup before installing the wheel.
+    from datetime import timedelta
+
+    from node06_service.graph_writes import lock_graph
+    from node06_service.purge import sweep
+    from sqlalchemy import func, insert
+
+    purged_site = registry.create_pending_site(
+        owner_user_id=owner,
+        origin="https://purged.localhost",
+        welcome_body="Purged fixture secret",
+    )
+    registry.verify_site(
+        purged_site.site_id,
+        actor_user_id=owner,
+        proof_fetcher=lambda _: purged_site.proof_document.encode(),
+    )
+    with db.begin() as connection:
+        lock_graph(connection)
+        connection.execute(
+            insert(point_hides).values(
+                scope="server",
+                point_id=purged_site.site_id,
+                active=True,
+                hidden_since=func.clock_timestamp() - timedelta(days=30),
+                updated_by=owner,
+            )
+        )
+        assert sweep(connection) == 1
     db.dispose()
     env["NODE06_DEFAULT_SITE_ID"] = site.site_id
     run(
@@ -185,6 +214,7 @@ try:
         {
             "NODE06_TEST_ACTIVE_SITE": site.site_id,
             "NODE06_TEST_OTHER_SITE": other_site.site_id,
+            "NODE06_TEST_PURGED_POINT": purged_site.site_id,
             "NODE06_PREVIEW_URL": "https://localhost:8846",
             "NODE06_EMBED_URL": "https://embed.localhost:8847",
         }

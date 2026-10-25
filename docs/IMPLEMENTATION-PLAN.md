@@ -985,7 +985,7 @@ import queue fairness/memory и диск. Это цели исследовани
 | P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; P04 source proof/transport/DB preview/accept ещё не готовы |
 | P04 operator publication | Accepted immutable Git roots/provenance/retirement and manifest home already in main; self-service ownership/transport/private preview still pending |
 | P05a public reads | Current point API, indexed full-body prefix search and bounded neighbor pages; authoring, voting, UI/bridge are implemented by subsequent packets. See [contract](PUBLIC-POINTS-V1.md) |
-| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, purge/sync/tariffs ещё впереди; scoped bans/quarantine implemented; operator imports and T1/social geometry implemented |
+| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, sync/tariffs ещё впереди; content purge implemented; scoped bans/quarantine implemented; operator imports and T1/social geometry implemented |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1699,3 +1699,22 @@ inert HTML and a bounded64-item list. Backend Ruff/format, JS/protocol, build
 execution and diff checks passed. Optional legacy build.py Ruff remains at the
 same49 diagnostics as origin/main; no new diagnostics were introduced there.
 No production change or migration performed.
+
+
+### 25 October 2026 — permanent content cleanup
+
+Migration0018 adds a permanent tombstone ledger and PostgreSQL resurrection
+guards. The graph-locked worker cleans one eligible server-hidden point per pass
+after30 continuous days, atomically clearing all revision/search bodies, proposal
+text and structured root snapshots. Restore before cleanup cancels retention;
+site hiding/bans do not start it. Public addresses open an empty marker; Git/core,
+receipts and restore cannot refill that ID. Source Git/static copies and backups
+remain outside this DB cleanup. Contract and rollout/rollback boundary:
+[CONTENT-PURGE-V1](CONTENT-PURGE-V1.md). No production action performed.
+
+Validation: focused cleanup8/8 on disposable PostgreSQL, online migration,
+installed-wheel HTTPS tombstone/bridge and static51-root navigation passed. Full
+DB-enabled run:267 passes plus4 old SQLite clock-fixture failures reproduced on
+main; repaired test adapters passed8/8 in both affected modules. Final no-DB run:
+118 passed/153 PostgreSQL skips (DB tests already exercised separately). Backend
+Ruff/format, JS/protocol/clipboard and diff checks passed.

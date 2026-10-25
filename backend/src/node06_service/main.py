@@ -249,6 +249,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "creation_feed",
                 "scoped_moderation",
                 "scoped_bans_quarantine",
+                "content_tombstones",
                 "embedded_draft_confirmation",
                 "compact_profile",
                 "public_author_profiles",

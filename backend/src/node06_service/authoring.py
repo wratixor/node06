@@ -19,6 +19,7 @@ from .models import (
     sites,
 )
 from .public_points import PublicPointError
+from .purge import require_live
 from .root_import import LINK, digest, prose_lines
 
 
@@ -58,6 +59,8 @@ class Authoring:
             lock_graph(c)
             # Serializes this actor's receipts and rechecks revocation inside the write.
             self.authorize(c, actor)
+            if point_id:
+                require_live(c, point_id)
             from .bans import publication
 
             quarantined = publication(c, actor, compose_site or self.public.site_id)
@@ -104,6 +107,7 @@ class Authoring:
             if receipt:
                 if receipt["request_digest"] != request_digest:
                     raise AuthoringError("IDEMPOTENCY_CONFLICT", 409)
+                require_live(c, receipt["response"]["id"])
                 return receipt["response"]
             pid = point_id or "p_" + uuid4().hex
             refs = {ref["id"]: ref for ref in payload["links"]}

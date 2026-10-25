@@ -140,8 +140,9 @@ sequence; no new proxy/API exposure or third-party cookie is required. See
 
 
 Scoped reports/moderation: [contract](../docs/MODERATION-V1.md). Migration0016
-adds roles, cases, unique reporters, reversible hides and audit. No purge or ban
-worker is enabled. The initial server admin is an exact existing user ID granted
+adds roles, cases, unique reporters, reversible hides and audit. Later migrations
+add bans and permanent cleanup as described below. The initial server admin is
+an exact existing user ID granted
 by the owner-run `python -m node06_service.moderation_admin --user-id …` command
 inside the configured service environment; no handle is implicitly privileged.
 Downgrading or running an old binary can expose hidden content: read the rollback
@@ -154,7 +155,15 @@ No new migration or dependency; normal application/static deploy.
 
 Scoped bans/quarantine: [contract](../docs/SCOPED-BANS-V1.md). Apply Alembic0017
 before starting the app; `/ready` alone does not establish the schema revision.
-No new configuration/dependency. No automatic purge or account disabling.
+No new configuration/dependency. No account disabling. Permanent cleanup is
+implemented separately in0018.
 
 Public reference collection: [POINT-CLIPBOARD-V1](../docs/POINT-CLIPBOARD-V1.md).
 Local storage checks: `node scripts/check-point-clipboard.cjs` from repository root.
+
+
+Permanent content cleanup: [contract and operator procedure](../docs/CONTENT-PURGE-V1.md).
+Apply Alembic0018 before starting the updated service. Existing server hides
+older than 30 days become eligible immediately; backup/review them before rollout.
+Once a tombstone exists, downgrade below 0018 is refused. This source change does
+not establish a production deployment.
