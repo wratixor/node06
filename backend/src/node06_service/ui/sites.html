@@ -42,11 +42,19 @@ sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-san
 <option value="git">Из репозитория</option><option value="ui">Из настроек сайта</option>
 <option value="welcome">Только приветствие</option></select></label>
 <p id="home-source-note" role="status"></p>
-<div id="home-fields"><label>Название страницы<input id="home-title" maxlength="160"></label>
+<div id="home-fields"><label>Язык варианта<select id="home-language"></select></label>
+<label>Новый язык<input id="home-new-language" placeholder="ru, en, ja…" maxlength="35"></label>
+<button id="home-language-add" type="button">Добавить язык</button>
+<button id="home-language-default" type="button">Сделать основным</button>
+<button id="home-language-remove" type="button">Удалить перевод</button>
+<p id="home-language-note"></p>
+<label>Название страницы<input id="home-title" maxlength="160"></label>
 <label>Вступление<textarea id="home-introduction" maxlength="2000"></textarea></label>
+<label>Подпись входа<input id="home-entrance-label" maxlength="160"></label>
+<label>Подпись списка сайтов<input id="home-all-sites-label" maxlength="160"></label>
 <p id="home-count"></p><div id="home-blocks"></div>
 <button id="home-add" type="button">Добавить блок</button></div>
-<p>До 12 блоков и до 8 ссылок в каждом. Изменения не затрагивают Git-тексты точек.</p>
+<p>До 12 блоков на все языки, до 8 ссылок в блоке. Каждый перевод задаёт свои ссылки.</p>
 <button type="submit">Сохранить главную</button>
 <a id="home-preview" target="_blank" rel="noopener">Открыть сохранённую главную ↗</a>
 <section id="home-conflict" hidden><h4>Главная изменилась на сервере</h4><pre id="home-server"></pre>

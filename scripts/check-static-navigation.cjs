@@ -33,6 +33,16 @@ function neighborhood(points, id) {
     const points = await (await fetch(`${base}/data/points.json`)).json();
     const connection = await (await fetch(`${base}/assets/connection.json`)).json();
     await page.goto(base + '/');
+    await page.locator('[data-home-language-select]').selectOption('ru');
+    assert.equal(await page.locator('[data-home-language="en"]').isVisible(),false);
+    assert.equal(await page.locator('html').getAttribute('lang'),'ru');
+    assert.equal(await page.locator('[data-home-language="ru"] a[data-point-id="point-ru"]').getAttribute('href'),'/?p=point-ru&open=point-ru');
+    await page.locator('[data-home-language="ru"] a[data-point-id="point-ru"]').click();
+    await page.waitForFunction(()=>document.querySelector('#field-center-id')?.textContent==='point-ru');
+    assert.equal(new URL(page.url()).pathname,'/');
+    await page.goto(base+'/');
+    assert.equal(await page.locator('[data-home-language-select]').inputValue(),'ru');
+    await page.locator('[data-home-language-select]').selectOption('en');
     for (const path of ['/account/', '/sites/', '/directory/', '/community/', '/editor/']) {
       await page.locator(`nav a[href="${connection.serviceOrigin}${path}"]`).waitFor();
     }

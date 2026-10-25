@@ -252,9 +252,13 @@ app.state.source_loader = fixture_source
     if os.environ.get("NODE06_BROWSER_EXECUTABLE"):
         env["NODE06_BROWSER_EXECUTABLE"] = os.environ["NODE06_BROWSER_EXECUTABLE"]
     check = (
-        "scripts/check-git-sources.cjs"
-        if os.environ.get("NODE06_SOURCE_ONLY") == "1"
-        else "scripts/check-hosted-wiki.cjs"
+        "scripts/check-home-languages.cjs"
+        if os.environ.get("NODE06_HOME_ONLY") == "1"
+        else (
+            "scripts/check-git-sources.cjs"
+            if os.environ.get("NODE06_SOURCE_ONLY") == "1"
+            else "scripts/check-hosted-wiki.cjs"
+        )
     )
     run(["node", check])
 finally:

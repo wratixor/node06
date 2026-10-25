@@ -173,5 +173,8 @@ Owner GitHub sources: [contract and limits](../docs/GIT-SOURCES-V1.md). Apply
 Alembic0019 before starting this application. Owner-only registration/proof, private
 preview/accept and opt-in polling live under «Мои сайты». Existing operator
 sources retain their deployment authority. No new dependency, credential or timer.
-Multilingual home presentation is planned separately in
-[HOME-LANGUAGES-PLAN](../docs/HOME-LANGUAGES-PLAN.md); point identities are unchanged.
+Multilingual home presentation is implemented with complete Git/UI variants and
+per-language link destinations: [HOME-BLOCKS-V1](../docs/HOME-BLOCKS-V1.md).
+It adds no migration, graph locale partition or point identity change. Static and
+hosted copies share the renderer/JS; existing wiki manifests need explicit
+translations after the engine rollout.

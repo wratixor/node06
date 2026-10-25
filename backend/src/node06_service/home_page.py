@@ -54,19 +54,53 @@ class HomeBlock(BaseModel):
         return self
 
 
-class HomePage(BaseModel):
+Language = Annotated[
+    str,
+    StringConstraints(strict=True, max_length=35, pattern=r"^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"),
+]
+
+
+class HomeContent(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     title: Text
     introduction: Annotated[str, StringConstraints(max_length=2000)] = ""
     blocks: list[HomeBlock] = Field(default_factory=list, max_length=12)
+    entrance_label: Text = "Entrance point"
+    all_sites_label: Text = "All sites"
+
+    @model_validator(mode="after")
+    def not_blank(self):
+        if not all(s.strip() for s in (self.title, self.entrance_label, self.all_sites_label)):
+            raise ValueError("Home labels must not be blank")
+        return self
+
+
+class HomePage(HomeContent):
+    default_language: Language = "und"
+    translations: dict[Language, HomeContent] = Field(default_factory=dict, max_length=8)
+
+    def variants(self):
+        return [self, *self.translations.values()]
 
     @model_validator(mode="after")
     def bounded(self):
+        value = self.model_dump()
+        if self.default_language == "und" and not self.translations:
+            # Preserve the entire former valid range for existing one-language homes.
+            # Added default metadata must not make a previously valid 12KiB home fail.
+            value.pop("default_language")
+            value.pop("translations")
+            for key in ("entrance_label", "all_sites_label"):
+                if value[key] == type(self).model_fields[key].default:
+                    value.pop(key)
         if (
-            not self.title.strip()
-            or len(json.dumps(self.model_dump(), ensure_ascii=False).encode()) > 12288
+            len(json.dumps(value, ensure_ascii=False).encode()) > 12288
+            or sum(len(page.blocks) for page in self.variants()) > 12
         ):
             raise ValueError("Home page exceeds its text budget")
+        languages = [self.default_language.lower(), *(key.lower() for key in self.translations)]
+        if len(set(languages)) != len(languages):
+            raise ValueError("Each home language must be unique")
         return self
 
 
@@ -105,35 +139,12 @@ def render_home(site, title: str, field_path: str) -> str:
             getattr(site, "home_page_source", "ui" if site.home_page is not None else "auto"),
         )
     page = HomePage.model_validate(config) if config is not None else None
-    heading = page.title if page else title
-    source = (
-        '<section id="start-page" class="start-page home-blocks"><h1>' + text(heading) + "</h1>"
-    )
     if page:
-        source += (
-            '<p class="home-introduction">'
-            + text(page.introduction)
-            + '</p><div class="welcome-grid">'
-        )
-        for block in page.blocks:
-            source += '<section class="welcome-card"><h2>' + text(block.title) + "</h2>"
-            source += "<p>" + text(block.description) + '</p><div class="welcome-links">'
-            for link in block.links:
-                if link.point_id:
-                    source += (
-                        '<a href="' + point_href(link.point_id) + '">' + text(link.label) + "</a>"
-                    )
-                else:
-                    source += (
-                        '<a href="'
-                        + html.escape(link.url, quote=True)
-                        + '" target="_blank" rel="noopener noreferrer">'
-                        + text(link.label)
-                        + "</a>"
-                    )
-            source += "</div></section>"
-        source += "</div>"
-    elif site:
+        from .home_render import render_layout
+
+        return render_layout(page.model_dump(), site.id, field_path)
+    source = '<section id="start-page" class="start-page home-blocks"><h1>' + text(title) + "</h1>"
+    if site:
         # A not-yet-customized site shows its own welcome, never someone else's roots.
         body = (
             render_root(site.welcome_body, site.id)

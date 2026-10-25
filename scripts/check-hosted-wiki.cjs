@@ -1018,6 +1018,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await directoryPage.screenshot({path:'/tmp/node06-directory-mobile.png',fullPage:true});
     assert.equal((await discovery.request.get(embed+'/directory/')).status(),404);
     await discovery.close();
+    await require('./check-home-languages.cjs')({browser,base,embed,otherSite,errors});
     await require('./check-git-sources.cjs')({browser,base,otherSite,errors});
     const purged=process.env.NODE06_TEST_PURGED_POINT;
     assert(purged,'Disposable fixture must provide a purged point');

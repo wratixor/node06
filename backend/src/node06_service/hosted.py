@@ -350,6 +350,11 @@ class HostedBundle:
             site, (site and site.display_name) or settings.hosted_title, field_path
         )
         source = source[:start] + welcome + source[end:]
+        language = re.search(r'data-home-default="([^"]+)"', welcome)
+        if language:
+            source = re.sub(
+                r'<html lang="[^"]*"', '<html lang="' + language[1] + '"', source, count=1
+            )
         if home:
             source = source.replace('href="/"', f'href="{html.escape(field_path, quote=True)}"')
         if not embedded:

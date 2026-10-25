@@ -284,6 +284,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "site_management_ui",
                 "site_home_blocks",
                 "git_home_priority",
+                "home_translations",
                 "operator_root_publication",
                 "owner_git_sources",
             ]

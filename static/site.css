@@ -76,3 +76,7 @@ font-size:12px;color:var(--muted)}
 #point-context-menu .point-actions{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:8px}
 #point-context-menu .point-action-status{position:fixed;box-sizing:border-box;max-height:84px;overflow:auto;margin:0;padding:6px;font-size:11px;line-height:14px;background:var(--panel);border:1px solid var(--line)}
 #point-context-menu .point-action-status input{width:100%;min-width:0;font:inherit}
+/* Each home translation is complete, including its destinations. */
+[data-home-language][hidden],.home-language-control[hidden]{display:none!important}
+.home-language-control{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px}
+.home-language-control select{max-width:100%;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:0;padding:7px 9px}
