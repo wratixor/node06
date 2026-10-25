@@ -25,6 +25,7 @@ from .models import (
     proposals,
     root_entries,
     schema_metadata,
+    site_user_blocks,
     sites,
     social_events,
     social_user_state,
@@ -68,6 +69,8 @@ class Social:
         return point
 
     def mutate(self, actor, key, kind, target, payload):
+        if kind == "site_person_block":
+            payload = {**payload, "site_id": self.public.site_id}
         fingerprint = digest({"kind": kind, "target": target, "payload": payload})
         with self.database.begin() as c:
             lock_graph(c)
@@ -563,6 +566,28 @@ class Social:
                 .values(read_at=self.clock())
             )
         return {"event_seq": seq, "read": True}
+
+    def _site_person_block(self, c, actor, target, payload):
+        site = payload["site_id"]
+        if not site or site != self.public.site_id:
+            raise SocialError("INVALID_SCOPE", 422)
+        if target == actor or not c.scalar(select(users.c.id).where(users.c.id == target)):
+            raise SocialError("INVALID_TRUST_TARGET")
+        where = (
+            (site_user_blocks.c.site_id == site)
+            & (site_user_blocks.c.source_user_id == actor)
+            & (site_user_blocks.c.target_user_id == target)
+        )
+        if payload["active"]:
+            c.execute(
+                pg_insert(site_user_blocks)
+                .values(site_id=site, source_user_id=actor, target_user_id=target)
+                .on_conflict_do_nothing()
+            )
+        else:
+            c.execute(delete(site_user_blocks).where(where))
+        # A personal filter on one site cannot change the shared server T1 edge.
+        return {"target_user_id": target, "site_id": site, "blocked": payload["active"]}
 
     def _person_block(self, c, actor, target, payload):
         if target == actor or not c.scalar(select(users.c.id).where(users.c.id == target)):

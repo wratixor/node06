@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, tuple_
 
 from .auth_api import authenticated_mutation
 from .author_api import Content, PointID, RevisionID
@@ -21,6 +21,7 @@ from .models import (
     points,
     proposals,
     root_entries,
+    site_user_blocks,
     social_events,
     social_user_state,
     subscriptions,
@@ -105,6 +106,64 @@ def trust(user_id: UserID, payload: Trust, request: Request):
 @router.post("/people/{user_id}/block")
 def block_person(user_id: UserID, payload: Trust, request: Request):
     return mutate(request, "person_block", user_id, payload)
+
+
+@router.post("/people/{user_id}/site-block")
+def block_person_on_site(user_id: UserID, payload: Trust, request: Request):
+    if not request.query_params.get("site"):
+        raise PublicPointError("SITE_SCOPE_REQUIRED", 422)
+    return mutate(request, "site_person_block", user_id, payload)
+
+
+@router.get("/me/people/{user_id}/site-block")
+def own_site_block(user_id: UserID, request: Request):
+    _, _, actor = manager(request, mutation=False)
+    public = public_service(request, set())
+    if not request.query_params.get("site"):
+        raise PublicPointError("SITE_SCOPE_REQUIRED", 422)
+    with public.database.connect() as c:
+        blocked = c.scalar(
+            select(site_user_blocks.c.target_user_id).where(
+                site_user_blocks.c.site_id == public.site_id,
+                site_user_blocks.c.source_user_id == actor.user_id,
+                site_user_blocks.c.target_user_id == user_id,
+            )
+        )
+    return {"site_id": public.site_id, "user_id": user_id, "blocked": bool(blocked)}
+
+
+@router.get("/me/site-people-blocks")
+def site_blocked_people(request: Request, after_site: str = "", after_user: UserID | None = None):
+    _, _, actor = manager(request, mutation=False)
+    if set(request.query_params) - {"after_site", "after_user"}:
+        raise PublicPointError("INVALID_PARAMS", 400)
+    from .visibility import SCOPE
+
+    if bool(after_site) != bool(after_user) or (
+        after_site and (not SCOPE.fullmatch(after_site) or after_site == "server")
+    ):
+        raise PublicPointError("INVALID_PARAMS", 400)
+    with request.app.state.database.connect() as c:
+        query = (
+            select(site_user_blocks.c.site_id, users.c.id, users.c.handle)
+            .join(users, users.c.id == site_user_blocks.c.target_user_id)
+            .where(site_user_blocks.c.source_user_id == actor.user_id)
+        )
+        if after_site:
+            query = query.where(
+                tuple_(site_user_blocks.c.site_id, users.c.id) > (after_site, after_user)
+            )
+        rows = (
+            c.execute(query.order_by(site_user_blocks.c.site_id, users.c.id).limit(31))
+            .mappings()
+            .all()
+        )
+    return {
+        "items": [dict(r) for r in rows[:30]],
+        "next_cursor": {"after_site": rows[29]["site_id"], "after_user": rows[29]["id"]}
+        if len(rows) > 30
+        else None,
+    }
 
 
 @router.get("/me/people/blocks")
@@ -378,6 +437,16 @@ def notifications(
             .where(
                 inbox.c.user_id == actor.user_id,
                 visible(social_events.c.point_id, public.site_id),
+                ~select(site_user_blocks.c.target_user_id)
+                .where(
+                    site_user_blocks.c.source_user_id == actor.user_id,
+                    site_user_blocks.c.site_id == (public.site_id or ""),
+                    or_(
+                        site_user_blocks.c.target_user_id == social_events.c.actor_user_id,
+                        site_user_blocks.c.target_user_id == points.c.author_user_id,
+                    ),
+                )
+                .exists(),
                 ~select(user_blocks.c.target_user_id)
                 .where(
                     user_blocks.c.source_user_id == actor.user_id,

@@ -2,7 +2,7 @@
 (() => {
   const el = id => document.getElementById(id);
   let me = null, point = null, social = null, ownPin = null, ownFavorite = false, links = new Map();
-  let blocksCursor, pointsCursor, peopleBlocksCursor;
+  let blocksCursor, pointsCursor, peopleBlocksCursor, sitePeopleBlocksCursor;
   let subsCursor, inboxCursor, newsCursor, busy = false, draftDirty = false, mutationConfirmed = false;
   // Retain uncertain intent across network retries; switching accounts cannot replay it.
   const receipts = new Map();
@@ -305,6 +305,17 @@
     const profile=await api("/me/geometry");showStats(profile.coordinates);
     el("my-color").hidden=false;
   }
+  async function refreshSiteBlockedPeople(append=false){
+    if(!me)return;
+    if(!append){sitePeopleBlocksCursor=null;el('my-site-blocked-people').replaceChildren();}
+    const page=await api('/me/site-people-blocks'+(sitePeopleBlocksCursor?'?'+new URLSearchParams(sitePeopleBlocksCursor):''));
+    for(const user of page.items){const li=node('li','',el('my-site-blocked-people')),a=node('a',user.handle,li);
+      const query='?'+new URLSearchParams({site:user.site_id});a.href='/people/'+user.id+'/'+query;
+      node('small',' · '+user.site_id,li);
+      button('Разблокировать на сайте',li,async()=>{await write('/people/'+user.id+'/site-block'+query,{active:false});await refreshSiteBlockedPeople();});}
+    sitePeopleBlocksCursor=page.next_cursor;el('more-site-people-blocks').hidden=!sitePeopleBlocksCursor;
+  }
+  el('more-site-people-blocks').addEventListener('click',()=>act(()=>refreshSiteBlockedPeople(true)));
   async function refreshBlockedPeople(append=false){
     if(!me)return;
     if(!append){peopleBlocksCursor=null;el('my-blocked-people').replaceChildren();}
@@ -315,7 +326,7 @@
   el('more-people-blocks').addEventListener('click',()=>act(()=>refreshBlockedPeople(true)));
   async function refreshBlocks(append=false) {
     if(!me)return;
-    if(!append)await refreshBlockedPeople();
+    if(!append){await refreshBlockedPeople();await refreshSiteBlockedPeople();}
     if(!append){blocksCursor=null;el("my-blocks").replaceChildren();}
     const page=await api("/me/blocks?"+new URLSearchParams(blocksCursor?{after:blocksCursor}:{}));
     for(const row of page.items){const li=node("li",'',el("my-blocks"));

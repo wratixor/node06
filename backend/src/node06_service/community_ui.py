@@ -111,8 +111,10 @@ aria-label="Поиск в загруженном списке" autocomplete="off
 <h2>Блокировки</h2>
 <h3>Точки</h3><ul id="my-blocks"></ul>
 <button id="more-blocks" hidden type="button">Ещё блокировки</button>
-<h3>Авторы</h3><ul id="my-blocked-people"></ul>
+<h3>Авторы на сервере</h3><ul id="my-blocked-people"></ul>
 <button id="more-people-blocks" hidden type="button">Ещё авторы</button>
+<h3>Блокировки авторов на сайтах</h3><ul id="my-site-blocked-people"></ul>
+<button id="more-site-people-blocks" hidden type="button">Ещё</button>
 </section><section data-profile-panel="inbox">
 <h2>Уведомления</h2>
 <ul id="inbox">

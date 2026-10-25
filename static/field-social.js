@@ -49,7 +49,9 @@
       const name=value?.kind==='source'?text('Git source','Источник Git'):value?.kind==='system'?text('System','Система'):value?.name;
       author.textContent=text('Author: ','Автор: ');
       if(value?.kind==='user'&&/^u_[0-9a-f]{32}$/.test(value.id||'')&&origin()){
-        const a=node('a',name||value.id,author);a.href=new URL('/people/'+value.id+'/',origin()).href;
+        const a=node('a',name||value.id,author),url=new URL('/people/'+value.id+'/',origin());
+        const site=body.dataset.viewSite||body.dataset.searchSite;if(site)url.searchParams.set('site',site);a.href=url.href;
+        if(!site)Promise.resolve().then(()=>window.node06EditorConnection?.()).then(connection=>{if(connection?.siteId){url.searchParams.set('site',connection.siteId);a.href=url.href;}}).catch(()=>{});
         if(!firstParty()){a.target='_blank';a.rel='noopener noreferrer';}
       }else author.append(document.createTextNode(name||text('Git source','Источник Git')));
     }

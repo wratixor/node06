@@ -184,3 +184,13 @@ Private profile export and comparison: [PROFILE-PACKETS-V1](../docs/PROFILE-PACK
 The first-party navigation opens `/profile-sync/`. No migration or dependency is
 added. This packet does not link servers, import settings or transfer influence;
 network synchronization remains outside its implemented capability.
+
+Bilateral account-link consent and revocation: [PROFILE-LINKS-V1](../docs/PROFILE-LINKS-V1.md),
+migration `0020_profile_links`. The page remains `/profile-sync/`, with file tools
+collapsed below the connection controls. This is not automatic profile exchange
+or SSO. Control-only opaque tokens in the DB require the same protected backup
+handling as other application credentials; no new environment secret is needed.
+Migration `0021_site_author_blocks` adds independent site-local personal author
+filters, separate from server blocks/T1 and never exported/synchronized.
+Both migrations must run before deploying this application through the operator
+pipeline. Nothing in these source changes alone establishes production rollout.

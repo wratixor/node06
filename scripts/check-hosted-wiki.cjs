@@ -511,7 +511,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await page.keyboard.press('Escape');
 
     assert((await page.locator('#point-panel-body .point-author').textContent()).includes(socialSession.handle));
-    assert.equal(await page.locator('#point-panel-body .point-author a').getAttribute('href'),base+'/people/'+socialSession.user_id+'/');
+    assert.equal(await page.locator('#point-panel-body .point-author a').getAttribute('href'),base+'/people/'+socialSession.user_id+'/?'+new URLSearchParams({site:active}));
     const authorPage=await context.newPage();await authorPage.goto(base+'/people/'+socialSession.user_id+'/');
     await authorPage.locator('#author-points a').first().waitFor();assert.equal(await authorPage.locator('#author-actions').isVisible(),false);
     // A distinct public author can be subscribed through the existing T1 edge.
@@ -519,8 +519,12 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     const candidates=await (await authorPage.request.get(base+'/api/v1/people?q=browser')).json();
     const otherAuthor=candidates.items.find(u=>u.id!==profileViewer.user_id);
     if(!otherAuthor)throw new Error('Browser fixture needs another author');
-    await authorPage.goto(base+'/people/'+otherAuthor.id+'/');await authorPage.locator('#author-actions').waitFor();
+    await authorPage.goto(base+'/people/'+otherAuthor.id+'/?'+new URLSearchParams({site:active}));await authorPage.locator('#author-actions').waitFor();
     await authorPage.locator('#author-follow').click();await authorPage.waitForFunction(()=>document.querySelector('#author-follow').getAttribute('aria-pressed')==='true');
+    await authorPage.locator('#author-site-block').click();await authorPage.waitForFunction(()=>document.querySelector('#author-site-block').getAttribute('aria-pressed')==='true');
+    assert.equal(await authorPage.locator('#author-follow').getAttribute('aria-pressed'),'true');
+    assert.equal(await authorPage.locator('#author-block').getAttribute('aria-pressed'),'false');
+    await authorPage.locator('#author-site-block').click();await authorPage.waitForFunction(()=>document.querySelector('#author-site-block').getAttribute('aria-pressed')==='false');
     await authorPage.locator('#author-block').click();await authorPage.waitForFunction(()=>document.querySelector('#author-block').getAttribute('aria-pressed')==='true');
     assert.equal(await authorPage.locator('#author-follow').isDisabled(),true);
     await authorPage.locator('#author-block').click();await authorPage.waitForFunction(()=>document.querySelector('#author-block').getAttribute('aria-pressed')==='false');

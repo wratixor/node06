@@ -27,6 +27,7 @@ from .moderation_api import router as moderation_router
 from .moderation_ui import router as moderation_ui_router
 from .people_ui import router as people_ui_router
 from .point_api import router as point_router
+from .profile_link_api import router as profile_link_router
 from .profile_packet_api import router as profile_packet_router
 from .public_points import PublicPointError
 from .quarantine_api import account_router as ban_account_router
@@ -104,6 +105,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(directory_ui_router)
     app.include_router(point_router)
     app.include_router(profile_packet_router)
+    app.include_router(profile_link_router)
     app.include_router(site_ui_router)
 
     @app.exception_handler(SiteRegistryError)
@@ -199,6 +201,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 (
                     "/api/v1/auth/",
                     "/api/v1/me",
+                    "/api/v1/profile-links",
                     "/editor/confirm/",
                     "/api/v1/moderation",
                     "/api/v1/directory",
@@ -278,6 +281,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "public_author_profiles",
                 "public_directory_rankings",
                 "author_blocks",
+                "site_author_blocks",
                 "trusted_tag_library",
                 "authored_point_history",
                 "bounded_neighbors",
@@ -288,6 +292,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "git_home_priority",
                 "home_translations",
                 "private_profile_packets",
+                "bilateral_profile_links",
                 "operator_root_publication",
                 "owner_git_sources",
             ]
