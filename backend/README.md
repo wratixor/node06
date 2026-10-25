@@ -178,3 +178,9 @@ per-language link destinations: [HOME-BLOCKS-V1](../docs/HOME-BLOCKS-V1.md).
 It adds no migration, graph locale partition or point identity change. Static and
 hosted copies share the renderer/JS; existing wiki manifests need explicit
 translations after the engine rollout.
+
+
+Private profile export and comparison: [PROFILE-PACKETS-V1](../docs/PROFILE-PACKETS-V1.md).
+The first-party navigation opens `/profile-sync/`. No migration or dependency is
+added. This packet does not link servers, import settings or transfer influence;
+network synchronization remains outside its implemented capability.

@@ -1786,3 +1786,26 @@ final projection check passed after prose edits. Backend Ruff/format,
 protocol/clipboard and diff checks passed. Public Wiki home (earlier packet)
 was independently verified through anonymous API/browser reads. No new devlog
 publication or server mutation was performed.
+
+### 25 October 2026 — profile export/comparison foundation and Godot content
+
+First-party `/profile-sync/` adds private bounded export and read-only comparison
+of color preference, point subscriptions, favorites and public own-point references.
+The strict source-aware packet includes no credentials, roles, bans, trust, votes,
+bodies or influence. No URLs are fetched, state applied or account linked.
+Owner's remaining invitation/conflict questions are pending; the implemented
+foundation does not choose an automatic merge or trust an unsigned claimed source.
+Contract: [PROFILE-PACKETS-V1](PROFILE-PACKETS-V1.md). No new migration/dependency.
+
+Separate wiki content branch adds four RU/EN Godot stage pairs, index pair and
+Development home blocks based on merged client d8ab27b and inspected historical
+commits. No client working files were changed and no new export/device/runtime
+claim is made. The NODE06 devlog packet is already merged into application main.
+
+Validation: full disposable-PostgreSQL run330 passed; final profile suite21 passed
+including the two added byte-budget and other/disabled-account cases. Installed-
+wheel HTTPS full browser acceptance and focused profile download/compare/mobile/
+logout/embed checks passed. Shared navigation acceptance includes the new page;
+backend Ruff/format, JS syntax, protocol/clipboard and diff checks passed.
+No migration, production profile export/link or deployment was performed. Read-
+only production meta and devlogs-ru confirmed the prior NODE06 packet at efda370.

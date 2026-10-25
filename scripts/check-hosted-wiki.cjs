@@ -881,10 +881,11 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.screenshot({path:'/tmp/node06-compact-profile-mobile.png',fullPage:true});
     // Every trusted personal page has the same navigation and current-page marker.
-    for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/moderation/','moderation'],['/directory/','directory'],['/community/','profile']]){
+    for(const [path,key] of [['/sites/','sites'],['/account/','account'],['/editor/','editor'],['/moderation/','moderation'],['/directory/','directory'],['/profile-sync/','profile-sync'],['/community/','profile']]){
       await page.goto(base+path);
       const nav=page.locator('.personal-header nav');
-      assert.equal(await nav.locator('a').count(),8);
+      assert.equal(await nav.locator('a').count(),9);
+      assert.equal(await nav.locator('a[href="/profile-sync/"]').count(),1);
       assert.equal(await nav.locator('[aria-current=page]').count(),1);
       assert.equal(await nav.locator('[aria-current=page]').getAttribute('href'),path);
       assert.equal(await nav.locator('a[target]').count(),key==='editor'?1:0);
@@ -1020,6 +1021,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await discovery.close();
     await require('./check-home-languages.cjs')({browser,base,embed,otherSite,errors});
     await require('./check-git-sources.cjs')({browser,base,otherSite,errors});
+    await require('./check-profile-packets.cjs')({browser,base,embed,errors});
     const purged=process.env.NODE06_TEST_PURGED_POINT;
     assert(purged,'Disposable fixture must provide a purged point');
     await page.goto(base+'/?'+new URLSearchParams({p:purged,open:purged}));

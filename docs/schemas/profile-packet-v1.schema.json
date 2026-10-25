@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "Reference": {
+      "additionalProperties": false,
+      "properties": {
+        "point_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,95}$",
+          "title": "Point Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "anyOf": [
+            {
+              "pattern": "^v_[0-9a-f]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Revision Id"
+        },
+        "content_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Content Digest"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "point_id",
+        "revision_id",
+        "content_digest",
+        "available"
+      ],
+      "title": "Reference",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "maxLength": 512,
+          "title": "Origin",
+          "type": "string"
+        },
+        "user_id": {
+          "pattern": "^u_[0-9a-f]{32}$",
+          "title": "User Id",
+          "type": "string"
+        },
+        "handle": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{2,63}$",
+          "title": "Handle",
+          "type": "string"
+        }
+      },
+      "required": [
+        "origin",
+        "user_id",
+        "handle"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Subscription": {
+      "additionalProperties": false,
+      "properties": {
+        "point_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,95}$",
+          "title": "Point Id",
+          "type": "string"
+        },
+        "revision_id": {
+          "anyOf": [
+            {
+              "pattern": "^v_[0-9a-f]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Revision Id"
+        },
+        "content_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Content Digest"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "changed_at": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Changed At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "point_id",
+        "revision_id",
+        "content_digest",
+        "available",
+        "active",
+        "changed_at"
+      ],
+      "title": "Subscription",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "node06-profile/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "coordinates": {
+      "items": {
+        "maximum": 65535,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxItems": 6,
+      "minItems": 6,
+      "title": "Coordinates",
+      "type": "array"
+    },
+    "subscriptions": {
+      "items": {
+        "$ref": "#/$defs/Subscription"
+      },
+      "maxItems": 128,
+      "title": "Subscriptions",
+      "type": "array"
+    },
+    "favorites": {
+      "items": {
+        "$ref": "#/$defs/Reference"
+      },
+      "maxItems": 128,
+      "title": "Favorites",
+      "type": "array"
+    },
+    "own_points": {
+      "items": {
+        "$ref": "#/$defs/Reference"
+      },
+      "maxItems": 128,
+      "title": "Own Points",
+      "type": "array"
+    },
+    "digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "source",
+    "coordinates",
+    "subscriptions",
+    "favorites",
+    "own_points",
+    "digest"
+  ],
+  "title": "Packet",
+  "type": "object"
+}
