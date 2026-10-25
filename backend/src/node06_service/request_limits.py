@@ -19,10 +19,13 @@ class AuthBodyLimit:
                 "/api/v1/proposals",
                 "/api/v1/people",
                 "/api/v1/me/",
+                "/api/v1/profile-links/",
             )
         ):
             return await self.app(scope, receive, send)
         maximum = self.maximum if scope["path"].startswith("/api/v1/auth/") else 65536
+        if scope["path"].startswith("/api/v1/profile-links/"):
+            maximum = 4096
         chunks = bytearray()
         total = 0
         while True:

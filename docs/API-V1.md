@@ -415,3 +415,13 @@ own export and no-write comparison under `/api/v1/me/profile-export` and
 `/api/v1/me/profile-compare`. See [PROFILE-PACKETS-V1](PROFILE-PACKETS-V1.md).
 `cross_server_profile_sync` remains not implemented: these files do not prove
 identity, link accounts, restore preferences or transfer support/influence.
+
+Account-pair consent capability `bilateral_profile_links` adds first-party controls
+under `/api/v1/me/profile-links` and bounded cookie-independent peer link-control
+forms under `/api/v1/profile-links`. The 30-day `node06:link` token only checks or
+revokes its own pair; it cannot authenticate or read/write a profile. No full
+profile sync is implemented. [Protocol, limitations and rollout](PROFILE-LINKS-V1.md).
+Capability `site_author_blocks` covers site author filters:
+`/people/{id}/site-block?site=s_…`, private state at
+`/me/people/{id}/site-block?site=s_…` and listing `/me/site-people-blocks`.
+See [SOCIAL-V1](SOCIAL-V1.md); these preferences never leave their server/site.

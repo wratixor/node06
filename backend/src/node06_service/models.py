@@ -588,3 +588,54 @@ git_sources = Table(
     CheckConstraint("policy IN ('manual','auto')", name="ck_git_sources_policy"),
 )
 Index("ix_git_sources_due", git_sources.c.policy, git_sources.c.next_check_at)
+
+# Private link-control credentials are deliberately separate from login sessions.
+profile_links = Table(
+    "profile_links",
+    metadata,
+    Column("id", String(34), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("direction", String(8), nullable=False),
+    Column("peer_origin", String(512), nullable=False),
+    Column("peer_user_id", String(34)),
+    Column("peer_handle", String(64)),
+    Column("remote_id", String(34)),
+    Column("status", String(12), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("invite_digest", String(64)),
+    Column("verifier", String(64)),
+    Column("nonce", String(64), nullable=False),
+    Column("challenge", String(64), nullable=False),
+    Column("code_digest", String(64)),
+    Column("token_digest", String(64)),
+    Column("remote_token", String(64)),
+    Column("revocation_pending", Boolean, nullable=False, server_default="false"),
+    CheckConstraint("direction IN ('outbound','inbound')", name="ck_profile_links_direction"),
+    CheckConstraint(
+        "status IN ('pending','exchanging','active','revoked')", name="ck_profile_links_status"
+    ),
+)
+Index("ix_profile_links_owner", profile_links.c.user_id, profile_links.c.created_at)
+
+for column, name in (
+    ("invite_digest", "invite"),
+    ("code_digest", "code"),
+    ("token_digest", "token"),
+):
+    Index("ix_profile_links_" + name, profile_links.c[column], unique=True)
+
+site_user_blocks = Table(
+    "site_user_blocks",
+    metadata,
+    Column("site_id", ForeignKey("sites.id", ondelete="CASCADE"), primary_key=True),
+    Column("source_user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("target_user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    CheckConstraint("source_user_id != target_user_id", name="ck_site_user_blocks_no_self"),
+)
+Index(
+    "ix_site_user_blocks_owner",
+    site_user_blocks.c.source_user_id,
+    site_user_blocks.c.site_id,
+    site_user_blocks.c.target_user_id,
+)

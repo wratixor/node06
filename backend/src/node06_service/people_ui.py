@@ -24,7 +24,8 @@ def person_page(user_id: UserID):
 <p id="author-status" role="status">Загрузка…</p>
 <div id="author-actions" hidden>
 <button id="author-follow" type="button">Подписаться</button>
-<button id="author-block" type="button">Заблокировать</button></div>
+<button id="author-block" type="button">Заблокировать на сервере</button>
+<button id="author-site-block" type="button" hidden>Заблокировать на этом сайте</button></div>
 <p><a href="/account/" id="author-login" target="_blank" rel="noopener">Вход и регистрация</a></p>
 <h2>Точки автора</h2><ul id="author-points"></ul>
 <button id="author-more" type="button" hidden>Ещё</button>

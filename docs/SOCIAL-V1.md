@@ -193,3 +193,32 @@ The former field support/status text panel is replaced by the compact four-icon
 action toolbar with author attribution. Public summary APIs remain supported;
 normal explanatory paragraphs/mass figures are no longer inserted before the
 point text. Details: SOCIAL-GEOMETRY-V1 and POINT-AUTHORING-V1.
+
+## Personal author blocks per site — 25 October 2026
+
+Server author blocks keep their existing contract: remove that server's T1 trust
+edge, suppress its author's personal-feed/inbox entries, and do not implicitly
+block all points. Unblocking does not restore trust. These are user preferences,
+not moderation bans; they do not cross server databases.
+
+Migration `0021_site_author_blocks` adds an independent personal filter per
+`(site_id,source_user_id,target_user_id)`. `POST /api/v1/people/{user_id}/site-block?site=s_…`
+accepts `{active}` with session/Origin/CSRF and Idempotency-Key. The explicit active
+site is validated; omission/self-target/unknown site is rejected. Site ID is part
+of the stored operation fingerprint, so reusing one key on another site conflicts.
+
+A site filter suppresses author-created feed entries and relevant inbox events
+only when reading that site. It does not alter shared server T1 trust, public
+point visibility, point reactions or another site's filter. This preserves the
+agreed independent site boundary: hiding an author on site A must not change the
+server influence allocation used on site B. A server block still applies across
+all sites. Removing either filter leaves the other unchanged.
+
+`GET /api/v1/me/people/{user_id}/site-block?site=s_…` reads that site's filter;
+`GET /api/v1/me/site-people-blocks` lists the owner's filters (30/page, composite
+`after_site`/`after_user` cursor). Existing server block/read responses stay
+compatible. Profiles opened with `?site=s_…` show separate server/site buttons;
+point author links preserve their entrance's site context. Community's block tab
+also lists/removes filters across sites. Neither kind of author block is exported
+or synchronized by the profile packet/link protocol. This packet adds no moderation
+authority, negative author trust or replicated bans.

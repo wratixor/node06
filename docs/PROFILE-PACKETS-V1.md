@@ -70,13 +70,14 @@ Own remote posts remain references to originals, without copying authorship or
 influence. This supersedes the previously open manual-versus-automatic choice.
 The existing file comparison remains a read-only diagnostic, not a sync grant.
 
-These decisions describe the next network implementation; this packet still
-neither links accounts nor applies remote data. Its unsigned digest and timestamp
+The separate [PROFILE-LINKS-V1](PROFILE-LINKS-V1.md) packet now implements
+account-pair consent and revocation. File comparison still neither links accounts
+nor applies remote data, and automatic preference exchange remains unimplemented. Its unsigned digest and timestamp
 strings are not identity proof or authority to overwrite preferences.
 
-Before peer linking: specify and review a standard authenticated protocol,
-explicit scopes/directions, short-lived/replay-bound invitation exchange, revocation,
-identity/source proof, origin discovery and SSRF boundaries and credential storage.
+The linking contract records its fixed control-only scope, short-lived PKCE-bound
+exchange, identity/source proof, SSRF boundaries, credential storage and revocation
+limitations. Data scopes/directions and automatic exchange remain separate work.
 Do not turn this unsigned file into a bearer login or automatic merge operation.
 
 The next implementation must track freshness per preference/item, preserve source

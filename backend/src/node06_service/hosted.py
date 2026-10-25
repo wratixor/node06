@@ -80,6 +80,7 @@ def management_path(path: str, method: str) -> bool:
                 "/api/v1/directory",
                 "/community",
                 "/profile-sync",
+                "/api/v1/profile-links",
                 "/editor",
                 "/account",
                 "/sites",

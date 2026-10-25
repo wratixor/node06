@@ -30,7 +30,8 @@
       if(busy)return;busy=true;state();status.textContent=text('Загрузка…','Loading…');
       try{
         const me=await api('/me');if(actor&&actor!==me.user_id)throw new Error('ACCOUNT_CHANGED');actor=me.user_id;
-        const result=await api('/me/feed'+(cursor?'?'+new URLSearchParams({cursor}):''));
+        const query=new URLSearchParams();if(cursor)query.set('cursor',cursor);if(body.dataset.viewSite)query.set('site',body.dataset.viewSite);
+        const result=await api('/me/feed'+(query.size?'?'+query:''));
         if(!root.isConnected)return;
         if(result.viewer_id!==actor)throw new Error('ACCOUNT_CHANGED');
         list.replaceChildren();heading.textContent=result.day?date(result.day):'';
@@ -38,7 +39,7 @@
           const item=node('article','',list);item.className='creation-feed-item';
           const meta=node('div','',item);meta.className='creation-feed-meta';
           if(row.author?.kind==='user'){
-            const a=node('a',row.author.name,meta);a.href='/people/'+row.author.id+'/';
+            const a=node('a',row.author.name,meta);a.href='/people/'+row.author.id+'/'+(body.dataset.viewSite?'?'+new URLSearchParams({site:body.dataset.viewSite}):'');
           }else node('span',text('Источник','Source'),meta);
           const time=node('time',new Intl.DateTimeFormat(language==='ru'?'ru-RU':'en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit'}).format(new Date(row.created_at)),meta);time.dateTime=row.created_at;time.title='UTC';
           const link=node('a',row.preview||row.id,item);link.className='creation-feed-point';link.href=(body.dataset.fieldPath||'/')+'?'+new URLSearchParams({p:row.id,open:row.id});

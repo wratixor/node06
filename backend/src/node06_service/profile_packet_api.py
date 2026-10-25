@@ -42,9 +42,26 @@ def page():
 <meta name="viewport" content="width=device-width"><title>Перенос профиля</title>
 <link rel="stylesheet" href="/account/style.css">
 <link rel="stylesheet" href="/profile-sync/style.css">
-<script src="/profile-sync/client.js" defer></script></head><body>"""
+<script src="/profile-sync/client.js" defer></script>
+<script src="/profile-sync/links.js" defer></script></head><body>"""
         + navigation("profile-sync")
-        + """<main><h1>Перенос профиля</h1>
+        + """<main><h1>Связанные аккаунты</h1>
+<p id="links-status" role="status">Проверяем вход…</p>
+<p>Подтвердите пару на обоих серверах. Связь действует 30 дней; её можно отозвать.
+Обмен настройками ещё не включён.</p>
+<form id="links-create"><label>Другой сервер
+<input id="links-origin" type="url" placeholder="https://wiki.example" required></label>
+<button type="submit" disabled>Пригласить</button></form>
+<form id="links-import"><label>Приглашение или ответ
+<input id="links-input" type="text" maxlength="4096" autocomplete="off" required></label>
+<button type="submit" disabled>Проверить</button></form>
+<section id="links-preview" hidden><p id="links-pair"></p>
+<button id="links-confirm" type="button">Подтвердить пару</button></section>
+<section id="links-output" hidden><label>Откройте ссылку на другом сервере в своём аккаунте
+<input id="links-url" type="text" readonly></label>
+<a id="links-go" referrerpolicy="no-referrer" rel="noreferrer">Перейти</a></section>
+<ul id="links-list"></ul><button id="links-reload" type="button" disabled>Обновить список</button>
+<details><summary>Файл профиля: экспорт и сравнение</summary>
 <p id="packet-status" role="status">Проверяем вход…</p>
 <p>Файл содержит личные списки. Сравнение ничего не записывает и не связывает аккаунты.</p>
 <button id="packet-download" type="button" disabled>Скачать профиль</button>
@@ -56,8 +73,9 @@ def page():
 <p>Источник указан в файле; владение аккаунтом не подтверждено. Изменения не применены.</p>
 <p id="packet-color"></p><div id="packet-differences"></div></section>
 <p><a href="/account/">Вход и безопасность</a></p>
-<noscript>Для экспорта и сравнения нужен JavaScript.</noscript></main></body></html>""",
-        headers=HEADERS,
+</details><noscript>Для связывания, экспорта и сравнения нужен JavaScript.</noscript>
+</main></body></html>""",
+        headers={**HEADERS, "Referrer-Policy": "no-referrer"},
     )
 
 
@@ -74,7 +92,17 @@ def script():
 def style():
     return Response(
         "#packet-source{overflow-wrap:anywhere}#packet-result details{margin:12px 0}"
-        "#packet-result summary{cursor:pointer}#packet-result li{overflow-wrap:anywhere}",
+        "#packet-result summary{cursor:pointer}#packet-result li{overflow-wrap:anywhere}"
+        "#links-list p,#links-pair{overflow-wrap:anywhere}#links-list button{margin:4px}",
         media_type="text/css",
+        headers=HEADERS,
+    )
+
+
+@router.get("/profile-sync/links.js")
+def links_script():
+    return Response(
+        files("node06_service").joinpath("ui/profile-links.js").read_text(),
+        media_type="application/javascript",
         headers=HEADERS,
     )

@@ -1812,3 +1812,46 @@ logout/embed checks passed. Shared navigation acceptance includes the new page;
 backend Ruff/format, JS syntax, protocol/clipboard and diff checks passed.
 No migration, production profile export/link or deployment was performed. Read-
 only production meta and devlogs-ru confirmed the prior NODE06 packet at efda370.
+
+
+### 25 October 2026 — bilateral account-pair consent and local site author filters
+
+Implemented [PROFILE-LINKS-V1](PROFILE-LINKS-V1.md), capability
+`bilateral_profile_links`, migration0020. Existing independent accounts create a
+10-minute invitation, approve the exact pair on B and confirm on A through a
+single-use S256 PKCE-bound code. Private lists/refresh/revoke expose no credentials.
+Fixed30-day control-only grants cannot read/apply a profile or authenticate;
+`cross_server_profile_sync` remains not implemented. No worker/imported preference,
+author trust, vote, influence, role or account transfer is introduced.
+
+Explicit peer transport bounds TLS/DNS/body/process lifetime and rejects private
+answers/redirects. Session/Origin/CSRF control all user mutations; cookie-independent
+peer forms reject browsers and have no CORS. SQL parameter rendering is hidden.
+Known received grants are compensated after failed/cancelled completion; an unknown
+lost reply can leave a control-only B grant until revoke/expiry. Outbound revoke
+outages are marked retry; inbound revocation becomes visible to A on refresh.
+These limitations are explicit; no distributed atomicity or background sync claim.
+
+Owner clarified personal author blocks stay independent on each server and each
+site. Capability `site_author_blocks`, migration0021 and [SOCIAL-V1](SOCIAL-V1.md)
+add a separate site filter, scoped author button/list, and site-aware feed/inbox.
+A site filter cannot remove the shared server T1 edge or change other sites;
+server block retains its prior trust-removal behavior. Author links preserve site
+context. Neither block kind enters private packets/network replication.
+
+Validation: full disposable PostgreSQL suite345 passed; final network/security/
+site-filter suite25 passed, plus the trusted local-preview/public-peer-boundary
+regression passed separately. Final protocol rerun16 passed after the last
+source-origin fix. Online upgrade/downgrade of both new migrations
+preserved existing users. Installed-wheel full HTTPS browser acceptance passed,
+including source/site controls, contextual author filters and new invitation/
+cancel/no-write fragment/mobile/file packet cases. Browser checking caught and
+fixed the trusted-source versus outbound-peer origin distinction, immediate
+invitation list refresh and same-document fragment handling; updated author-link
+assertions check preserved site context. Build61, backend Ruff/format, JS syntax,
+protocol/clipboard and diff checks passed. No production database/profile/link or
+server configuration was touched.
+
+Next: versioned per-field/item preferences, deletion tombstones and provenance;
+then separately consented private exchange with automatic fresher-change resolution.
+Network identity linking does not silently expand a control-only grant's data scope.

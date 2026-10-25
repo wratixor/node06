@@ -7,6 +7,21 @@ async function check({browser,base,embed,errors}){
  try{const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/account/');await page.locator('#handle').fill('fixture-owner');await page.locator('#password').fill('fixture-test-password');await page.locator('#submit').click();await page.waitForFunction(()=>document.querySelector('#account-form').hidden);
  await page.goto(base+'/profile-sync/');await page.waitForFunction(()=>!document.querySelector('#packet-download').disabled);
+ await page.waitForFunction(()=>!document.querySelector('#links-create button').disabled);
+ await page.locator('#links-origin').fill('https://peer.invalid');await page.locator('#links-create button').click();
+ await page.waitForFunction(()=>!document.querySelector('#links-output').hidden);
+ const invitationURL=await page.locator('#links-url').inputValue(),invitation=JSON.parse(Buffer.from(new URLSearchParams(new URL(invitationURL).hash.slice(1)).get('link-invite'),'base64').toString());
+ assert.equal(invitation.recipient,'https://peer.invalid');assert.equal(invitation.secret.length,43);
+ let links=await (await page.request.get(base+'/api/v1/me/profile-links')).json();assert.equal(links.items[0].status,'pending');
+ assert(!JSON.stringify(links).includes(invitation.secret));
+ await page.locator('#links-list button').filter({hasText:'Отозвать'}).first().click();
+ await page.waitForFunction(()=>document.querySelector('#links-list').textContent.includes('Отозвана'));
+ // A fragment may prefill the input, but landing never imports, approves or confirms.
+ const fragment=base+'/profile-sync/#link-invite='+Buffer.from(JSON.stringify({origin:'https://peer.invalid',recipient:base,id:invitation.id,secret:invitation.secret})).toString('base64');
+ let writes=0;const watch=req=>{if(req.method()==='POST'&&req.url().includes('/profile-links/'))writes++;};page.on('request',watch);
+ await page.goto(fragment);await page.waitForFunction(()=>location.hash==='');await page.waitForFunction(()=>!document.querySelector('#links-create button').disabled);
+ assert.equal(new URL(page.url()).hash,'');assert.equal(await page.locator('#links-input').inputValue(),fragment);assert.equal(writes,0);page.off('request',watch);
+ await page.locator('details > summary').click();
  const original=await (await page.request.get(base+'/api/v1/me/geometry')).json();
  const downloadPromise=page.waitForEvent('download');await page.locator('#packet-download').click();const download=await downloadPromise;
  const file=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(file.format,'node06-profile/1');assert.equal(file.source.handle,'fixture-owner');

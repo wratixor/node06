@@ -7,7 +7,15 @@ from datetime import UTC, datetime, time, timedelta
 from sqlalchemy import cast, func, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import JSONB
 
-from .models import point_blocks, point_revisions, points, subscriptions, user_blocks, user_trust
+from .models import (
+    point_blocks,
+    point_revisions,
+    points,
+    site_user_blocks,
+    subscriptions,
+    user_blocks,
+    user_trust,
+)
 from .public_points import PublicPointError
 from .root_import import POINT
 
@@ -90,7 +98,18 @@ class CreationFeed:
             )
             .exists()
         )
-        return self.public._query().where(or_(followed, related), ~blocked_author, ~blocked_point)
+        blocked_on_site = (
+            select(site_user_blocks.c.target_user_id)
+            .where(
+                site_user_blocks.c.source_user_id == actor,
+                site_user_blocks.c.target_user_id == self.public.author.c.id,
+                site_user_blocks.c.site_id == (self.public.site_id or ""),
+            )
+            .exists()
+        )
+        return self.public._query().where(
+            or_(followed, related), ~blocked_author, ~blocked_on_site, ~blocked_point
+        )
 
     @staticmethod
     def seek(c, query):
