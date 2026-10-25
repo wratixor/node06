@@ -7,6 +7,7 @@ def navigation(current: str) -> str:
     items = (
         ("wiki", "/", "Вики"),
         ("profile", "/community/", "Профиль"),
+        ("profile-sync", "/profile-sync/", "Перенос профиля"),
         ("directory", "/directory/", "Пользователи и рейтинги"),
         ("sites", "/sites/", "Мои сайты"),
         ("editor", "/editor/", "Новая точка"),

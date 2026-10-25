@@ -2,7 +2,7 @@
 
 Owner request, 22 October 2026: after the engine work, prepare several short
 stage posts through Markdown repositories. NODE06 content is now authored in
-source (25 October); Godot-client posts remain the next content packet.
+source (25 October); Godot-client posts are authored in the separate wiki content branch below.
 Source readiness does not confirm publication.
 Each post is a normal point with explicit links to relevant concepts and adjacent
 stages. RU and EN, when both are authored, are independent linked points; never
@@ -91,3 +91,22 @@ on this date: engine29135cf, effective Git home with default ru and translation 
 This verifies the earlier home packet, not deployment of these new devlogs.
 Godot posts require a separate audit of that client's current code/history,
 as specified above. No Godot achievements are inferred from this engine packet.
+
+
+## Godot source packet — 25 October 2026
+
+Wiki branch `f-20261025120550-godot-devlogs`, commit `61737f9`, target main,
+authors four RU/EN pairs (account, inventory, battle, settings) and an index pair.
+Both home languages have a Development card. Inspected client main d8ab27b (tree
+matches develop ec6db55), real milestone commits80b63ab/725d223/0eb8eff/acd422e
+and the corresponding source files. The client's dirty worktree, imported art
+and local saves were not changed or used as completed-source evidence.
+
+Wiki docs/GODOT-DEVLOG-EVIDENCE.md records exact hashes/paths and boundaries.
+Public prose states source inspection, without claiming a fresh client runtime,
+Windows/Android export, production release or final art. No hidden lore or new
+balance rule is introduced. Immutable preflight passed15 points/6 home blocks;
+all local links are reciprocal. Actual home and all eight post projections were
+rendered in Chromium, with RU/EN targets and mobile checks. Existing welcome/lore
+bodies and root IDs are retained; Games roots only gain index links.
+These files are not live publication evidence.

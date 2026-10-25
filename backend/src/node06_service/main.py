@@ -27,6 +27,7 @@ from .moderation_api import router as moderation_router
 from .moderation_ui import router as moderation_ui_router
 from .people_ui import router as people_ui_router
 from .point_api import router as point_router
+from .profile_packet_api import router as profile_packet_router
 from .public_points import PublicPointError
 from .quarantine_api import account_router as ban_account_router
 from .quarantine_api import router as quarantine_router
@@ -102,6 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(directory_router)
     app.include_router(directory_ui_router)
     app.include_router(point_router)
+    app.include_router(profile_packet_router)
     app.include_router(site_ui_router)
 
     @app.exception_handler(SiteRegistryError)
@@ -285,6 +287,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "site_home_blocks",
                 "git_home_priority",
                 "home_translations",
+                "private_profile_packets",
                 "operator_root_publication",
                 "owner_git_sources",
             ]
@@ -296,6 +299,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ),
             "not_implemented": [
                 "embed_auth",
+                "cross_server_profile_sync",
                 "signed_point_reactions",
                 "imports",
                 "billing",

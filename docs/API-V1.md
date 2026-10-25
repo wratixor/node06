@@ -409,3 +409,9 @@ API with `default_language` and a bounded `translations` map of complete layouts
 Source precedence applies to the complete document; no graph locale/filter or
 point-ID mapping is added. See [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md) for format,
 limits and compatibility. No database migration is added by this extension.
+
+Private profile data: capability `private_profile_packets` covers authenticated
+own export and no-write comparison under `/api/v1/me/profile-export` and
+`/api/v1/me/profile-compare`. See [PROFILE-PACKETS-V1](PROFILE-PACKETS-V1.md).
+`cross_server_profile_sync` remains not implemented: these files do not prove
+identity, link accounts, restore preferences or transfer support/influence.
