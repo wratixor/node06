@@ -699,7 +699,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     // from production. CSP and bridge source/origin/credential checks stay active.
     await context.grantPermissions(['local-network-access'], { origin: base });
     await page.route(base + '/picker-parent**', route => route.fulfill({
-      body: require('node:fs').readFileSync(require('node:path').join(__dirname, '../dist/index.html'),'utf8').replace('data-page="field"','data-page="field" data-field-path="/picker-parent"'),
+      body: require('node:fs').readFileSync(require('node:path').join(process.env.NODE06_BROWSER_DIST||require('node:path').join(__dirname,'../dist'),'index.html'),'utf8').replace('data-page="field"','data-page="field" data-field-path="/picker-parent"'),
       contentType: 'text/html',
       headers: { 'Content-Security-Policy': `default-src 'self'; connect-src 'self'; frame-src ${embed}; script-src 'self'; style-src 'self'` },
     }));
@@ -769,7 +769,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
       if(path==='/assets/connection.json')return route.fulfill({json:{embedOrigin:embed,serviceOrigin:base,siteId:active}});
       if(path==='/full-parent')return route.fulfill({contentType:'text/html',body:`<iframe id=wiki width=380 height=800 src="${embed}/embed/v1/${active}/?p=point-ru&open=point-ru"></iframe>`,headers:{'Content-Security-Policy':`default-src 'self'; frame-src ${embed}`}});
       if(path==='/picker-parent')return route.fulfill({
-        body:require('node:fs').readFileSync(require('node:path').join(__dirname,'../dist/index.html'),'utf8').replace('data-page="field"','data-page="field" data-field-path="/picker-parent"'),
+        body:require('node:fs').readFileSync(require('node:path').join(process.env.NODE06_BROWSER_DIST||require('node:path').join(__dirname,'../dist'),'index.html'),'utf8').replace('data-page="field"','data-page="field" data-field-path="/picker-parent"'),
         contentType:'text/html',headers:{'Content-Security-Policy':`default-src 'self'; connect-src 'self'; frame-src ${embed}; script-src 'self'; style-src 'self'`}
       });
       if(/^\/(assets|data)\/[a-z0-9_.-]+$/.test(path))return route.fulfill({path:require('node:path').join(__dirname,'../dist',path)});
@@ -1018,6 +1018,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await directoryPage.screenshot({path:'/tmp/node06-directory-mobile.png',fullPage:true});
     assert.equal((await discovery.request.get(embed+'/directory/')).status(),404);
     await discovery.close();
+    await require('./check-git-sources.cjs')({browser,base,otherSite,errors});
     const purged=process.env.NODE06_TEST_PURGED_POINT;
     assert(purged,'Disposable fixture must provide a purged point');
     await page.goto(base+'/?'+new URLSearchParams({p:purged,open:purged}));

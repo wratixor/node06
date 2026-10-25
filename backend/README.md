@@ -167,3 +167,11 @@ Apply Alembic0018 before starting the updated service. Existing server hides
 older than 30 days become eligible immediately; backup/review them before rollout.
 Once a tombstone exists, downgrade below 0018 is refused. This source change does
 not establish a production deployment.
+
+
+Owner GitHub sources: [contract and limits](../docs/GIT-SOURCES-V1.md). Apply
+Alembic0019 before starting this application. Owner-only registration/proof, private
+preview/accept and opt-in polling live under «Мои сайты». Existing operator
+sources retain their deployment authority. No new dependency, credential or timer.
+Multilingual home presentation is planned separately in
+[HOME-LANGUAGES-PLAN](../docs/HOME-LANGUAGES-PLAN.md); point identities are unchanged.

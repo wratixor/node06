@@ -163,17 +163,18 @@ POST  /sites/{site_id}/verify
 GET   /sites/{site_id}               # public config + welcome point ID
 PATCH /sites/{site_id}               # owner config, revision precondition
 GET   /sites/{site_id}/usage         # owner only
-POST  /sites/{site_id}/sources       # register/prove repo association
-POST  /sites/{site_id}/imports       # prepare candidate from registered source
-GET   /sites/{site_id}/imports/{id}
-POST  /sites/{site_id}/imports/{id}/accept
+GET   /sites/{site_id}/source        # private configuration/preview
+PUT   /sites/{site_id}/source        # register/renew repo challenge
+POST  /sites/{site_id}/source/preview # prepare immutable private preview
+POST  /sites/{site_id}/source/accept  # generation/preview ID and explicit consent
+PUT   /sites/{site_id}/source/policy  # manual/auto
 ```
 
 Creation allocates an inactive welcome point; activation publishes it and adds
 the shared directory edge atomically. Claim proof verification is bounded, never
 an arbitrary URL-fetch API. Current UI-source welcome editing uses owner settings
-with both settings/text revision preconditions and immutable history. The general
-point editor and registered Git-source mode remain planned.
+with both settings/text revision preconditions and immutable history. Point authoring and owner Git-source mode are implemented in separate packets;
+see [GIT-SOURCES-V1](GIT-SOURCES-V1.md) for the current proof/accept contract.
 Source settings and privileged management are absent from bridge commands.
 
 ### Graph, editor and signals

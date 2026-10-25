@@ -22,9 +22,13 @@ After verifying your site, paste the iframe snippet from **My sites** into your 
 
 ## Mode 4 — hosted wiki with Git content
 
-If the service already exists, you do not need a second backend. The operator connects a content repository to your existing site through deployment. A manifest defines the site, Markdown roots and a homepage with configurable blocks and links. Homepage priority can favor either the repository or database settings. See `examples/root-source/`.
+If the service already exists, you do not need a second backend. In **My sites**, choose a verified site and open the GitHub roots section. Enter a public `owner/repository` and branch. Commit the issued `source_proof` in the root `node06-roots.json`, load the preview and explicitly accept publication. Existing published points remain unchanged until acceptance.
 
-Validate and publish an immutable Git snapshot through deployment; do not edit the live database manually. Git roots are protected from revision voting. Accepted source updates transfer active support and publish a changelog.
+The manifest defines Markdown roots and a homepage with configurable blocks and links; see `examples/root-source/`. Homepage priority can favor repository or database settings. Choose manual updates or opt into checks every 15 minutes after the first explicit publication. Git roots are protected from revision voting; accepted updates transfer active support and publish a changelog.
+
+Existing operator-managed sources continue through normal deployment. Connecting content does not replace engine updates or execute fork code. Do not edit the live database manually.
+
+[Git connection and limits](https://github.com/wratixor/node06/blob/main/docs/GIT-SOURCES-V1.md)
 
 [Content deployment](https://github.com/wratixor/node06/blob/main/docs/OPERATOR-CONTENT-DEPLOY.md)
 

@@ -3,7 +3,7 @@
 <title>Мои сайты — Geno-Dice Wiki</title><link rel="stylesheet" href="/sites/style.css">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest">
-<script src="/sites/home.js" defer></script><script src="/sites/client.js" defer></script></head><body>
+<script src="/sites/source.js" defer></script><script src="/sites/home.js" defer></script><script src="/sites/client.js" defer></script></head><body>
 {personal_navigation}
 <main>
 <h1>Мои сайты</h1>
@@ -52,6 +52,17 @@ sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-san
 <section id="home-conflict" hidden><h4>Главная изменилась на сервере</h4><pre id="home-server"></pre>
 <button id="home-use-server" type="button">Загрузить серверный вариант</button>
 <button id="home-overwrite" type="button">Сверено — сохранить мои блоки</button></section></form>
+<details id="git-source" hidden><summary>Корни из GitHub</summary>
+<p id="git-note"></p><form id="git-config">
+<label>Репозиторий<input id="git-repository" placeholder="owner/repository" required maxlength="256"></label>
+<label>Ветка<input id="git-branch" value="main" required maxlength="128"></label>
+<label>Обновления<select id="git-policy"><option value="manual">Вручную</option><option value="auto">Автоматически, каждые 15 минут</option></select></label>
+<label><input id="git-rights" type="checkbox" required>У меня есть право публиковать эти материалы</label>
+<button>Выдать подтверждение репозитория</button></form><pre id="git-proof"></pre>
+<div id="git-actions" hidden><button id="git-preview-button" type="button">Проверить и посмотреть изменения</button>
+<form id="git-policy-form"><label>Обновления<select id="git-current-policy"><option value="manual">Вручную</option><option value="auto">Автоматически, каждые 15 минут</option></select></label><button>Сохранить режим</button></form></div>
+<div id="git-comparison"></div><form id="git-accept" hidden>
+<label><input id="git-confirm" type="checkbox" required>Принимаю изменения и управление приветствием из Git</label><button>Опубликовать</button></form></details>
 <form id="settings-form"><h3>Приветствие и оформление</h3>
 <p id="edit-note"></p>
 <label>Название<input id="name" maxlength="160"></label>

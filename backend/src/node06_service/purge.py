@@ -4,6 +4,7 @@ from sqlalchemy import func, insert, select, text, update
 
 from .models import (
     core_publications,
+    git_sources,
     moderation_audit,
     point_blocks,
     point_hides,
@@ -155,6 +156,26 @@ def sweep(c, limit=1):
             .values(display_name=None, home_page=None, git_home_page=None, theme={})
         )
         c.execute(update(points).where(points.c.id == pid).values(lifecycle="retired"))
+        # A private, unaccepted Git preview is also a structured copy of its bodies.
+        c.execute(
+            text("""UPDATE git_sources SET candidate = NULL, preview_id = NULL,
+                preview_base = NULL, preview_expires_at = NULL, last_error = 'POINT_PURGED'
+                WHERE candidate::jsonb @> jsonb_build_object('points', jsonb_build_array(
+                    jsonb_build_object('id', CAST(:pid AS text))))"""),
+            {"pid": pid},
+        )
+        c.execute(
+            update(git_sources)
+            .where(git_sources.c.site_id == pid)
+            .values(
+                policy="manual",
+                candidate=None,
+                preview_id=None,
+                preview_base=None,
+                preview_expires_at=None,
+                last_error="POINT_PURGED",
+            )
+        )
         event(c, "point-purged", pid, now=now)
         c.execute(
             insert(moderation_audit).values(

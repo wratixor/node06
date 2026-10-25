@@ -105,16 +105,14 @@ Git metadata должна принадлежать вашему доверенн
 `writes_performed=false`, `source_ownership_verified=false`. Он не содержит
 Markdown body или source proof. Нет соединений с БД и новых HTTP маршрутов.
 
-## Что дальше
+## Серверное подключение
 
-P04b должен добавить authenticated owner source registration и repo challenge,
-фиксированный безопасный GitHub fetch конкретного commit, сохранённый приватный
-preview/diff и атомарный accept с повторной проверкой owner/source/revisions.
-Нужны core projection/revisions, provenance edge claims и безопасное retirement;
-не выкладывать Git welcome поверх UI welcome без явного перехода источника.
-Только затем подключать источники к `/sites/`, public graph и профилю стартовых
-корней/облака. Полный контракт: [ROOT-IMPORT-V1](ROOT-IMPORT-V1.md).
-Этот пакет не меняет действующий сервер, модель влияния или авторизацию.
+Самостоятельная регистрация, repo challenge, безопасная загрузка публичных
+GitHub-объектов, приватный предпросмотр и атомарное принятие реализованы отдельно
+в [GIT-SOURCES-V1](GIT-SOURCES-V1.md). Сам этот локальный CLI по-прежнему только
+проверяет снимок и не выдаёт разрешение на публикацию. Private repos и внешний
+revision-pin import остаются за рамками первого серверного пакета. Действующие
+связи по локальным ID, provenance, retirement и home-блоки описаны в контракте.
 
 ## Проверено в P04a
 

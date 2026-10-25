@@ -89,7 +89,10 @@ def management_path(path: str, method: str) -> bool:
         or (path.startswith(("/api/v1/proposals", "/api/v1/people")) and method != "GET")
         or (path.startswith("/api/v1/points") and method != "GET")
         or path == "/api/v1/ui-config"
-        or (path.startswith("/api/v1/sites") and (method != "GET" or path.endswith("/manage")))
+        or (
+            path.startswith("/api/v1/sites")
+            and (method != "GET" or path.endswith("/manage") or "/source" in path)
+        )
     )
 
 

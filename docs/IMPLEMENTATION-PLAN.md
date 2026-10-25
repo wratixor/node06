@@ -982,10 +982,10 @@ import queue fairness/memory и диск. Это цели исследовани
 | P03b | Owner-only create/list/manage/renew/verify/settings API, общие verifier slots/deadline, version preconditions и immutable welcome history; UI добавлен P03c |
 | P03c | `/sites/` UI, hosted/game-lore вход, общая public projection, read-only iframe и theme; подготовлен отдельный manual deploy target |
 | P03d | Public read bridge/SDK: site/point/search/capabilities, локальный HTTPS browser acceptance |
-| P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; P04 source proof/transport/DB preview/accept ещё не готовы |
-| P04 operator publication | Accepted immutable Git roots/provenance/retirement and manifest home already in main; self-service ownership/transport/private preview still pending |
+| P04a | JSON Schema, pure manifest/graph preflight и read-only immutable local Git CLI; owner source proof/transport/DB preview/accept implemented by the later Git-source packet |
+| P04 operator publication | Accepted immutable Git roots/provenance/retirement and manifest home already in main; owner-managed public GitHub proof/transport/private preview/accept implemented in GIT-SOURCES-V1 |
 | P05a public reads | Current point API, indexed full-body prefix search and bounded neighbor pages; authoring, voting, UI/bridge are implemented by subsequent packets. See [contract](PUBLIC-POINTS-V1.md) |
-| P03 remainder–P14 | Scoped embed grants/consent, self-service imports, sync/tariffs ещё впереди; content purge implemented; scoped bans/quarantine implemented; operator imports and T1/social geometry implemented |
+| P03 remainder–P14 | Scoped embed grants/consent, private/external-pin imports, sync/tariffs ещё впереди; public owner imports implemented; content purge implemented; scoped bans/quarantine implemented; operator imports and T1/social geometry implemented |
 | Shared static field, 21.10 | Удалены ошибочные языковые shell и фильтр соседей; единые адреса/ленты, совместимые redirect и browser regression для всех 51 roots |
 
 P00 evidence 13.09: Node protocol tests, Python compile и static build прошли;
@@ -1718,3 +1718,21 @@ DB-enabled run:267 passes plus4 old SQLite clock-fixture failures reproduced on
 main; repaired test adapters passed8/8 in both affected modules. Final no-DB run:
 118 passed/153 PostgreSQL skips (DB tests already exercised separately). Backend
 Ruff/format, JS/protocol/clipboard and diff checks passed.
+
+### 25 October 2026 — owner Git sources and multilingual home follow-up
+
+Owner source registration, immutable GitHub transport, private preview/accept and
+opt-in15-minute polling are the active implementation packet. Existing operator
+sources retain their deploy authority. Source control requires account/site-owner
+and repository proof; a manifest site ID alone grants no authority.
+
+The owner requested a later home-page redesign with JS-switched translations:
+[HOME-LANGUAGES-PLAN](HOME-LANGUAGES-PLAN.md). Each home language selects its own labels **and link targets**, e.g. lore-ru vs
+lore-en. Existing point IDs/URLs are preserved; the buttons deliberately navigate
+to different independent points for each language. No graph locale partition.
+
+Git source packet implemented: [GIT-SOURCES-V1](GIT-SOURCES-V1.md), migration0019.
+Full backend run292 passed; final focused source cases, online migration/rollback,
+installed-wheel HTTPS UI, lost-response accept, mobile source preview, static51-root
+navigation, build, protocol/clipboard and Ruff/format passed. The GitHub loader
+also read the real public wiki commit without writes. Production remains unchanged.

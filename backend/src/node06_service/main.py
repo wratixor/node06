@@ -32,6 +32,7 @@ from .quarantine_api import account_router as ban_account_router
 from .quarantine_api import router as quarantine_router
 from .quarantine_ui import router as quarantine_ui_router
 from .request_limits import AuthBodyLimit
+from .root_import import RootImportError
 from .schemas import PublicSiteResponse
 from .site_api import router as site_router
 from .site_claims import ProofFetchError, SiteClaimError
@@ -46,6 +47,7 @@ from .site_registry import (
 )
 from .site_ui import router as site_ui_router
 from .social_api import router as social_router
+from .source_api import router as source_router
 from .verifier import VerifierBusyError, VerifierTimeoutError
 
 
@@ -56,16 +58,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         stop = asyncio.Event()
         task = None
+        source_task = None
         if current_settings.database_url:
             from .social_worker import run
 
             task = asyncio.create_task(run(app, stop))
+            from .source_worker import run as run_sources
+
+            source_task = asyncio.create_task(run_sources(app, stop))
         try:
             yield
         finally:
             stop.set()
             if task:
                 await task
+            if source_task:
+                await source_task
             app.state.database.dispose()
 
     app = FastAPI(
@@ -77,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(account_router)
     app.include_router(site_router)
+    app.include_router(source_router)
     app.include_router(social_router)
     app.include_router(feed_router)
     app.include_router(moderation_router)
@@ -118,6 +127,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {"code": exc.code, "message": str(exc), "request_id": request.state.request_id},
             status_code=status,
             headers=headers,
+        )
+
+    @app.exception_handler(RootImportError)
+    async def source_error(request, exc):
+        return JSONResponse(
+            {"code": exc.code}, status_code=422, headers={"Cache-Control": "no-store"}
         )
 
     @app.exception_handler(AuthoringError)
@@ -188,6 +203,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
             )
             or request.url.path.endswith("/manage")
+            or (request.url.path.startswith("/api/v1/sites/") and "/source" in request.url.path)
             or request.url.path == "/api/v1/ui-config"
             or (
                 request.url.path.startswith(("/api/v1/proposals", "/api/v1/people"))
@@ -231,6 +247,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "social_worker_status",
                 {"state": "disabled" if not current_settings.database_url else "starting"},
             ),
+            "source_worker": getattr(
+                app.state,
+                "source_worker_status",
+                {"state": "starting" if current_settings.database_url else "disabled"},
+            ),
             "implemented": [
                 "health",
                 "ready",
@@ -264,6 +285,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "site_home_blocks",
                 "git_home_priority",
                 "operator_root_publication",
+                "owner_git_sources",
             ]
             + (["hosted_wiki"] if current_settings.hosted_dist else [])
             + (

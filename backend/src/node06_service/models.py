@@ -560,3 +560,31 @@ point_tombstones = Table(
     Column("hidden_since", DateTime(timezone=True), nullable=False),
     Column("purged_at", DateTime(timezone=True), nullable=False),
 )
+
+
+git_sources = Table(
+    "git_sources",
+    metadata,
+    Column("site_id", ForeignKey("sites.id", ondelete="RESTRICT"), primary_key=True),
+    Column("owner_user_id", ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
+    Column("origin", String(512), nullable=False),
+    Column("generation", String(32), nullable=False),
+    Column("repository", String(256), nullable=False),
+    Column("branch", String(128), nullable=False),
+    Column("policy", String(16), nullable=False),
+    Column("proof_digest", String(64), nullable=False),
+    Column("proof_expires_at", DateTime(timezone=True), nullable=False),
+    Column("repository_id", BigInteger),
+    Column("repository_owner_id", BigInteger),
+    Column("preview_id", String(32)),
+    Column("candidate", JSON),
+    Column("preview_base", JSON),
+    Column("preview_expires_at", DateTime(timezone=True)),
+    Column("accepted_preview_id", String(32)),
+    Column("receipt", JSON),
+    Column("last_attempt_at", DateTime(timezone=True)),
+    Column("next_check_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("last_error", String(64)),
+    CheckConstraint("policy IN ('manual','auto')", name="ck_git_sources_policy"),
+)
+Index("ix_git_sources_due", git_sources.c.policy, git_sources.c.next_check_at)
