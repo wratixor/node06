@@ -24,6 +24,7 @@ from .models import (
     sites,
     users,
 )
+from .purge import purged_ids
 from .root_import import RootCandidate, RootImportError
 from .root_preflight import GitSnapshot, preflight
 from .site_claims import normalize_origin
@@ -91,6 +92,8 @@ def publish(
             ).mappings()
         }
         incoming = {p.id: p for p in candidate.points}
+        if purged_ids(connection, incoming):
+            raise RootImportError("POINT_PURGED")
         touched = set(existing) | set(incoming)
         current = {
             r["id"]: r

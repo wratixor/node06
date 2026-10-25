@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from .bans import point_mask
 from .models import point_hides, points
+from .purge import absent, purged_ids
 
 SCOPE = re.compile(r"server|s_[0-9a-f]{32}")
 
@@ -16,7 +17,8 @@ def scopes(site=None):
 
 def visible(point_id, site=None):
     return (
-        ~point_mask(point_id, site)
+        absent(point_id)
+        & ~point_mask(point_id, site)
         & ~select(point_hides.c.point_id)
         .where(
             point_hides.c.point_id == point_id,
@@ -44,4 +46,5 @@ def hidden_ids(connection, ids, site=None):
             select(points.c.id).where(points.c.id.in_(list(ids)), point_mask(points.c.id, site))
         )
     )
+    hidden.update(purged_ids(connection, ids))
     return hidden

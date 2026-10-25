@@ -30,7 +30,7 @@
     const current=byId.get(point.id), value={coordinates:null,coordinate_source:'display-only',...current,...point,html:safeRemoteHtml(point.html),degree:point.degree??point.links.length};
     if(current)Object.assign(current,value);else{all.push(value);byId.set(point.id,value);}
   }
-  if(body.dataset.hosted!=='true'&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(dynamicRequested||'')&&window.readNode06Public){
+  if((body.dataset.hosted!=='true'||!byId.has(dynamicRequested))&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(dynamicRequested||'')&&window.readNode06Public){
     try{
       const root=await window.readNode06Public('point.read',{point_id:dynamicRequested});mergePublic(root);
       const missing=root.links.filter(id=>!byId.has(id)).slice(0,50);
@@ -179,7 +179,7 @@
     body.dataset.currentPoint = point.id;
     body.dataset.currentRevision = point.revision_id || "";
     body.dataset.currentDigest = point.content_digest || "";
-    window.dispatchEvent(new CustomEvent('node06:point', {detail:{id:point.id, revision_id:point.revision_id, content_digest:point.content_digest,author:point.author,preview:point.preview}}));
+    window.dispatchEvent(new CustomEvent('node06:point', {detail:{id:point.id, revision_id:point.revision_id, content_digest:point.content_digest,author:point.author,preview:point.preview,deleted:point.deleted}}));
     if(push) updateUrl();
   }
 

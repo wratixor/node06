@@ -17,6 +17,7 @@ from .models import (
     sites,
     users,
 )
+from .purge import absent, marker, purged_ids, require_live
 from .root_import import digest
 from .root_render import render_root
 from .site_registry import ALL_SITES_ID
@@ -136,6 +137,7 @@ class PublicPoints:
             )
             .where(
                 points.c.lifecycle == "active",
+                absent(points.c.id),
                 visible(points.c.id, self.site_id) if self.moderation else True,
                 or_(
                     points.c.id == ALL_SITES_ID,
@@ -208,6 +210,7 @@ class PublicPoints:
 
     def raw_on(self, connection, point_id):
         """Read current visibility on a caller's transaction, after its row locks."""
+        require_live(connection, point_id)
         if self.moderation and hidden_ids(connection, [point_id], self.site_id):
             raise PublicPointError("POINT_NOT_FOUND")
         if point_id in self.core:
@@ -229,6 +232,11 @@ class PublicPoints:
         }
 
     def get(self, point_id):
+        self._check()
+        with self.database.connect() as c:
+            deleted = marker(c, point_id)
+        if deleted:
+            return deleted
         point = self._raw(point_id)
         page = self.neighbors(point_id, check=False)
         return {
@@ -267,7 +275,7 @@ class PublicPoints:
             hidden = (
                 hidden_ids(connection, [p["id"] for p in core], self.site_id)
                 if self.moderation
-                else set()
+                else purged_ids(connection, [p["id"] for p in core])
             )
             core = [p for p in core if p["id"] not in hidden]
             rows = (
@@ -301,8 +309,11 @@ class PublicPoints:
         core_ids = set(self.core.get(point_id, {}).get("declared_links", []))
         with self.database.connect() as connection:
             core_ids.update(connection.execute(ids.where(other.in_(list(self.core)))).scalars())
-            if self.moderation:
-                core_ids -= hidden_ids(connection, core_ids, self.site_id)
+            core_ids -= (
+                hidden_ids(connection, core_ids, self.site_id)
+                if self.moderation
+                else purged_ids(connection, core_ids)
+            )
             rows = (
                 connection.execute(
                     self._query()

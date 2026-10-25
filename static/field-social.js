@@ -9,6 +9,7 @@
   function refreshActions(){for(const container of document.querySelectorAll('.point-social'))container.dispatchEvent(new Event('node06:refresh'));}
   const operations=new Map();
   function mount(container,id,displayed={}){
+    if(displayed.deleted){container.remove();return;}
     container.className='point-social';container.dataset.pointId=id;
     const author=node('p','',container);author.className='point-author';
     const tools=node('div','',container);tools.className='point-actions';tools.setAttribute('role','toolbar');tools.setAttribute('aria-label',text('Point actions','Действия с точкой'));
@@ -141,6 +142,7 @@
     if(restore&&menuSource?.isConnected)menuSource.focus();menuSource=null;
   }
   window.openNode06PointMenu=(point,x,y,source)=>{
+    if(point.deleted){closeMenu();return;}
     closeMenu();menuSource=source;menuSource?.setAttribute('tabindex','-1');
     menu=node('section');menu.id='point-context-menu';menu.setAttribute('role','dialog');
     menu.setAttribute('aria-label',text('Point actions','Действия с точкой'));body.append(menu);

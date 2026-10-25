@@ -1,4 +1,5 @@
 import asyncio
+from datetime import UTC, datetime
 
 import httpx
 from node06_service.config import Settings
@@ -59,6 +60,12 @@ def test_public_site_read_uses_shared_site_registry() -> None:
     @event.listens_for(database._engine, "connect")
     def enable_foreign_keys(dbapi_connection, _connection_record) -> None:
         dbapi_connection.execute("PRAGMA foreign_keys=ON")
+        # Match the PostgreSQL-only ban query in this lightweight read fixture.
+        dbapi_connection.create_function(
+            "clock_timestamp",
+            0,
+            lambda: datetime.now(UTC).replace(tzinfo=None).isoformat(" "),
+        )
 
     metadata.create_all(database._engine)
     registry = SiteRegistry(database)

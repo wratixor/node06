@@ -18,6 +18,7 @@ from sqlalchemy import (
     literal_column,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 
 metadata = MetaData()
 
@@ -279,6 +280,11 @@ authored_revisions = Table(
     Column("lang", String(35), nullable=False),
     Column("citations", JSON, nullable=False),
 )
+Index(
+    "ix_authored_citations_purge",
+    authored_revisions.c.citations.cast(JSONB),
+    postgresql_using="gin",
+).ddl_if(dialect="postgresql")
 point_operations = Table(
     "point_operations",
     metadata,
@@ -334,6 +340,11 @@ Index(
     sqlite_where=text("state = 'open'"),
 )
 Index("ix_proposals_due", proposals.c.state, proposals.c.closes_at)
+Index(
+    "ix_proposal_citations_purge",
+    proposals.c.citations.cast(JSONB),
+    postgresql_using="gin",
+).ddl_if(dialect="postgresql")
 ballots = Table(
     "ballots",
     metadata,
@@ -540,3 +551,12 @@ moderation_bans = Table(
     CheckConstraint("expires_at IS NULL OR expires_at > starts_at", name="ck_moderation_bans_time"),
 )
 Index("ix_moderation_bans_user", moderation_bans.c.user_id)
+
+
+point_tombstones = Table(
+    "point_tombstones",
+    metadata,
+    Column("point_id", ForeignKey("points.id", ondelete="RESTRICT"), primary_key=True),
+    Column("hidden_since", DateTime(timezone=True), nullable=False),
+    Column("purged_at", DateTime(timezone=True), nullable=False),
+)

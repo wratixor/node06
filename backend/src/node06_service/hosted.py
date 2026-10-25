@@ -468,7 +468,11 @@ def register_hosted(app: FastAPI, settings: Settings) -> None:
             from .visibility import hidden_ids
 
             with request.app.state.database.connect() as connection:
-                if hidden_ids(connection, [selected], selected):
+                from .purge import purged_ids
+
+                if hidden_ids(connection, [selected], selected) and not purged_ids(
+                    connection, [selected]
+                ):
                     return JSONResponse(
                         {"code": "POINT_NOT_FOUND"}, status_code=404, headers=PUBLIC_HEADERS
                     )

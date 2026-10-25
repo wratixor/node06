@@ -1018,6 +1018,14 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await directoryPage.screenshot({path:'/tmp/node06-directory-mobile.png',fullPage:true});
     assert.equal((await discovery.request.get(embed+'/directory/')).status(),404);
     await discovery.close();
+    const purged=process.env.NODE06_TEST_PURGED_POINT;
+    assert(purged,'Disposable fixture must provide a purged point');
+    await page.goto(base+'/?'+new URLSearchParams({p:purged,open:purged}));
+    await page.locator('.point-text').filter({hasText:'Point deleted.'}).waitFor();
+    assert.equal(await page.locator('.point-actions').count(),0,'Tombstone has no publication actions');
+    assert(!(await page.locator('body').innerText()).includes('Purged fixture secret'));
+    const marker=await page.request.get(embed+'/bridge/v1/'+active+'/read?'+new URLSearchParams({method:'point.read',point_id:purged}));
+    assert.equal(marker.status(),200);assert.equal((await marker.json()).deleted,true);
     assert(embedCookies.length > 0);
     assert((await Promise.all(embedCookies)).every(sent => !sent), 'Actual embed requests must omit the global session cookie');
     assert.deepEqual(errors, []);

@@ -37,6 +37,8 @@ from .models import (
     users,
 )
 from .public_points import PublicPointError
+from .purge import purged_ids, require_live
+from .purge import sweep as purge_sweep
 from .root_import import digest
 from .social_common import event, uid
 
@@ -70,6 +72,16 @@ class Social:
         with self.database.begin() as c:
             lock_graph(c)
             self.authorize(c, actor)
+            if kind in ("propose", "subscription", "block", "favorite") and payload.get(
+                "active", True
+            ):
+                require_live(c, target)
+            if kind == "vote":
+                target_point = c.scalar(
+                    select(proposals.c.point_id).where(proposals.c.id == target)
+                )
+                if target_point:
+                    require_live(c, target_point)
             if kind == "propose":
                 from .bans import publication
 
@@ -930,6 +942,7 @@ class Social:
     def work(self, limit=20):
         with self.database.begin() as c:
             lock_graph(c)
+            purge_sweep(c)
             self._sync_core(c)
             due = (
                 c.execute(
@@ -981,7 +994,10 @@ class Social:
             self._deliver(c, limit)
 
     def _sync_core(self, c):
+        removed = purged_ids(c, self.public.core)
         for pid, p in self.public.core.items():
+            if pid in removed:
+                continue
             old = (
                 c.execute(select(core_publications).where(core_publications.c.point_id == pid))
                 .mappings()
@@ -1093,6 +1109,7 @@ class Social:
 
 def git_update(c, pid, revision, content_digest, commit, *, static_body=None, now=None):
     """Called in the same locked source-publication transaction, never by a read."""
+    require_live(c, pid)
     seq = event(
         c,
         "git-source-update",

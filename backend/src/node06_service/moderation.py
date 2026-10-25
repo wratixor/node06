@@ -27,6 +27,7 @@ from .models import (
     users,
 )
 from .public_points import PublicPointError
+from .purge import require_live
 from .root_import import digest
 from .social import lock_graph
 from .visibility import SCOPE
@@ -98,6 +99,8 @@ class Moderation:
             lock_graph(c)
             self.authorize(c, actor)
             scope_on(c, scope)
+            if action in ("visibility", "report"):
+                require_live(c, target)
             if action != "report":
                 require(c, actor, scope, admin=action == "role")
             old = (
