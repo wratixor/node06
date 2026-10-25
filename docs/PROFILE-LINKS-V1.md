@@ -1,9 +1,9 @@
 # Account links v1
 
-Source capability: `bilateral_profile_links`. This implements account-pair consent
-and revocation, **not profile synchronization**. `cross_server_profile_sync`
-remains explicitly unimplemented. `/profile-sync/` keeps file export/comparison
-under a collapsible section and adds the account-link controls.
+Source capability: `bilateral_profile_links`. This document describes the
+control-only base protocol. Its tokens never authorize private profile access.
+Explicit data consent, separate credentials and automatic exchange now extend it
+in [PROFILE-SYNC-V1](PROFILE-SYNC-V1.md); old links remain control-only.
 
 ## Owner decisions
 
@@ -101,7 +101,7 @@ are pruned on new creation. Rate limits: 120 owner operations/hour and 60 peer
 requests/IP/minute. Forms are capped at 4 KiB before parsing, peer JSON at 8 KiB;
 unknown/duplicate fields are rejected. HTTPS transport resolves all addresses,
 rejects any nonpublic answer, pins the chosen IP with hostname-verified TLS,
-disables redirects/proxies and permits only four fixed API paths. A child-process
+disables redirects/proxies and permits only the fixed API paths described here and in PROFILE-SYNC-V1. A child-process
 deadline covers DNS, connection and response body; shared DB verifier slots bound
 concurrency. No configuration flag bypasses these protections.
 
@@ -119,7 +119,8 @@ its inbound grant immediately; A observes that on **Проверить связ�
 record cannot push to A because no reverse bearer capability was issued.
 Thus a peer's displayed list can be stale until refreshed; a future data worker
 must check both local authorization and peer grant validity before every exchange.
-No background profile job or automatic preference application exists in this v1.
+The control-only v1 has no profile application. The separately consented data
+extension and revocation retry worker are documented in PROFILE-SYNC-V1.
 
 ## Validation and rollout
 

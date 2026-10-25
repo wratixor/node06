@@ -1,7 +1,8 @@
 # Private profile packets v1
 
 Source implementation: first-party export and read-only comparison. This is a
-foundation for consented profile synchronization, **not** account linking,
+foundation for consented profile synchronization. The separate [data exchange](PROFILE-SYNC-V1.md) adds
+explicitly scoped linking/merging; this file protocol itself is **not** account linking,
 authenticated peer transport or an importer. No new migration/dependency.
 
 ## User flow

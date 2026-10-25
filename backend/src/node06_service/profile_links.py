@@ -13,6 +13,7 @@ from sqlalchemy import delete, func, insert, select, update
 from .models import profile_links as links
 from .models import users
 from .profile_packet import Source, Strict
+from .profile_preferences import Scopes
 from .public_points import PublicPointError
 from .site_claims import normalize_origin
 
@@ -49,6 +50,7 @@ class Peer(Strict):
 class Invitation(Peer):
     id: LinkID
     secret: Secret
+    data: bool = False
 
 
 class Metadata(Peer):
@@ -69,6 +71,8 @@ class Confirmation(Peer):
     state: Secret
     peer_user_id: UserID
     peer_handle: Handle
+    send: Scopes = Field(default_factory=list)
+    receive: Scopes = Field(default_factory=list)
 
 
 class Token(Strict):
@@ -137,7 +141,7 @@ class ProfileLinks:
         if count >= 100:
             raise PublicPointError("PROFILE_LINK_LIMIT", 409)
 
-    def invite(self, uid, peer):
+    def invite(self, uid, peer, send=None, receive=None):
         if peer == self.origin:
             raise PublicPointError("PROFILE_SELF_LINK", 400)
         lid, secret, verifier, nonce = (
@@ -161,11 +165,18 @@ class ProfileLinks:
                     verifier=verifier,
                     nonce=nonce,
                     challenge=challenge(verifier),
+                    sync_send_allowed=send or [],
+                    sync_receive_allowed=receive or [],
+                    sync_send=send or [],
+                    sync_receive=receive or [],
                 )
             )
-        return {"origin": self.origin, "id": lid, "secret": secret, "recipient": peer}
+        result = {"origin": self.origin, "id": lid, "secret": secret, "recipient": peer}
+        if send or receive:
+            result["data"] = True
+        return result
 
-    def metadata(self, secret, client):
+    def metadata(self, secret, client, data=False):
         with self.db.connect() as c:
             row = (
                 c.execute(
@@ -185,7 +196,17 @@ class ProfileLinks:
             )
         if row is None:
             raise PublicPointError("PROFILE_INVITATION_INVALID", 400)
-        return Metadata(
+        if bool(row["sync_send_allowed"] or row["sync_receive_allowed"]) != data:
+            raise PublicPointError("PROFILE_DATA_CONSENT_REQUIRED", 409)
+        model = Metadata
+        scopes = {}
+        if data:
+            from .profile_data_consent import DataMetadata
+
+            model = DataMetadata
+            scopes = {"send": row["sync_send_allowed"], "receive": row["sync_receive_allowed"]}
+        return model(
+            **scopes,
             origin=self.origin,
             id=row["id"],
             user_id=row["user_id"],
@@ -199,11 +220,13 @@ class ProfileLinks:
     def inspect(self, invitation):
         if invitation.origin == self.origin:
             raise PublicPointError("PROFILE_SELF_LINK", 400)
+        from .profile_data_consent import DataMetadata
+
         data = validated(
-            Metadata,
+            DataMetadata if invitation.data else Metadata,
             self.transport(
                 invitation.origin,
-                "metadata",
+                "metadata-data" if invitation.data else "metadata",
                 {"secret": invitation.secret, "client_id": self.origin},
             ),
         )
@@ -239,9 +262,13 @@ class ProfileLinks:
                     nonce=meta.state,
                     challenge=meta.code_challenge,
                     code_digest=digest(code),
+                    sync_receive_allowed=getattr(meta, "send", []),
+                    sync_send_allowed=getattr(meta, "receive", []),
+                    sync_receive=getattr(meta, "send", []),
+                    sync_send=getattr(meta, "receive", []),
                 )
             )
-        return {
+        result = {
             "origin": self.origin,
             "id": meta.id,
             "code": code,
@@ -251,7 +278,11 @@ class ProfileLinks:
             "recipient": meta.origin,
         }
 
-    def redeem(self, code, verifier, client, redirect):
+        if getattr(meta, "send", []) or getattr(meta, "receive", []):
+            result.update(send=meta.send, receive=meta.receive)
+        return result
+
+    def redeem(self, code, verifier, client, redirect, data=False):
         # OAuth authorization-code / PKCE binding. Only this grant's link status/revocation.
         with self.db.connect() as c:
             uid = c.scalar(select(links.c.user_id).where(links.c.code_digest == digest(code)))
@@ -276,17 +307,35 @@ class ProfileLinks:
                 or not secrets.compare_digest(row["challenge"], challenge(verifier))
             ):
                 raise PublicPointError("PROFILE_CODE_INVALID", 400)
+            if bool(row["sync_send_allowed"] or row["sync_receive_allowed"]) != data:
+                raise PublicPointError("PROFILE_DATA_CONSENT_REQUIRED", 409)
+            data_token = secrets.token_urlsafe(32) if data else None
             c.execute(
                 update(links)
                 .where(links.c.id == row["id"])
                 .values(
+                    data_token_digest=digest(data_token) if data_token else None,
+                    sync_enabled=data,
                     status="active",
                     code_digest=None,
                     token_digest=digest(token),
                     expires_at=self.clock() + LIFETIME,
                 )
             )
-        return Token(
+        model = Token
+        extra = {}
+        if data:
+            from .profile_data_consent import DataToken
+
+            model = DataToken
+            extra = dict(
+                protocol="node06-profile-sync/1",
+                data_token=data_token,
+                send=row["sync_receive_allowed"],
+                receive=row["sync_send_allowed"],
+            )
+        return model(
+            **extra,
             access_token=token,
             token_type="Bearer",
             scope=SCOPE,
@@ -306,17 +355,22 @@ class ProfileLinks:
                 or row["status"] != "pending"
                 or row["expires_at"] <= self.clock()
                 or row["peer_origin"] != payload.origin
+                or row["sync_send_allowed"] != payload.send
+                or row["sync_receive_allowed"] != payload.receive
                 or not secrets.compare_digest(row["nonce"], payload.state)
             ):
                 raise PublicPointError("PROFILE_CONFIRMATION_INVALID", 409)
             c.execute(update(links).where(links.c.id == row["id"]).values(status="exchanging"))
+        from .profile_data_consent import DataToken
+
+        wants_data = bool(row["sync_send_allowed"] or row["sync_receive_allowed"])
         data = None
         try:
             data = validated(
-                Token,
+                DataToken if wants_data else Token,
                 self.transport(
                     payload.origin,
-                    "token",
+                    "token-data" if wants_data else "token",
                     {
                         "grant_type": "authorization_code",
                         "code": payload.code,
@@ -330,6 +384,13 @@ class ProfileLinks:
                 data.user_id != payload.peer_user_id
                 or data.handle != payload.peer_handle
                 or data.client_user_id != uid
+                or (
+                    wants_data
+                    and (
+                        data.send != row["sync_send_allowed"]
+                        or data.receive != row["sync_receive_allowed"]
+                    )
+                )
             ):
                 raise PublicPointError("PROFILE_PEER_INVALID", 502)
             with self.db.begin() as c:
@@ -346,6 +407,8 @@ class ProfileLinks:
                         peer_handle=data.handle,
                         remote_id=data.id,
                         remote_token=data.access_token,
+                        remote_data_token=getattr(data, "data_token", None),
+                        sync_enabled=wants_data,
                         verifier=None,
                         invite_digest=None,
                         expires_at=self.clock() + timedelta(seconds=data.expires_in),
@@ -369,11 +432,13 @@ class ProfileLinks:
                         verifier=None,
                         invite_digest=None,
                         remote_token=retry_token,
+                        remote_data_token=None,
+                        sync_enabled=False,
                         revocation_pending=retry_token is not None,
                     )
                 )
             raise
-        return {"id": payload.id, "status": "active", "profile_sync": False}
+        return {"id": payload.id, "status": "active", "profile_sync": wants_data}
 
     def token_status(self, token, revoke=False):
         with self.db.begin() as c:
@@ -393,7 +458,11 @@ class ProfileLinks:
                     return {}
                 raise PublicPointError("PROFILE_TOKEN_INVALID", 401)
             if revoke:
-                c.execute(update(links).where(links.c.id == row["id"]).values(status="revoked"))
+                c.execute(
+                    update(links)
+                    .where(links.c.id == row["id"])
+                    .values(status="revoked", sync_enabled=False)
+                )
                 return {}
             return Status(
                 active=row["status"] == "active"
@@ -430,6 +499,13 @@ class ProfileLinks:
                         "created_at",
                         "expires_at",
                         "revocation_pending",
+                        "sync_send",
+                        "sync_receive",
+                        "sync_enabled",
+                        "sync_send_allowed",
+                        "sync_receive_allowed",
+                        "sync_last_success",
+                        "sync_error",
                     )
                 }
                 | {
@@ -439,7 +515,12 @@ class ProfileLinks:
                 }
                 for row in rows
             ],
-            "profile_sync": False,
+            "profile_sync": any(
+                row["sync_enabled"]
+                and row["status"] == "active"
+                and row["expires_at"] > self.clock()
+                for row in rows
+            ),
         }
 
     def revoke(self, uid, lid):
@@ -452,6 +533,8 @@ class ProfileLinks:
                 .where(links.c.id == lid)
                 .values(
                     status="revoked",
+                    sync_enabled=False,
+                    remote_data_token=None,
                     invite_digest=None,
                     verifier=None,
                     code_digest=None,
@@ -496,6 +579,11 @@ class ProfileLinks:
                 c.execute(
                     update(links)
                     .where(links.c.id == lid, links.c.status == "active")
-                    .values(status="revoked", remote_token=None)
+                    .values(
+                        status="revoked",
+                        remote_token=None,
+                        remote_data_token=None,
+                        sync_enabled=False,
+                    )
                 )
         return {"peer_active": result.active, "profile_sync": False}

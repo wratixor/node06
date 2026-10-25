@@ -29,6 +29,7 @@ from .people_ui import router as people_ui_router
 from .point_api import router as point_router
 from .profile_link_api import router as profile_link_router
 from .profile_packet_api import router as profile_packet_router
+from .profile_sync_api import router as profile_sync_router
 from .public_points import PublicPointError
 from .quarantine_api import account_router as ban_account_router
 from .quarantine_api import router as quarantine_router
@@ -61,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         stop = asyncio.Event()
         task = None
         source_task = None
+        profile_task = None
         if current_settings.database_url:
             from .social_worker import run
 
@@ -68,6 +70,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             from .source_worker import run as run_sources
 
             source_task = asyncio.create_task(run_sources(app, stop))
+            from .profile_sync_worker import run as run_profiles
+
+            profile_task = asyncio.create_task(run_profiles(app, stop))
         try:
             yield
         finally:
@@ -76,6 +81,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await task
             if source_task:
                 await source_task
+            if profile_task:
+                await profile_task
             app.state.database.dispose()
 
     app = FastAPI(
@@ -106,6 +113,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(point_router)
     app.include_router(profile_packet_router)
     app.include_router(profile_link_router)
+    app.include_router(profile_sync_router)
     app.include_router(site_ui_router)
 
     @app.exception_handler(SiteRegistryError)
@@ -293,6 +301,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "home_translations",
                 "private_profile_packets",
                 "bilateral_profile_links",
+                "cross_server_profile_sync",
                 "operator_root_publication",
                 "owner_git_sources",
             ]
@@ -304,7 +313,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ),
             "not_implemented": [
                 "embed_auth",
-                "cross_server_profile_sync",
                 "signed_point_reactions",
                 "imports",
                 "billing",

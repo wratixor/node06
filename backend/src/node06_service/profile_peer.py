@@ -13,7 +13,7 @@ from .public_points import PublicPointError
 from .site_claims import SiteClaimError, resolve_public_target
 from .verifier import ProofVerifier
 
-PATHS = {"metadata", "token", "status", "revoke"}
+PATHS = {"metadata", "token", "status", "revoke", "metadata-data", "token-data", "sync"}
 MAX_BYTES = 8192
 
 
@@ -36,7 +36,7 @@ def fetch(origin, operation, fields):
     try:
         tls = ssl.create_default_context().wrap_socket(raw, server_hostname=target.hostname)
         body = urlencode(fields).encode("ascii")
-        if len(body) > 4096:
+        if len(body) > (65536 if operation == "sync" else 4096):
             raise ValueError("Request exceeds bound")
         host = f"[{target.hostname}]" if ":" in target.hostname else target.hostname
         headers = (
@@ -53,10 +53,11 @@ def fetch(origin, operation, fields):
             if response.getheader("Content-Type", "").split(";", 1)[0] != "application/json":
                 raise ValueError("Peer response is not JSON")
             length = response.getheader("Content-Length")
-            if length is not None and not 0 <= int(length) <= MAX_BYTES:
+            maximum = 60000 if operation == "sync" else MAX_BYTES
+            if length is not None and not 0 <= int(length) <= maximum:
                 raise ValueError("Peer response exceeds bound")
-            result = response.read(MAX_BYTES + 1)
-            if len(result) > MAX_BYTES:
+            result = response.read(maximum + 1)
+            if len(result) > maximum:
                 raise ValueError("Peer response exceeds bound")
             return json.loads(result, object_pairs_hook=unique_object)
     finally:

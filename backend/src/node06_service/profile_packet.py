@@ -16,7 +16,7 @@ from pydantic import (
 from sqlalchemy import select
 
 from .geometry import DEFAULT
-from .models import authored_points, favorite_points, points, subscriptions, user_geometry, users
+from .models import authored_points, points, subscriptions, user_geometry, users
 from .public_points import PublicPointError
 
 MAX_ITEMS = 128
@@ -144,11 +144,11 @@ def snapshot(public, user_id: str, origin: str) -> Packet:
                 .where(subscriptions.c.user_id == user_id)
                 .order_by(subscriptions.c.point_id)
             )
-            saved = limited(
-                select(favorite_points)
-                .where(favorite_points.c.user_id == user_id)
-                .order_by(favorite_points.c.point_id)
-            )
+            from .profile_preferences import favorite_ids
+
+            saved = favorite_ids(c, user_id, origin)
+            if len(saved) > MAX_ITEMS:
+                raise PublicPointError("PROFILE_PACKET_TOO_LARGE", 413)
             # Only public authored originals are eligible for cross-server display.
             own = limited(
                 select(points.c.id)
@@ -172,7 +172,7 @@ def snapshot(public, user_id: str, origin: str) -> Packet:
                     }
                     for row in subs
                 ],
-                "favorites": [reference(row["point_id"]) for row in saved],
+                "favorites": [reference(pid) for pid in saved],
                 "own_points": [row for row in own_refs if row["available"]],
             }
     value["digest"] = digest(value)

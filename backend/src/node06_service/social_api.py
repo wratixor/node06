@@ -14,7 +14,6 @@ from .bans import mask as ban_mask
 from .hosted import PUBLIC_HEADERS
 from .models import (
     ballots,
-    favorite_points,
     inbox,
     influence_runs,
     point_blocks,
@@ -592,11 +591,9 @@ def favorites(request: Request):
     from .public_points import PublicPointError
 
     with request.app.state.database.connect() as c:
-        ids = c.scalars(
-            select(favorite_points.c.point_id)
-            .where(favorite_points.c.user_id == actor.user_id)
-            .order_by(favorite_points.c.point_id)
-        ).all()
+        from .profile_preferences import favorite_ids
+
+        ids = favorite_ids(c, actor.user_id, request.app.state.settings.management_origin)
         items = []
         for pid in ids:
             try:
