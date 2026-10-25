@@ -58,23 +58,39 @@ Snapshot GET and comparison do not mutate profile, subscriptions or social event
 auth/rate admission still uses existing local metadata. No peer credentials,
 network jobs, write grants or transfer of T1 authority are introduced.
 
-## Remaining network decisions
+## Approved network behavior — 25 October 2026
 
-Owner previously established separate registrations, explicit revocable links,
-public profiles distinct from private sync permission and no influence transfer.
-This task asked two outstanding flow questions: bilateral confirmation via an
-expiring invitation versus manual file transfer; explicit field comparison versus
-automatic freshness. No answer has been received at this source checkpoint.
-The implemented export/comparison foundation works with either later flow and
-does not assume authorization to link accounts or apply a remote snapshot.
+The owner approved linking two already registered accounts using a short-lived,
+one-time invitation with confirmation on both servers. Either account can revoke
+the link. Passwords, sessions, roles, bans and influence never transfer.
+
+Within the explicitly authorized data scopes, synchronization automatically takes
+the fresher change. Routine changes do not require manual comparison/acceptance.
+Own remote posts remain references to originals, without copying authorship or
+influence. This supersedes the previously open manual-versus-automatic choice.
+The existing file comparison remains a read-only diagnostic, not a sync grant.
+
+These decisions describe the next network implementation; this packet still
+neither links accounts nor applies remote data. Its unsigned digest and timestamp
+strings are not identity proof or authority to overwrite preferences.
 
 Before peer linking: specify and review a standard authenticated protocol,
 explicit scopes/directions, short-lived/replay-bound invitation exchange, revocation,
-identity/source proof, origin discovery and SSRF boundaries, credential storage,
-local activation of support and conflict/deletion behavior. Do not turn this
-unsigned file into a bearer login or an automatic merge operation. Cosmetic/device
-settings, author blocks and external subscription storage need their own explicit
-field contracts; this v1 is not a complete profile backup/restore system.
+identity/source proof, origin discovery and SSRF boundaries and credential storage.
+Do not turn this unsigned file into a bearer login or automatic merge operation.
+
+The next implementation must track freshness per preference/item, preserve source
+provenance and deletion tombstones and make retry idempotent. Import time must not
+make an old change fresh. Replayed/offline snapshots must not resurrect removed
+subscriptions or favorites. Concurrent equal-time changes need a deterministic
+rule; server clock skew and tombstone retention require a documented protocol
+policy before automatic application. A whole-profile export timestamp cannot
+resolve independent edits. This is implementation work, not an unanswered choice
+about whether automatic freshness is wanted.
+
+Cosmetic/device settings, author blocks and external subscription storage still
+need their own field contracts. Imported preferences cannot create local trust,
+votes or influence. This v1 is not a complete backup/restore or peer sync system.
 
 ## Validation
 
