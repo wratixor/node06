@@ -19,12 +19,14 @@ const messages={AUTH_REQUIRED:'Нужно войти в аккаунт. Введ
  INVALID_INPUT:'Проверьте поля и параметры темы.',REQUEST_TOO_LARGE:'Слишком большой запрос.'};
 function status(text){el('status').textContent=text;}
 const homeEditor=window.node06HomeEditor({api,run,status});
+const sourceEditor=window.node06GitSources({api,run,status,changed:async()=>fill(await api(path()+'/manage'))});
 function controls(){
  document.querySelectorAll('button,input,select,textarea').forEach(node=>{
   node.disabled=busy||(!authenticated&&node.id!=='refresh');
  });
  el('more').hidden=!cursor;
  homeEditor.setEnabled(authenticated&&!busy);
+ sourceEditor.setEnabled(authenticated&&!busy);
  if(!loaded?.welcome_revision_id||!['pending','active'].includes(loaded.state)||loaded.welcome_source!=='ui')
   el('settings-form').querySelectorAll('button,input,textarea').forEach(b=>{b.disabled=true;});
  if(latest&&(!['pending','active'].includes(latest.state)||latest.welcome_source!=='ui'))el('save-draft').disabled=true;
@@ -78,7 +80,7 @@ function showMeta(){
 function fill(current){
  loaded=current;latest=null;el('conflict').hidden=true;
  el('name').value=current.display_name||'';el('body').value=current.welcome_body;
- el('theme').value=JSON.stringify(current.theme,null,2);showMeta();homeEditor.fill(current);homeEditor.loadPoints();
+ el('theme').value=JSON.stringify(current.theme,null,2);showMeta();sourceEditor.fill(current);homeEditor.fill(current);homeEditor.loadPoints();
 }
 async function list(append=false){
  const data=await api('/me/sites?limit=30'+(append&&cursor?'&after='+encodeURIComponent(cursor):''));

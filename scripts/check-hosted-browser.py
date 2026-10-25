@@ -55,6 +55,10 @@ try:
         return subprocess.run(command, cwd=ROOT, env=env, check=True, **kwargs)
 
     run([sys.executable, "build.py"])
+    # Test the installed wheel against its own immutable build snapshot.
+    shutil.copytree(ROOT / "dist", temporary / "dist")
+    env["NODE06_HOSTED_DIST"] = str(temporary / "dist")
+    env["NODE06_BROWSER_DIST"] = str(temporary / "dist")
     run([sys.executable, "-m", "alembic", "upgrade", "head"], capture_output=True)
     db = Database(isolated)
     owner = (
@@ -165,6 +169,32 @@ try:
         ],
         capture_output=True,
     )
+    # Synthetic GitHub data for UI acceptance only; production has no such endpoint.
+    # Transport/object/proof failures are tested separately against the actual loader.
+    (temporary / "runtime" / "fixture_app.py").write_text(
+        """import json
+from node06_service.main import create_app
+from node06_service.models import git_sources
+from node06_service.root_import import GitBlob, RootImportError, prepare_candidate
+from sqlalchemy import select
+app = create_app()
+def fixture_source(repository, branch, site_id, known_commit=None):
+    if repository != "fixture/wiki" or branch != "main":
+        raise RootImportError("GITHUB_UNAVAILABLE")
+    manifest = {"schema_version":1,"site_id":site_id,"content_directory":"site-content",
+                "welcome":{"file":"home.md","mode":"git"},
+                "points":[{"id":"idea","file":"idea.md","lang":"und"}]}
+    candidate = prepare_candidate(json.dumps(manifest).encode(), {
+        "site-content/home.md":GitBlob(b"Git fixture home [Idea](md://local/idea)"),
+        "site-content/idea.md":GitBlob(b"Git browser point [Home](md://local/welcome)")},
+        site_id=site_id, commit_sha="e"*40)
+    with app.state.database.connect() as c:
+        proof = c.scalar(select(git_sources.c.proof_digest).where(git_sources.c.site_id == site_id))
+    return candidate, (123, 456), proof
+app.state.source_loader = fixture_source
+""",
+        encoding="utf-8",
+    )
     env["PYTHONPATH"] = str(temporary / "runtime")
     for port in (8846, 8847):
         servers.append(
@@ -173,7 +203,7 @@ try:
                     sys.executable,
                     "-m",
                     "uvicorn",
-                    "node06_service.main:app",
+                    "fixture_app:app",
                     "--host",
                     "127.0.0.1",
                     "--port",
@@ -221,7 +251,12 @@ try:
     )
     if os.environ.get("NODE06_BROWSER_EXECUTABLE"):
         env["NODE06_BROWSER_EXECUTABLE"] = os.environ["NODE06_BROWSER_EXECUTABLE"]
-    run(["node", "scripts/check-hosted-wiki.cjs"])
+    check = (
+        "scripts/check-git-sources.cjs"
+        if os.environ.get("NODE06_SOURCE_ONLY") == "1"
+        else "scripts/check-hosted-wiki.cjs"
+    )
+    run(["node", check])
 finally:
     for server in servers:
         server.terminate()

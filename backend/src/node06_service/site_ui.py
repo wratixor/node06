@@ -43,7 +43,10 @@ def sites_style():
 main{max-width:1100px}.columns{display:grid;grid-template-columns:1fr 1.5fr;gap:2rem}
 a{color:#b9e5ec}ul{padding-left:1.3rem}li{margin:.6rem 0}li button{text-align:left}
 #home-form{border:1px solid #455868;padding:1rem;margin:1.5rem 0}
-#home-form input[type=checkbox]{width:auto}
+#home-form input[type=checkbox],#git-source input[type=checkbox]{width:auto}
+#git-source{border:1px solid #455868;padding:1rem;margin:1rem 0}
+#git-source summary{overflow-wrap:anywhere}
+#git-source form{margin:1rem 0}#git-source pre{max-height:24rem;overflow:auto}
 #home-form fieldset{min-width:0;margin:1rem 0;border:1px solid #455868}
 #home-form .home-link{background:#10151d}#home-form textarea{min-height:5rem}
 #home-conflict{border:2px solid #e4bd79;padding:1rem}
@@ -60,6 +63,15 @@ textarea{min-height:8rem}#proof{font-size:.85rem}pre{white-space:pre-wrap;overfl
 def home_script():
     return Response(
         files("node06_service").joinpath("ui/home.js").read_text(encoding="utf-8"),
+        media_type="application/javascript",
+        headers=HEADERS,
+    )
+
+
+@router.get("/source.js")
+def source_script():
+    return Response(
+        files("node06_service").joinpath("ui/source.js").read_text(encoding="utf-8"),
         media_type="application/javascript",
         headers=HEADERS,
     )
