@@ -1793,8 +1793,11 @@ First-party `/profile-sync/` adds private bounded export and read-only compariso
 of color preference, point subscriptions, favorites and public own-point references.
 The strict source-aware packet includes no credentials, roles, bans, trust, votes,
 bodies or influence. No URLs are fetched, state applied or account linked.
-Owner's remaining invitation/conflict questions are pending; the implemented
-foundation does not choose an automatic merge or trust an unsigned claimed source.
+Owner approved bilateral one-time invitation confirmation, revocation from either
+account and automatic fresher-change resolution on 25 October. These are next-stage
+requirements; the implemented foundation does not apply changes or authenticate
+an unsigned claimed source. Per-item freshness and deletion tracking must precede
+automatic application.
 Contract: [PROFILE-PACKETS-V1](PROFILE-PACKETS-V1.md). No new migration/dependency.
 
 Separate wiki content branch adds four RU/EN Godot stage pairs, index pair and
