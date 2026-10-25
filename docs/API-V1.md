@@ -402,3 +402,10 @@ A site ban changes publication/visibility only in that site; server restrictions
 apply everywhere. Quarantine reads require a current session and scope membership
 or moderator authority; no new anonymous bridge capability. Publication may
 return `quarantined:true,quarantine_scope:…`. [Contract](SCOPED-BANS-V1.md).
+
+
+Home presentation capability `home_translations` extends the existing site-home
+API with `default_language` and a bounded `translations` map of complete layouts.
+Source precedence applies to the complete document; no graph locale/filter or
+point-ID mapping is added. See [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md) for format,
+limits and compatibility. No database migration is added by this extension.

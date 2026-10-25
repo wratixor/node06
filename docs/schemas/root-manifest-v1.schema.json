@@ -30,6 +30,50 @@
       "title": "RootHomeBlock",
       "type": "object"
     },
+    "RootHomeContent": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "introduction": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Introduction",
+          "type": "string"
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/RootHomeBlock"
+          },
+          "maxItems": 12,
+          "title": "Blocks",
+          "type": "array"
+        },
+        "entrance_label": {
+          "default": "Entrance point",
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Entrance Label",
+          "type": "string"
+        },
+        "all_sites_label": {
+          "default": "All sites",
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "All Sites Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "RootHomeContent",
+      "type": "object"
+    },
     "RootHomeLink": {
       "additionalProperties": false,
       "properties": {
@@ -94,6 +138,40 @@
           "maxItems": 12,
           "title": "Blocks",
           "type": "array"
+        },
+        "entrance_label": {
+          "default": "Entrance point",
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Entrance Label",
+          "type": "string"
+        },
+        "all_sites_label": {
+          "default": "All sites",
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "All Sites Label",
+          "type": "string"
+        },
+        "default_language": {
+          "default": "und",
+          "maxLength": 35,
+          "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$",
+          "title": "Default Language",
+          "type": "string"
+        },
+        "translations": {
+          "maxProperties": 8,
+          "patternProperties": {
+            "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$": {
+              "$ref": "#/$defs/RootHomeContent"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 35
+          },
+          "title": "Translations",
+          "type": "object"
         }
       },
       "required": [

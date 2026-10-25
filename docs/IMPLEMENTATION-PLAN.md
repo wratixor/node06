@@ -1726,7 +1726,7 @@ opt-in15-minute polling are the active implementation packet. Existing operator
 sources retain their deploy authority. Source control requires account/site-owner
 and repository proof; a manifest site ID alone grants no authority.
 
-The owner requested a later home-page redesign with JS-switched translations:
+The owner requested a home-page redesign with JS-switched translations:
 [HOME-LANGUAGES-PLAN](HOME-LANGUAGES-PLAN.md). Each home language selects its own labels **and link targets**, e.g. lore-ru vs
 lore-en. Existing point IDs/URLs are preserved; the buttons deliberately navigate
 to different independent points for each language. No graph locale partition.
@@ -1736,3 +1736,28 @@ Full backend run292 passed; final focused source cases, online migration/rollbac
 installed-wheel HTTPS UI, lost-response accept, mobile source preview, static51-root
 navigation, build, protocol/clipboard and Ruff/format passed. The GitHub loader
 also read the real public wiki commit without writes. Production remains unchanged.
+
+
+### 25 October 2026 — complete home translations
+
+Implemented the accepted [home-language packet](HOME-LANGUAGES-PLAN.md): full
+HomePage variants in owner settings and Git manifest, bounded across the entire
+bundle, with local aliases resolved in every translation. The same script-free
+renderer serves hosted, read-only iframe and static home. JS changes a whole
+variant including its point destinations and HTML lang, with per-entrance local
+preference, browser-language fallback and usable default HTML without JS.
+The owner editor keeps unsaved variants when switching and preserves source
+priority and settings-revision conflicts. Existing independent graph IDs, edges,
+semantic digests and vote/support rules are unchanged. No new migration.
+
+Static NODE06 includes separate ru/en home variants; other content manifests
+need their own explicit translations after the engine update. No automatic
+translation pairing or production publication is implied.
+
+Validation: full disposable-PostgreSQL run309 passed; final focused86 passed
+including the two added size/language-boundary cases and the final compatibility
+validator. Full installed-wheel HTTPS acceptance, owner language editor,
+third-language/default/no-JS/storage-denial/embed/mobile cases, static51-root
+navigation, build, JS syntax, protocol/clipboard and backend Ruff/format passed.
+No production deployment. Existing builder-wide lint debt remains outside this
+packet; changed new Python sections add no lint diagnostics.

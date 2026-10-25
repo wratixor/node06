@@ -18,7 +18,7 @@ from pydantic import (
     model_validator,
 )
 
-from .home_page import HomeBlock, HomeLink, HomePage
+from .home_page import HomeBlock, HomeContent, HomeLink, HomePage, Language
 
 SITE = re.compile(r"s_[0-9a-f]{32}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -106,8 +106,13 @@ class RootHomeBlock(HomeBlock):
     links: list[RootHomeLink] = Field(default_factory=list, max_length=8)
 
 
+class RootHomeContent(HomeContent):
+    blocks: list[RootHomeBlock] = Field(default_factory=list, max_length=12)
+
+
 class RootHomePage(HomePage):
     blocks: list[RootHomeBlock] = Field(default_factory=list, max_length=12)
+    translations: dict[Language, RootHomeContent] = Field(default_factory=dict, max_length=8)
 
 
 class RootManifest(StrictModel):
@@ -170,7 +175,11 @@ class RootCandidate:
             "commit_sha": self.commit_sha,
             "manifest_digest": self.manifest_digest,
             "candidate_digest": self.digest,
-            "home_block_count": len(self.home_page.blocks) if self.home_page else None,
+            "home_block_count": (
+                sum(len(page.blocks) for page in self.home_page.variants())
+                if self.home_page
+                else None
+            ),
             "points": [
                 {
                     "id": p.id,
@@ -281,14 +290,15 @@ def prepare_candidate(
     home_page = None
     if manifest.home_page is not None:
         home_value = manifest.home_page.model_dump()
-        for block in home_value["blocks"]:
-            for link in block["links"]:
-                target = link.get("point_id")
-                if target and target.startswith("local/"):
-                    linked = ids.get(target.removeprefix("local/"))
-                    if linked is None:
-                        raise RootImportError("HOME_LOCAL_TARGET_MISSING")
-                    link["point_id"] = linked
+        for variant in [home_value, *home_value["translations"].values()]:
+            for block in variant["blocks"]:
+                for link in block["links"]:
+                    target = link.get("point_id")
+                    if target and target.startswith("local/"):
+                        linked = ids.get(target.removeprefix("local/"))
+                        if linked is None:
+                            raise RootImportError("HOME_LOCAL_TARGET_MISSING")
+                        link["point_id"] = linked
         try:
             home_page = HomePage.model_validate(home_value)
         except ValueError:

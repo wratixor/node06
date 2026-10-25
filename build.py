@@ -6,6 +6,7 @@ import html
 import json
 import math
 import re
+import runpy
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -296,6 +297,7 @@ def shell(title: str, body: str, lang: str, page_kind: str, point_id: str = "") 
 <main>{body}</main>
 <footer>node06 · static root field · shared social service · <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a> · <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">source</a></footer>
 <script src="{asset_url("personal-feed.js")}" defer></script>
+<script src="{asset_url("home-languages.js")}" defer></script>
 <script src="{asset_url("site.js")}" defer></script>
 <script src="{asset_url("node06-client.js")}" defer></script>
 <script src="{asset_url("point-picker.js")}" defer></script>
@@ -398,13 +400,41 @@ def build() -> None:
 <p>A social layer is planned: registration, user-created points, support and opposition, delegation of influence to other people, and an emergent map of collective perception.</p>
 <p>User influence and social colour are not computed in the root field yet. Root points receive a versioned six-component seed layout; axis names are not shown on the map. The future backend will add coordinates emerging from user reactions without hiding the origin of this initial model.</p>
 <p>NODE06 is based on <a href="https://github.com/wratixor/hexrelatum" target="_blank" rel="noopener noreferrer">Hexrelatum</a>. NODE06 source code and its licensing map are published in the <a href="https://github.com/wratixor/node06" target="_blank" rel="noopener noreferrer">repository</a>.</p></section>'''
-    # Bilingual entrance. Languages are separate points, not localization identities.
-    welcome = '''<section id="start-page" class="start-page"><div class="eyebrow">NODE06 / ROOT ERA</div><h1>NODE06</h1>
-<div class="welcome-links"><a href="https://neocities.org/site/node06" target="_blank" rel="noopener noreferrer">Neocities profile ↗</a></div>
-<div class="welcome-grid">
-<section class="welcome-card" lang="en"><h2>Welcome to the field.</h2><p>NODE06 is an experimental graph of points. A point may be a word, a thought, a link or a longer text. The map comes first; texts are opened from inside it. Roots are published from Git. Shared accounts, support and revision proposals use the connected service.</p><div class="welcome-links"><a href="/?p=node06-en&open=node06-en">NODE06</a><a href="/?p=point-en&open=point-en">POINT</a><a href="/?p=field-en&open=field-en">FIELD</a><a href="/?p=root-era-en&open=root-era-en">ROOT ERA</a></div></section>
-<section class="welcome-card" lang="ru"><h2>Добро пожаловать в поле.</h2><p>NODE06 — экспериментальный граф точек. Точкой может быть слово, мысль, ссылка или длинный текст. Карта первична, тексты открываются из неё. Корни публикуются из Git. Общие аккаунты, подписки и голосования работают через подключённый сервер.</p><div class="welcome-links"><a href="/?p=node06-ru&open=node06-ru">NODE06</a><a href="/?p=point-ru&open=point-ru">ТОЧКА</a><a href="/?p=field-ru&open=field-ru">ПОЛЕ</a><a href="/?p=root-era-ru&open=root-era-ru">КОРНЕВАЯ ЭПОХА</a></div></section>
-</div></section>'''
+    # Full home translations; destinations remain independent points in one graph.
+    render_home_layout = runpy.run_path(
+        str(ROOT / "backend/src/node06_service/home_render.py")
+    )["render_layout"]
+    def home_variant(language):
+        russian = language == "ru"
+        return {
+            "title": "NODE06",
+            "introduction": (
+                "NODE06 — экспериментальный граф точек. Карта первична, тексты открываются из неё. "
+                "Корни публикуются из Git. Аккаунты, подписки и голосования работают "
+                "через подключённый сервер."
+                if russian else
+                "NODE06 is an experimental graph of points. The map comes first; "
+                "texts open inside it. Roots are published from Git. Accounts, support "
+                "and revision proposals use the connected service."
+            ),
+            "all_sites_label": "Все сайты" if russian else "All sites",
+            "blocks": [{
+                "title": "Добро пожаловать в поле." if russian else "Welcome to the field.",
+                "links": [{"label": label, "point_id": point + "-" + language} for point, label in (
+                    ("node06", "NODE06"), ("point", "ТОЧКА" if russian else "POINT"),
+                    ("field", "ПОЛЕ" if russian else "FIELD"),
+                    ("root-era", "КОРНЕВАЯ ЭПОХА" if russian else "ROOT ERA"))] + [
+                    {"label": "Установка" if russian else "Setup",
+                     "url": "https://node06.neocities.org/setup/" + ("" if russian else "en/")},
+                    {"label": "Профиль Neocities" if russian else "Neocities profile",
+                     "url": "https://neocities.org/site/node06"},
+                ] + ([{"label": "Все сайты" if russian else "All sites",
+                       "url": service_origin() + "/?p=all-sites&open=all-sites"}]
+                     if service_origin() else []),
+            }],
+        }
+    welcome = render_home_layout({**home_variant("en"), "default_language": "en",
+                                  "translations": {"ru": home_variant("ru")}}, None)
     root = welcome + '<section id="root-field" hidden>' + field_body + '</section>'
     write(DIST / "index.html", shell("NODE06", root, "en", "field"))
     all_rows = "".join(

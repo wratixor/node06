@@ -2,7 +2,7 @@
 window.node06HomeEditor=({api,run,status})=>{
  const get=id=>document.getElementById(id);
  const form=get('home-form'),blocks=get('home-blocks');
- let site=null,latest=null,enabled=false,points=[];
+ let site=null,latest=null,enabled=false,points=[],variants={},language="und",defaultLanguage="und";
  function element(tag,text){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;}
  function button(text,action){const node=element('button',text);node.type='button';node.addEventListener('click',action);return node;}
  function field(parent,label,value,max,multiline=false){
@@ -15,8 +15,13 @@ window.node06HomeEditor=({api,run,status})=>{
   get('home-fields').hidden=auto;
   get('home-fields').querySelectorAll('input,textarea,select,button').forEach(node=>{node.disabled=!enabled||auto;});
   get('home-title').required=!auto;
-  get('home-add').disabled=!enabled||auto||blocks.children.length>=12;
-  get('home-count').textContent='Блоков: '+blocks.children.length+' / 12';
+  const total=blocks.children.length+Object.entries(variants).filter(([key])=>key!==language).reduce((n,[,value])=>n+(value.blocks||[]).length,0);
+  get('home-add').disabled=!enabled||auto||total>=12;
+  get('home-language-add').disabled=!enabled||auto||Object.keys(variants).length>=9;
+  get('home-language-remove').disabled=!enabled||auto||language===defaultLanguage;
+  get('home-language-default').disabled=!enabled||auto||language===defaultLanguage;
+  get('home-count').textContent='Блоков всего: '+total+' / 12';
+  get('home-language-note').textContent='Основной язык: '+defaultLanguage;
   for(const row of blocks.querySelectorAll('.home-link')){
    const kind=row.querySelector('.home-link-kind').value;
    row.querySelector('.home-link-point').disabled=!enabled||auto||kind!=='point';
@@ -65,22 +70,50 @@ window.node06HomeEditor=({api,run,status})=>{
   const page=current.home_page;
   get('home-source').value=current.home_page_source||(page?'ui':'auto');
   const names={git:'из репозитория',ui:'из настроек сайта',welcome:'приветствие'};
+  const gitBlocks=current.git_home_page?[current.git_home_page,...Object.values(current.git_home_page.translations||{})].reduce((n,value)=>n+(value.blocks||[]).length,0):0;
   get('home-source-note').textContent='Сейчас показывается: '+(names[current.effective_home_source]||'приветствие')+
-   '. '+(current.git_home_page?'В Git опубликовано блоков: '+current.git_home_page.blocks.length+'.':'Главная из Git ещё не опубликована.')+
+   '. '+(current.git_home_page?'В Git опубликовано блоков: '+gitBlocks+'.':'Главная из Git ещё не опубликована.')+
    ' Для редактирования блоков здесь выберите «Из настроек сайта».';
-  get('home-title').value=page?.title||current.display_name||'Главная';
-  get('home-introduction').value=page?.introduction||'';
-  blocks.replaceChildren();for(const block of page?.blocks||[])addBlock(block);
+  defaultLanguage=page?.default_language||'und';language=defaultLanguage;
+  const {translations={},default_language:ignored,...base}=page||{title:current.display_name||'Главная'};
+  variants=structuredClone({[defaultLanguage]:base,...translations});
+  showVariant();
   get('home-preview').href='/sites/'+encodeURIComponent(current.id)+'/';controls();
  }
- function read(){
-  if(get('home-source').value!=='ui')return site?.home_page??null;
+ function readVariant(){
   return {title:get('home-title').value,introduction:get('home-introduction').value,
+   entrance_label:get('home-entrance-label').value,all_sites_label:get('home-all-sites-label').value,
    blocks:[...blocks.children].map(node=>({title:node.querySelector('.home-block-title').value,
     description:node.querySelector('.home-block-description').value,
     links:[...node.querySelector('.home-links').children].map(row=>({label:row.querySelector('.home-link-label').value,
      ...(row.querySelector('.home-link-kind').value==='point'?{point_id:row.querySelector('.home-link-point').value}:{url:row.querySelector('.home-link-url').value})}))}))};
  }
+ function showVariant(){
+  const value=variants[language];
+  const select=get('home-language');select.replaceChildren();
+  for(const key of Object.keys(variants)){const option=element('option',key);option.value=key;select.append(option);}select.value=language;
+  get('home-title').value=value.title||'';get('home-introduction').value=value.introduction||'';
+  get('home-entrance-label').value=value.entrance_label||(language==='ru'?'Точка входа':'Entrance point');
+  get('home-all-sites-label').value=value.all_sites_label||(language==='ru'?'Все сайты':'All sites');
+  blocks.replaceChildren();for(const block of value.blocks||[])addBlock(block);controls();
+ }
+ function remember(){variants[language]=readVariant();}
+ function read(){
+  if(get('home-source').value!=='ui')return site?.home_page??null;
+  remember();
+  return {...variants[defaultLanguage],default_language:defaultLanguage,
+   translations:Object.fromEntries(Object.entries(variants).filter(([key])=>key!==defaultLanguage))};
+ }
+ get('home-language').addEventListener('change',()=>{remember();language=get('home-language').value;showVariant();});
+ get('home-language-add').addEventListener('click',()=>{
+  const tag=get('home-new-language').value.trim();
+  if(!/^[a-z]{2,8}(-[a-z0-9]{1,8})*$/i.test(tag)||tag.length>35){status('Укажите языковую метку, например ru, en или pt-BR.');return;}
+  if(Object.keys(variants).some(key=>key.toLowerCase()===tag.toLowerCase())){status('Этот язык уже добавлен.');return;}
+  if(Object.keys(variants).length>=9)return;
+  remember();language=tag;variants[tag]={title:site.display_name||'Главная',blocks:[]};get('home-new-language').value='';showVariant();
+ });
+ get('home-language-default').addEventListener('click',()=>{remember();defaultLanguage=language;controls();});
+ get('home-language-remove').addEventListener('click',()=>{if(language===defaultLanguage)return;delete variants[language];language=defaultLanguage;showVariant();});
  async function save(expected=site?.settings_revision){
   if(!site)return;
   try{
@@ -95,7 +128,7 @@ window.node06HomeEditor=({api,run,status})=>{
   }
  }
  form.addEventListener('submit',event=>{event.preventDefault();run(()=>save());});
- get('home-add').addEventListener('click',()=>{if(blocks.children.length<12)addBlock();});
+ get('home-add').addEventListener('click',()=>{if(!get('home-add').disabled)addBlock();});
  get('home-source').addEventListener('change',controls);
  get('home-use-server').addEventListener('click',()=>{if(latest)fill(latest);});
  get('home-overwrite').addEventListener('click',()=>run(()=>latest&&save(latest.settings_revision)));

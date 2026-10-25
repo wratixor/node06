@@ -20,8 +20,11 @@
     }
   ],
   "home_page": {
-    "title": "Смыслы / Meanings",
-    "introduction": "Две темы в общем пространстве, не языковые разделы.",
+    "default_language": "ru",
+    "title": "Смыслы",
+    "introduction": "Независимые точки в общем пространстве.",
+    "entrance_label": "Точка входа",
+    "all_sites_label": "Все сайты",
     "blocks": [
       {
         "title": "Наблюдение",
@@ -31,16 +34,24 @@
             "point_id": "local/observation"
           }
         ]
-      },
-      {
-        "title": "Действие",
-        "links": [
+      }
+    ],
+    "translations": {
+      "en": {
+        "title": "Meanings",
+        "introduction": "Independent points in one shared space.",
+        "blocks": [
           {
-            "label": "Open action",
-            "point_id": "local/action"
+            "title": "Action",
+            "links": [
+              {
+                "label": "Open action",
+                "point_id": "local/action"
+              }
+            ]
           }
         ]
       }
-    ]
+    }
   }
 }
