@@ -1,3 +1,5 @@
 Before users exist, there are only root points and their links. There is no weight, trust, coordinate, or social color. See [NODE06](md://node06-en), [field](md://field-en), and [observation](md://observation-en).
 
 [Точка на русском](md://root-era-ru)
+
+[Stage 3. Repository roots and home pages](md://devlog-git-en)

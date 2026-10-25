@@ -11,6 +11,16 @@
     {"id": "sa-technique", "stat": "technique", "name": {"ru": "Техника", "en": "Technique"}, "visibility": "internal", "base_weight": 1, "coordinates": [5, 5, 5, 5, 1, 9]}
   ],
   "anchor_weights": {
+    "devlogs-ru": [4, 4, 4, 4, 4, 4],
+    "devlogs-en": [4, 4, 4, 4, 4, 4],
+    "devlog-space-ru": [4, 4, 4, 4, 4, 4],
+    "devlog-space-en": [4, 4, 4, 4, 4, 4],
+    "devlog-embed-ru": [4, 4, 4, 4, 4, 4],
+    "devlog-embed-en": [4, 4, 4, 4, 4, 4],
+    "devlog-git-ru": [4, 4, 4, 4, 4, 4],
+    "devlog-git-en": [4, 4, 4, 4, 4, 4],
+    "devlog-server-ru": [4, 4, 4, 4, 4, 4],
+    "devlog-server-en": [4, 4, 4, 4, 4, 4],
     "charter-en": [3, 5, 2, 6, 3, 5], "charter-ru": [3, 5, 2, 6, 3, 5],
     "curiosity-en": [2, 6, 3, 5, 6, 2], "curiosity-ru": [2, 6, 3, 5, 6, 2],
     "field-en": [3, 5, 2, 6, 6, 2], "field-ru": [3, 5, 2, 6, 6, 2],
@@ -39,6 +49,11 @@
     "welcome": [4, 4, 4, 4, 4, 4]
   },
   "language_pairs": [
+    ["devlogs-ru", "devlogs-en"],
+    ["devlog-space-ru", "devlog-space-en"],
+    ["devlog-embed-ru", "devlog-embed-en"],
+    ["devlog-git-ru", "devlog-git-en"],
+    ["devlog-server-ru", "devlog-server-en"],
     ["charter-ru", "charter-en"], ["curiosity-ru", "curiosity-en"],
     ["field-ru", "field-en"], ["inward-ru", "inward-en"],
     ["leave-better-ru", "leave-better-en"], ["links-ru", "links-en"],

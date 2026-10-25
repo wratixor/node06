@@ -431,6 +431,16 @@ def build() -> None:
                 ] + ([{"label": "Все сайты" if russian else "All sites",
                        "url": service_origin() + "/?p=all-sites&open=all-sites"}]
                      if service_origin() else []),
+            }, {
+                "title": "Журнал разработки" if russian else "Development log",
+                "description": (
+                    "Устройство движка, подключение вики и свой сервер."
+                    if russian else "The engine, wiki integration and your own server."
+                ),
+                "links": [{
+                    "label": "Читать этапы" if russian else "Read the stages",
+                    "point_id": "devlogs-" + language,
+                }],
             }],
         }
     welcome = render_home_layout({**home_variant("en"), "default_language": "en",

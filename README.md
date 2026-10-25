@@ -10,6 +10,10 @@ Self-hosting and connection modes: [English installation guide](docs/SELF-HOSTIN
 Accounts, site management and community links in static copies use `serviceOrigin`
 from `static/connection.json`; hosted copies use their configured management origin.
 
+Development log: [English index](content/en/devlogs-en.md), [Русский указатель](content/ru/devlogs-ru.md).
+Four stage posts cover the shared graph, embedding, Git roots and independent servers.
+These are ordinary linked points; the home page selects the matching index.
+
 ## Repository structure
 
 ```text
