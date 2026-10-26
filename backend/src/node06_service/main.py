@@ -20,6 +20,7 @@ from .db import Database
 from .directory import router as directory_router
 from .directory_ui import router as directory_ui_router
 from .editor_ui import router as editor_router
+from .embed_subscription_api import router as embed_subscription_router
 from .feed_api import router as feed_router
 from .geometry_api import router as geometry_router
 from .hosted import management_path, register_hosted, request_origin
@@ -114,6 +115,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(profile_packet_router)
     app.include_router(profile_link_router)
     app.include_router(profile_sync_router)
+    app.include_router(embed_subscription_router)
     app.include_router(site_ui_router)
 
     @app.exception_handler(SiteRegistryError)
@@ -210,10 +212,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "/api/v1/auth/",
                     "/api/v1/me",
                     "/api/v1/profile-links",
+                    "/embed-subscriptions",
                     "/editor/confirm/",
                     "/api/v1/moderation",
                     "/api/v1/directory",
                 )
+            )
+            or (
+                request.url.path.startswith("/bridge/v1/") and "/subscriptions/" in request.url.path
             )
             or request.url.path.endswith("/manage")
             or (request.url.path.startswith("/api/v1/sites/") and "/source" in request.url.path)
@@ -226,7 +232,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             or (request.url.path.startswith("/api/v1/sites") and request.method != "GET")
         ):
             response.headers["Cache-Control"] = "no-store"
-            response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+            if not request.url.path.startswith("/embed-subscriptions/"):
+                response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
             response.headers["X-Frame-Options"] = "DENY"
         return response
 
@@ -301,6 +308,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "home_translations",
                 "private_profile_packets",
                 "bilateral_profile_links",
+                "scoped_embed_subscriptions",
                 "cross_server_profile_sync",
                 "operator_root_publication",
                 "owner_git_sources",

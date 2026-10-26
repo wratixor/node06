@@ -1,6 +1,8 @@
 # Public iframe API bridge v1
 
-Implemented source, not live Neocities acceptance. This is the small transport
+Implemented source, not live Neocities acceptance. The separate
+[subscription-only consent extension](EMBED-SUBSCRIPTIONS-V1.md) adds a private
+capability channel; the anonymous read endpoints described here remain read-only. This is the small transport
 iframe, separate from the full wiki UI. It reads the same core-root projection
 and active site welcomes as the hosted wiki, including accepted Git roots. It is not a generic HTTP proxy,
 authenticated embed, semantic editor or completed social API.

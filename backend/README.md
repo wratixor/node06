@@ -202,3 +202,12 @@ stay control-only; passwords, roles, bans, author blocks, trust and influence ar
 not replicated. The application starts its bounded sync worker automatically
 when a database is configured. Deploy/migrate through the existing operator path;
 source tests do not establish production installation or account linking.
+
+Static-site subscription actions: [EMBED-SUBSCRIPTIONS-V1](../docs/EMBED-SUBSCRIPTIONS-V1.md),
+migration `0023_embed_subscriptions`, capability `scoped_embed_subscriptions`.
+A separate explicit15-minute grant permits point-subscription state/toggles only;
+no global cookie, role, author trust or generic write authority reaches a parent.
+The account page can revoke these grants. Partitioned cookie restoration is
+optional; denied storage uses iframe memory and remaining-consent reconnection.
+Apply the migration/server release before relying on the updated static controls.
+General authenticated full-iframe operations remain outside this limited packet.

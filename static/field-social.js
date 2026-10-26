@@ -8,18 +8,41 @@
   function node(tag,value,parent){const item=document.createElement(tag);if(value)item.textContent=value;if(parent)parent.append(item);return item;}
   function refreshActions(){for(const container of document.querySelectorAll('.point-social'))container.dispatchEvent(new Event('node06:refresh'));}
   const operations=new Map();
+  let authorization=null;
+  async function connectSubscriptions(popup){
+    if(authorization)throw Error('AUTHORIZATION_PENDING');
+    const state=crypto.randomUUID().replaceAll('-','');
+    let finish,timer,watch,listener,connected=false;
+    const done=new Promise((resolve,reject)=>{finish={resolve,reject};});
+    authorization={popup};
+    try{
+      const prepared=await window.node06SubscriptionRequest('subscription.prepare',{state});
+      const url=new URL(prepared.url),expected=window.node06ManagementOrigin?.()||body.dataset.managementOrigin;
+      if(url.origin!==expected||url.pathname!=='/embed-subscriptions/'+prepared.id+'/'||prepared.state!==state)throw Error('INVALID_RESPONSE');
+      listener=async event=>{
+        const m=event.data;if(event.source!==popup||event.origin!==expected||m?.protocol!=='node06-subscriptions/1'||m.id!==prepared.id||m.state!==state||!/^[A-Za-z0-9_-]{43}$/.test(m.code||''))return;
+        window.removeEventListener('message',listener);
+        try{await window.node06SubscriptionRequest('subscription.redeem',{id:prepared.id,state,code:m.code});popup.postMessage({protocol:'node06-subscriptions/1',kind:'done',id:prepared.id,state},expected);finish.resolve();}
+        catch(error){finish.reject(error);}
+      };
+      window.addEventListener('message',listener);popup.location.replace(url.href);
+      timer=setTimeout(()=>finish.reject(Error('AUTHORIZATION_TIMEOUT')),300000);
+      watch=setInterval(()=>{if(popup.closed)finish.reject(Error('AUTHORIZATION_CANCELLED'));},500);
+      await done;connected=true;
+    }finally{clearTimeout(timer);clearInterval(watch);if(listener)window.removeEventListener('message',listener);authorization=null;if(!connected&&!popup.closed)popup.close();}
+  }
   function mount(container,id,displayed={}){
     if(displayed.deleted){container.remove();return;}
     container.className='point-social';container.dataset.pointId=id;
     const author=node('p','',container);author.className='point-author';
     const tools=node('div','',container);tools.className='point-actions';tools.setAttribute('role','toolbar');tools.setAttribute('aria-label',text('Point actions','Действия с точкой'));
     const status=node('p','',container);status.className='point-action-status';status.setAttribute('role','status');status.hidden=true;
-    let editable=false,ticket=0,session=null,own=null,favorite=false,pin=null;
+    let editable=false,ticket=0,session=null,own=null,favorite=false,pin=null,subscriptionKnown=false;
     if(!operations.has(id))operations.set(id,{busy:false,receipt:null});
     const operation=operations.get(id);
     const controls={},alive=n=>n===ticket&&container.isConnected;
     const origin=()=>window.node06ManagementOrigin?.()||body.dataset.managementOrigin||(body.dataset.hosted==='true'&&!body.dataset.searchSite?location.origin:'');
-    const firstParty=()=>body.dataset.hosted==='true'&&!body.dataset.searchSite&&origin()===location.origin;
+    const firstParty=()=>body.dataset.hosted==='true'&&window===window.top&&origin()===location.origin;
     const labels={copy:[text('Copy link','Скопировать ссылку')],remember:[text('Remember point','Запомнить точку'),text('Remove from collection','Убрать из подборки')],edit:[text('Edit point','Редактировать точку')],support:[text('Subscribe','Подписаться'),text('Unsubscribe','Отписаться')],block:[text('Block','Заблокировать'),text('Unblock','Снять блокировку')],related:[text('New related post','Новый связанный пост')],favorite:[text('Add to favorites','Добавить в избранное'),text('Remove from favorites','Удалить из избранного')]};
     function address(kind){
       const ownEdit=kind==='edit'&&firstParty()&&session?.user_id===displayed.author?.id;
@@ -61,21 +84,22 @@
         const same=kind==='favorite'||kind==='related'||kind==='edit'||kind==='copy'||kind==='remember'?true:kind==='support'?own?.subscription?.content_digest===pin?.content_digest&&own?.subscription?.revision_id===pin?.revision_id:own?.block?.content_digest===pin?.content_digest&&own?.block?.revision_id===pin?.revision_id;
         control.title=labels[kind][active?1:0]||labels[kind][0];
         if(active&&!same&&kind!=='favorite')control.title=text('Confirm for current version','Подтвердить для текущей версии');
-        control.setAttribute('aria-label',control.title);control.setAttribute('aria-pressed',String(active));control.classList.toggle('active',active);
+        if(kind==='support'&&!firstParty()&&!subscriptionKnown)control.title=text('Connect account to subscribe','Подключить аккаунт для подписки');
+        control.setAttribute('aria-label',control.title);control.setAttribute('aria-pressed',kind==='support'&&!firstParty()&&!subscriptionKnown?'mixed':String(active));control.classList.toggle('active',active);
         if(control.tagName==='BUTTON')control.disabled=['copy','remember'].includes(kind)?false:operation.busy||!pin||Boolean(operation.receipt&&operation.receipt.kind!==kind);
         else if(origin()){control.href=address(kind);if(kind==='edit'&&!editable)control.removeAttribute('href');}
         if(kind==='edit'){control.setAttribute('aria-disabled',String(!editable));control.tabIndex=editable?0:-1;}
       }
     }
     for(const kind of ['support','block','related','favorite','edit','copy','remember']){
-      const link=kind==='related'||kind==='edit'||(!firstParty()&&!['copy','remember'].includes(kind)),control=node(link?'a':'button','',tools);controls[kind]=control;control.dataset.action=kind;
+      const link=kind==='related'||kind==='edit'||(!firstParty()&&(!['copy','remember','support'].includes(kind)||(kind==='support'&&body.dataset.hosted==='true'))),control=node(link?'a':'button','',tools);controls[kind]=control;control.dataset.action=kind;
       if(link){if(origin())control.href=address(kind);control.target='_blank';control.rel='noopener noreferrer';}
       else control.type='button';
       if(kind==='related')control.classList.add('point-create-related');
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
       const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',icons[kind]);svg.append(path);control.append(svg);
       if(kind==='edit')control.addEventListener('click',event=>{if(!editable)event.preventDefault();});
-      if(!link)control.addEventListener('click',()=>['copy','remember'].includes(kind)?localAction(kind):void act(kind));
+      if(!link)control.addEventListener('click',()=>['copy','remember'].includes(kind)?localAction(kind):!firstParty()&&kind==='support'?externalClick():void act(kind));
     }
     const report=node('a','⚑',tools);report.className='point-report';report.title=text('Report point','Пожаловаться на точку');report.setAttribute('aria-label',report.title);
     async function reportAddress(){
@@ -106,7 +130,7 @@
         if(summary.schema!=='node06-point-social/1'||summary.id!==id)throw new Error('INVALID_RESPONSE');
         displayed={...displayed,author:summary.author};editable=!summary.protected;
         setAuthor(summary.author);pin={revision_id:summary.revision_id,content_digest:summary.content_digest};
-        if(firstParty())await personal();if(!alive(sequence))return;
+        if(firstParty())await personal();else{try{own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;}catch{subscriptionKnown=false;own=null;}}if(!alive(sequence))return;
         if(displayed.content_digest&&(displayed.content_digest!==pin.content_digest||displayed.revision_id!==pin.revision_id)){
           pin=null;fail(text('Text changed. Open versions before acting.','Текст изменился. Откройте версии перед действием.'));
           const link=node('a',text('Versions','Версии'),status);link.href=address('support');link.target='_blank';link.rel='noopener noreferrer';positionStatus();
@@ -114,11 +138,37 @@
         state();
       }catch(_){if(alive(sequence)){pin=null;state();fail(text('Actions unavailable. Reopen this point to retry.','Действия недоступны. Откройте точку заново.'));}}
     }
+    function externalClick(){
+      if(operation.busy||!pin)return;
+      if(authorization){authorization.popup.focus();fail(text('Confirm access in the connection window.','Подтвердите доступ в окне подключения.'));return;}
+      let popup=null;
+      if(!subscriptionKnown){popup=window.open('about:blank','node06-subscriptions','popup,width=520,height=620');if(!popup){fail(text('Allow the connection window and click again.','Разрешите окно подключения и нажмите ещё раз.'));return;}}
+      void externalAct(popup);
+    }
+    async function externalAct(popup){
+      operation.busy=true;state();status.hidden=true;let committed=false;
+      try{
+        if(popup)await connectSubscriptions(popup);
+        if(!container.isConnected&&new URLSearchParams(location.search).get('p')!==id)return;
+        own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;
+        const active=Boolean(own.subscription?.active&&own.subscription.content_digest===pin.content_digest&&own.subscription.revision_id===pin.revision_id);
+        if(operation.receipt&&operation.receipt.connection!==own.connection){operation.receipt=null;throw Error('ACCOUNT_CHANGED');}
+        if(popup&&active){state();return;}
+        operation.receipt ||= {kind:'support',connection:own.connection,key:crypto.randomUUID(),subscription:{...pin,active:!active}};
+        await window.node06SubscriptionRequest('subscription.set',{point_id:id,key:operation.receipt.key,subscription:operation.receipt.subscription});
+        operation.receipt=null;committed=true;
+        own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});state();window.dispatchEvent(new Event('node06:reaction'));
+      }catch(error){
+        if(['SUBSCRIPTIONS_NOT_CONNECTED','SUBSCRIPTION_SITE_CHANGED'].includes(error.message)){subscriptionKnown=false;own=null;}
+        if(['POINT_REVISION_CHANGED','BALLOT_SWITCH_REQUIRED'].includes(error.message))operation.receipt=null;
+        fail(committed?text('Saved; reopen this point to refresh.','Сохранено; откройте точку заново для обновления.'):error.message==='SUBSCRIPTIONS_NOT_CONNECTED'?text('Access expired. Click again to reconnect.','Доступ истёк. Нажмите ещё раз для подключения.'):text('Subscription not confirmed. Retry the same button.','Подписка не подтверждена. Повторите ту же кнопку.'));
+      }finally{operation.busy=false;refreshActions();state();}
+    }
     async function act(kind){
       if(operation.busy||!pin)return;operation.busy=true;refreshActions();state();status.hidden=true;let committed=false;
       try{
         await personal();
-        if(!session){location.assign(address(kind));return;}
+        if(!session){fail(text('Sign in to change subscriptions.','Войдите, чтобы изменить подписку.'));const login=node('a',text('Sign in','Войти'),status);login.href=new URL('/account/',origin()).href;login.target='_blank';login.rel='noopener noreferrer';positionStatus();return;}
         const active=kind==='support'?Boolean(own?.subscription?.active&&own.subscription.content_digest===pin.content_digest&&own.subscription.revision_id===pin.revision_id):kind==='block'?Boolean(own?.block&&own.block.content_digest===pin.content_digest&&own.block.revision_id===pin.revision_id):favorite;
         const path=kind==='favorite'?`/me/favorites/${id}`:`/points/${id}/${kind==='support'?'subscription':'block'}`;
         const payload=kind==='favorite'?{active:!active}:{...pin,active:!active};
@@ -137,6 +187,7 @@
     void load();
   }
   window.renderNode06Social=mount;
+  window.addEventListener('focus',refreshActions);
   window.addEventListener('node06:clipboard',()=>{for(const item of document.querySelectorAll('.point-social'))item.dispatchEvent(new Event('node06:clipboard-state'));});
   let menu=null,menuSource=null;
   function closeMenu(restore=false){

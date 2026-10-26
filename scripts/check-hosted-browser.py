@@ -253,6 +253,7 @@ app.state.source_loader = fixture_source
         env["NODE06_BROWSER_EXECUTABLE"] = os.environ["NODE06_BROWSER_EXECUTABLE"]
     check = "scripts/check-hosted-wiki.cjs"
     for flag, script in (
+        ("NODE06_SUBSCRIPTIONS_ONLY", "scripts/check-embed-subscriptions.cjs"),
         ("NODE06_PROFILE_ONLY", "scripts/check-profile-packets.cjs"),
         ("NODE06_HOME_ONLY", "scripts/check-home-languages.cjs"),
         ("NODE06_SOURCE_ONLY", "scripts/check-git-sources.cjs"),
