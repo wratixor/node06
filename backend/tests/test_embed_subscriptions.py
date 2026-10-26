@@ -521,3 +521,76 @@ def test_two_registered_sites_use_one_account_and_subscription_store(access):
         ).status_code
         == 401
     )
+
+
+def test_static_favorite_reads_and_writes_same_native_bookmark(access):
+    a = access
+    token = established(a)
+    assert read(a, token).json()["favorite"] is False
+    native = a.owner.client.post(
+        "/api/v1/me/favorites/skills-ru",
+        json={"active": True},
+        headers={"Idempotency-Key": uuid4().hex},
+    )
+    assert native.status_code == 200, native.text
+    assert read(a, token).json()["favorite"] is True
+    payload = {
+        "parent_origin": PARENT,
+        "point_id": "skills-ru",
+        "active": False,
+        "key": uuid4().hex,
+    }
+    headers = {"Authorization": "Bearer " + token}
+    for _ in range(2):
+        result = a.peer.post(a.prefix + "favorite", json=payload, headers=headers)
+        assert result.status_code == 200, result.text
+    assert read(a, token).json()["favorite"] is False
+    assert a.owner.client.get("/api/v1/me/favorites").json()["items"] == []
+    payload.update(active=True, key=uuid4().hex)
+    assert a.peer.post(a.prefix + "favorite", json=payload, headers=headers).status_code == 200
+    assert [p["id"] for p in a.owner.client.get("/api/v1/me/favorites").json()["items"]] == [
+        "skills-ru"
+    ]
+    with a.db.connect() as c:
+        assert c.scalar(select(func.count()).select_from(subscriptions)) == 0
+        assert c.scalar(select(func.count()).select_from(user_trust)) == 0
+
+
+def test_static_favorites_keep_session_origin_and_schema_guards(access):
+    a = access
+    token = established(a)
+    payload = {"parent_origin": PARENT, "point_id": "skills-ru", "active": True, "key": uuid4().hex}
+    headers = {"Authorization": "Bearer " + token}
+    a.peer.cookies.clear()  # No bearer AND no optional bridge cookie must fail.
+    assert a.peer.post(a.prefix + "favorite", json=payload).status_code == 401
+    assert (
+        a.peer.post(
+            a.prefix + "favorite", json={**payload, "active": "yes"}, headers=headers
+        ).status_code
+        == 422
+    )
+    assert (
+        a.peer.post(
+            a.prefix + "favorite", json={**payload, "role": "admin"}, headers=headers
+        ).status_code
+        == 422
+    )
+    assert (
+        a.peer.post(
+            a.prefix + "favorite",
+            json={**payload, "parent_origin": "https://evil.example"},
+            headers=headers,
+        ).status_code
+        == 401
+    )
+    assert (
+        a.peer.post(
+            a.prefix + "favorite", json={**payload, "point_id": "missing-point"}, headers=headers
+        ).status_code
+        == 404
+    )
+    with a.db.begin() as c:
+        c.execute(
+            update(sessions).where(sessions.c.user_id == a.owner.user).values(revoked_at=func.now())
+        )
+    assert a.peer.post(a.prefix + "favorite", json=payload, headers=headers).status_code == 401

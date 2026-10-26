@@ -96,21 +96,21 @@
         control.title=labels[kind][active?1:0]||labels[kind][0];
         if(active&&!same&&kind!=='favorite')control.title=text('Confirm for current version','Подтвердить для текущей версии');
         if(kind==='support'&&!firstParty()&&!subscriptionKnown)control.title=labels.support[0];
-        control.setAttribute('aria-label',control.title);control.setAttribute('aria-pressed',kind==='support'&&!firstParty()&&!subscriptionKnown?'mixed':String(active));control.classList.toggle('active',active);
+        control.setAttribute('aria-label',control.title);control.setAttribute('aria-pressed',['support','favorite'].includes(kind)&&!firstParty()&&!subscriptionKnown?'mixed':String(active));control.classList.toggle('active',active);
         if(control.tagName==='BUTTON')control.disabled=['copy','remember'].includes(kind)?false:operation.busy||!pin||Boolean(operation.receipt&&operation.receipt.kind!==kind);
         else if(origin()){control.href=address(kind);if(kind==='edit'&&!editable)control.removeAttribute('href');}
         if(kind==='edit'){control.setAttribute('aria-disabled',String(!editable));control.tabIndex=editable?0:-1;}
       }
     }
     for(const kind of ['support','block','related','favorite','edit','copy','remember']){
-      const link=kind==='related'||kind==='edit'||(!firstParty()&&(!['copy','remember','support'].includes(kind)||(kind==='support'&&body.dataset.hosted==='true'))),control=node(link?'a':'button','',tools);controls[kind]=control;control.dataset.action=kind;
+      const link=kind==='related'||kind==='edit'||(!firstParty()&&(!['copy','remember','support','favorite'].includes(kind)||(['support','favorite'].includes(kind)&&body.dataset.hosted==='true'))),control=node(link?'a':'button','',tools);controls[kind]=control;control.dataset.action=kind;
       if(link){if(origin())control.href=address(kind);control.target='_blank';control.rel='noopener noreferrer';}
       else control.type='button';
       if(kind==='related')control.classList.add('point-create-related');
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
       const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',icons[kind]);svg.append(path);control.append(svg);
       if(kind==='edit')control.addEventListener('click',event=>{if(!editable)event.preventDefault();});
-      if(!link)control.addEventListener('click',()=>['copy','remember'].includes(kind)?localAction(kind):!firstParty()&&kind==='support'?externalClick():void act(kind));
+      if(!link)control.addEventListener('click',()=>['copy','remember'].includes(kind)?localAction(kind):!firstParty()&&['support','favorite'].includes(kind)?externalClick(kind):void act(kind));
     }
     const report=node('a','⚑',tools);report.className='point-report';report.title=text('Report point','Пожаловаться на точку');report.setAttribute('aria-label',report.title);
     async function reportAddress(){
@@ -141,7 +141,7 @@
         if(summary.schema!=='node06-point-social/1'||summary.id!==id)throw new Error('INVALID_RESPONSE');
         displayed={...displayed,author:summary.author};editable=!summary.protected;
         setAuthor(summary.author);pin={revision_id:summary.revision_id,content_digest:summary.content_digest};
-        if(firstParty())await personal();else{try{own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;}catch{subscriptionKnown=false;own=null;}}if(!alive(sequence))return;
+        if(firstParty())await personal();else{try{own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;favorite=Boolean(own.favorite);}catch{subscriptionKnown=false;own=null;favorite=false;}}if(!alive(sequence))return;
         if(displayed.content_digest&&(displayed.content_digest!==pin.content_digest||displayed.revision_id!==pin.revision_id)){
           pin=null;fail(text('Text changed. Open versions before acting.','Текст изменился. Откройте версии перед действием.'));
           const link=node('a',text('Versions','Версии'),status);link.href=address('support');link.target='_blank';link.rel='noopener noreferrer';positionStatus();
@@ -156,31 +156,31 @@
       link.addEventListener('click',event=>{event.preventDefault();pending.open();});
       const cancel=node('button',text('Cancel','Отмена'),status);cancel.type='button';cancel.addEventListener('click',pending.cancel);positionStatus();
     }
-    function externalClick(){
+    function externalClick(kind){
       if(operation.busy||!pin)return;
       if(authorization){if(authorization.url)showConnection(authorization);else fail(text('Preparing connection…','Подготовка подключения…'));return;}
       const connect=!subscriptionKnown,entry=connect?prepareConnection():null;
       // A prepared real URL can open synchronously in the original click gesture.
       const attempted=Boolean(entry?.ready),popup=attempted?window.open(entry.ready.url,'node06-subscriptions','popup,width=520,height=620'):null;
-      void externalAct(connect,entry,popup,attempted);
+      void externalAct(kind,connect,entry,popup,attempted);
     }
-    async function externalAct(connect,entry,popup,attempted){
+    async function externalAct(kind,connect,entry,popup,attempted){
       operation.busy=true;state();status.hidden=true;let committed=false;
       try{
         if(connect){fail(text('Preparing connection…','Подготовка подключения…'));await connectSubscriptions(showConnection,entry,popup,attempted);status.hidden=true;}
         if(!container.isConnected&&new URLSearchParams(location.search).get('p')!==id)return;
-        own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;
-        const active=Boolean(own.subscription?.active&&own.subscription.content_digest===pin.content_digest&&own.subscription.revision_id===pin.revision_id);
+        own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;favorite=Boolean(own.favorite);
+        const active=kind==='favorite'?favorite:Boolean(own.subscription?.active&&own.subscription.content_digest===pin.content_digest&&own.subscription.revision_id===pin.revision_id);
         if(operation.receipt&&operation.receipt.connection!==own.connection){operation.receipt=null;throw Error('ACCOUNT_CHANGED');}
         if(connect&&active){state();return;}
-        operation.receipt ||= {kind:'support',connection:own.connection,key:crypto.randomUUID(),subscription:{...pin,active:!active}};
-        await window.node06SubscriptionRequest('subscription.set',{point_id:id,key:operation.receipt.key,subscription:operation.receipt.subscription});
+        operation.receipt ||= {kind,connection:own.connection,key:crypto.randomUUID(),payload:kind==='favorite'?{active:!active}:{subscription:{...pin,active:!active}}};
+        await window.node06SubscriptionRequest(kind==='favorite'?'favorite.set':'subscription.set',{point_id:id,key:operation.receipt.key,...operation.receipt.payload});
         operation.receipt=null;committed=true;
-        own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});state();window.dispatchEvent(new Event('node06:reaction'));
+        own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});favorite=Boolean(own.favorite);state();window.dispatchEvent(new Event('node06:reaction'));
       }catch(error){
-        if(['SUBSCRIPTIONS_NOT_CONNECTED','SUBSCRIPTION_SITE_CHANGED'].includes(error.message)){subscriptionKnown=false;own=null;}
+        if(['SUBSCRIPTIONS_NOT_CONNECTED','SUBSCRIPTION_SITE_CHANGED'].includes(error.message)){subscriptionKnown=false;own=null;favorite=false;}
         if(['POINT_REVISION_CHANGED','BALLOT_SWITCH_REQUIRED'].includes(error.message))operation.receipt=null;
-        fail(committed?text('Saved; reopen this point to refresh.','Сохранено; откройте точку заново для обновления.'):error.message==='AUTHORIZATION_CANCELLED'?text('Connection cancelled.','Подключение отменено.'):error.message==='AUTHORIZATION_TIMEOUT'?text('Connection expired. Try again.','Время подключения истекло. Повторите попытку.'):error.message==='SUBSCRIPTIONS_NOT_CONNECTED'?text('Access expired. Click again to reconnect.','Доступ истёк. Нажмите ещё раз для подключения.'):text('Subscription not confirmed. Retry the same button.','Подписка не подтверждена. Повторите ту же кнопку.'));
+        fail(committed?text('Saved; reopen this point to refresh.','Сохранено; откройте точку заново для обновления.'):error.message==='AUTHORIZATION_CANCELLED'?text('Connection cancelled.','Подключение отменено.'):error.message==='AUTHORIZATION_TIMEOUT'?text('Connection expired. Try again.','Время подключения истекло. Повторите попытку.'):error.message==='SUBSCRIPTIONS_NOT_CONNECTED'?text('Access expired. Click again to reconnect.','Доступ истёк. Нажмите ещё раз для подключения.'):error.message==='FAVORITES_LIMIT'?text('Favorites limit: 64 points.','В избранном уже 64 точки.'):text('Action not confirmed. Retry the same button.','Действие не подтверждено. Повторите ту же кнопку.'));
       }finally{operation.busy=false;refreshActions();state();}
     }
     async function act(kind){

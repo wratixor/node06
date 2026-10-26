@@ -1906,3 +1906,13 @@ detached tabs and denied third-party storage retain the PKCE rendezvous fallback
 No new registration/migration/cookie domain or CSRF exception. Browser-isolated
 native sessions can require a brief automatic top-level handoff, not a separate
 permission step. Current contract: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md).
+
+
+### 26 October 2026 — shared favorite state and direct static star
+
+Static favorite controls now read the native account's current-point bookmark
+state through its automatic server session and toggle it on the map. The shared
+Social favorite path preserves native limits, idempotency and profile-preference
+changes; support/influence is unchanged. Panel/menu/focus/reload use the same
+state. No new migration/permission. Server and static publication are required.
+Contract: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md).

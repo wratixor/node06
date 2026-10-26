@@ -1,4 +1,4 @@
-# Shared server login for static-site subscriptions
+# Shared server login for static-site subscriptions and favorites
 
 Capability `scoped_embed_subscriptions`, existing migration `0023_embed_subscriptions`.
 One database/server has one account and subscription store across all its sites.
@@ -9,7 +9,8 @@ supersedes the earlier consent-based transport after the owner's correction on
 
 ## User behavior
 
-The point heart toggles the ordinary current-version subscription and updates
+The point heart toggles the ordinary current-version subscription and the star
+toggles the same native account favorite. Both update
 panel/context-menu highlighting. A previously subscribed point remains subscribed
 when its session is first recognized. Later clicks toggle normally. A native
 signed-out action offers login, not a generic profile navigation.
@@ -44,9 +45,9 @@ expiry and revocation invalidate it. The optional Secure/HttpOnly/SameSite=None/
 Partitioned cookie is host-only and scoped to the site's bridge API path. Native
 session cookies and passwords never enter a third-party parent or shared domain.
 
-The current delegated transport remains limited to point subscriptions. An
+The current delegated transport is limited to point subscriptions and favorites. An
 active site registration is the server's trust boundary for this automatic
-transport. It grants no author trust, profile lists, favorites, blocks, publication,
+transport. It grants no author trust, profile lists, blocks, publication,
 editing, revision ballot, roles or generic proxy. Other actions retain their
 existing trusted-server flows; general full-iframe auth remains separate.
 
@@ -70,10 +71,13 @@ The anonymous public-read methods are unchanged. Separate bridge methods are:
   60-second code deadline. The bearer remains inside the iframe.
 - `subscription.redeem({id,state,code})`: legacy one-use code exchange with the
   same iframe-held proof and server session bindings.
-- `subscription.read({point_id})`: only the subscription pin/active state, expiry
+- `subscription.read({point_id})`: only the subscription pin/active state, current-point favorite boolean, expiry
   and domain-separated opaque native-session/site tag for receipt continuity.
 - `subscription.set({point_id,subscription,key})`: existing pinned/idempotent
   native subscription mutation; no generic proxy or revision ballot.
+- `favorite.set({point_id,active,key})`: only the existing native bookmark
+  mutation, sharing its idempotency receipts, 64-point limit and profile-preference
+  change capture. It changes no support, trust, influence or ballot.
 
 The trusted handoff cannot be framed. Parent/bridge messages validate source,
 origin, channel and exact schema. Completion binds request/state/site/parent and
@@ -84,7 +88,7 @@ credentials. Unknown subscription state is `aria-pressed=mixed` until recognitio
 ## API bounds and deployment
 
 Embed-only JSON POST routes live at
-`/bridge/v1/{site}/subscriptions/{prepare,complete,redeem,read,set}`. Native
+`/bridge/v1/{site}/subscriptions/{prepare,complete,redeem,read,set,favorite}`. Native
 management cookies are not accepted there; cookie calls require embed Origin,
 while bearer calls reject foreign Origins/unrelated cookies. Bodies are bounded
 at 4 KiB, unknown fields are rejected, and site visibility/purge rules apply.
@@ -109,3 +113,19 @@ HTTPS acceptance completed with zero permission clicks, including detached
 openers, denied storage, reload/menu state, retries and cancellation. Ruff/format,
 JS syntax, protocol/clipboard, build 61 and diff checks passed. No production
 publication or account action was performed.
+
+## Current-point favorites — 26 October 2026
+
+The owner's paired screenshots showed a native favorite with an inactive static
+star. Static favorite controls were still profile links and loaded no private
+bookmark state. They now use the existing automatic server session: `read`
+returns only this point's favorite boolean and `favorite.set` toggles it directly.
+Toolbar/context menu, focus and reload share the native favorite store and
+canonical profile-preference rules. Unknown access is mixed, not known inactive.
+Server and static assets both need the update; no migration or additional login
+permission is introduced. Other external action families remain unchanged.
+Validation: 24 PostgreSQL transport/favorite tests passed. Installed-wheel
+HTTPS acceptance passed native-to-static favorite recognition, direct remove/add,
+native store agreement, toolbar/menu and reload highlighting, alongside existing
+automatic login/subscription scenarios. Ruff/format, JS syntax, protocol/clipboard,
+build 61 and diff checks passed. No production deployment was performed.

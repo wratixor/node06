@@ -206,7 +206,7 @@ source tests do not establish production installation or account linking.
 Static-site subscription actions: [EMBED-SUBSCRIPTIONS-V1](../docs/EMBED-SUBSCRIPTIONS-V1.md),
 migration `0023_embed_subscriptions`, capability `scoped_embed_subscriptions`.
 The registered static site uses the common native server login automatically,
-without a per-site permission step. A narrow bridge credential follows the
+without a per-site permission step. A narrow subscription/favorite bridge credential follows the
 issuing native session's lifetime; logout invalidates it. Native credentials,
 roles and generic write authority never reach a third-party parent. Partitioned
 persistence is optional; denied storage uses memory and an automatic top-level
