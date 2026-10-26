@@ -11,7 +11,10 @@ login link inline instead of navigating to a generic profile.
 ## Consent and UI
 
 For a static copy without access yet, the first heart click opens a small trusted
-management-origin window. The user logs in there if necessary and explicitly
+management-origin window at its final HTTPS address, without an `about:blank`
+redirect. The map shows a connection link and Cancel while waiting. If automatic
+opening is blocked, the link retries the same request under a fresh user gesture;
+Cancel stops waiting without changing the subscription. The user logs in there if necessary and explicitly
 allows that verified site to read/change point subscriptions for15 minutes.
 The original action completes on the map after authorization. Connecting to an
 already active current-version subscription only restores highlighting; it does
@@ -130,3 +133,20 @@ actual subscriptions. Installed-wheel full HTTPS acceptance and focused real
 static-parent/bridge acceptance passed, including denied cookie storage, resume,
 revocation and inline guest login. Backend Ruff/format, build61, JS syntax and
 clipboard/protocol checks passed. No production deployment or account operation.
+
+## Popup compatibility follow-up — 26 October 2026
+
+The published Neocities assets and server capability were verified as current
+(server build `249f41d`). In the owner's in-app browser, clicking the disconnected
+heart left it pending without a visible connection window. The prior flow opened
+`about:blank` synchronously and replaced its location after preparing the request.
+The follow-up opens the final trusted URL directly and keeps an explicit retry
+link and Cancel visible. Source-window/origin/state/PKCE checks are unchanged;
+no additional authority or migration is introduced.
+
+The installed-wheel HTTPS/static browser acceptance now rejects blank-window
+launches, simulates a blocked initial open, retries through the visible link,
+checks consent/toggles/highlights/reload/menu, denied cookies/resume/revocation,
+and cancels another blocked attempt without leaving the action disabled.
+Protocol/clipboard checks, JS syntax, build 61 and diff checks passed. This is
+source validation; the updated assets have not been published to Neocities yet.

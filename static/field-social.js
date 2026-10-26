@@ -9,27 +9,31 @@
   function refreshActions(){for(const container of document.querySelectorAll('.point-social'))container.dispatchEvent(new Event('node06:refresh'));}
   const operations=new Map();
   let authorization=null;
-  async function connectSubscriptions(popup){
+  async function connectSubscriptions(present){
     if(authorization)throw Error('AUTHORIZATION_PENDING');
     const state=crypto.randomUUID().replaceAll('-','');
-    let finish,timer,watch,listener,connected=false;
+    let finish,timer,watch,listener,popup=null,connected=false;
     const done=new Promise((resolve,reject)=>{finish={resolve,reject};});
-    authorization={popup};
+    const cancel=()=>finish.reject(Error('AUTHORIZATION_CANCELLED'));
+    const pending={cancel};authorization=pending;
     try{
       const prepared=await window.node06SubscriptionRequest('subscription.prepare',{state});
       const url=new URL(prepared.url),expected=window.node06ManagementOrigin?.()||body.dataset.managementOrigin;
       if(url.origin!==expected||url.pathname!=='/embed-subscriptions/'+prepared.id+'/'||prepared.state!==state)throw Error('INVALID_RESPONSE');
       listener=async event=>{
-        const m=event.data;if(event.source!==popup||event.origin!==expected||m?.protocol!=='node06-subscriptions/1'||m.id!==prepared.id||m.state!==state||!/^[A-Za-z0-9_-]{43}$/.test(m.code||''))return;
+        const m=event.data;if(!popup||event.source!==popup||event.origin!==expected||m?.protocol!=='node06-subscriptions/1'||m.id!==prepared.id||m.state!==state||!/^[A-Za-z0-9_-]{43}$/.test(m.code||''))return;
         window.removeEventListener('message',listener);
         try{await window.node06SubscriptionRequest('subscription.redeem',{id:prepared.id,state,code:m.code});popup.postMessage({protocol:'node06-subscriptions/1',kind:'done',id:prepared.id,state},expected);finish.resolve();}
         catch(error){finish.reject(error);}
       };
-      window.addEventListener('message',listener);popup.location.replace(url.href);
+      const open=()=>{if(popup&&!popup.closed){popup.focus();return;}popup=window.open(url.href,'node06-subscriptions','popup,width=520,height=620');};
+      Object.assign(pending,{url:url.href,open});
+      window.addEventListener('message',listener);
+      present(pending);open();
       timer=setTimeout(()=>finish.reject(Error('AUTHORIZATION_TIMEOUT')),300000);
-      watch=setInterval(()=>{if(popup.closed)finish.reject(Error('AUTHORIZATION_CANCELLED'));},500);
+      watch=setInterval(()=>{if(popup?.closed)cancel();},500);
       await done;connected=true;
-    }finally{clearTimeout(timer);clearInterval(watch);if(listener)window.removeEventListener('message',listener);authorization=null;if(!connected&&!popup.closed)popup.close();}
+    }finally{clearTimeout(timer);clearInterval(watch);if(listener)window.removeEventListener('message',listener);authorization=null;if(!connected&&popup&&!popup.closed)popup.close();}
   }
   function mount(container,id,displayed={}){
     if(displayed.deleted){container.remove();return;}
@@ -138,22 +142,26 @@
         state();
       }catch(_){if(alive(sequence)){pin=null;state();fail(text('Actions unavailable. Reopen this point to retry.','Действия недоступны. Откройте точку заново.'));}}
     }
+    function showConnection(pending){
+      fail(text('Confirm access in the connection window. If it did not open: ','Подтвердите доступ в окне подключения. Если оно не открылось: '));
+      const link=node('a',text('Connect subscriptions','Подключить подписки'),status);link.href=pending.url;
+      link.addEventListener('click',event=>{event.preventDefault();pending.open();});
+      const cancel=node('button',text('Cancel','Отмена'),status);cancel.type='button';cancel.addEventListener('click',pending.cancel);positionStatus();
+    }
     function externalClick(){
       if(operation.busy||!pin)return;
-      if(authorization){authorization.popup.focus();fail(text('Confirm access in the connection window.','Подтвердите доступ в окне подключения.'));return;}
-      let popup=null;
-      if(!subscriptionKnown){popup=window.open('about:blank','node06-subscriptions','popup,width=520,height=620');if(!popup){fail(text('Allow the connection window and click again.','Разрешите окно подключения и нажмите ещё раз.'));return;}}
-      void externalAct(popup);
+      if(authorization){if(authorization.url)showConnection(authorization);else fail(text('Preparing connection…','Подготовка подключения…'));return;}
+      void externalAct(!subscriptionKnown);
     }
-    async function externalAct(popup){
+    async function externalAct(connect){
       operation.busy=true;state();status.hidden=true;let committed=false;
       try{
-        if(popup)await connectSubscriptions(popup);
+        if(connect){fail(text('Preparing connection…','Подготовка подключения…'));await connectSubscriptions(showConnection);status.hidden=true;}
         if(!container.isConnected&&new URLSearchParams(location.search).get('p')!==id)return;
         own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;
         const active=Boolean(own.subscription?.active&&own.subscription.content_digest===pin.content_digest&&own.subscription.revision_id===pin.revision_id);
         if(operation.receipt&&operation.receipt.connection!==own.connection){operation.receipt=null;throw Error('ACCOUNT_CHANGED');}
-        if(popup&&active){state();return;}
+        if(connect&&active){state();return;}
         operation.receipt ||= {kind:'support',connection:own.connection,key:crypto.randomUUID(),subscription:{...pin,active:!active}};
         await window.node06SubscriptionRequest('subscription.set',{point_id:id,key:operation.receipt.key,subscription:operation.receipt.subscription});
         operation.receipt=null;committed=true;
@@ -161,7 +169,7 @@
       }catch(error){
         if(['SUBSCRIPTIONS_NOT_CONNECTED','SUBSCRIPTION_SITE_CHANGED'].includes(error.message)){subscriptionKnown=false;own=null;}
         if(['POINT_REVISION_CHANGED','BALLOT_SWITCH_REQUIRED'].includes(error.message))operation.receipt=null;
-        fail(committed?text('Saved; reopen this point to refresh.','Сохранено; откройте точку заново для обновления.'):error.message==='SUBSCRIPTIONS_NOT_CONNECTED'?text('Access expired. Click again to reconnect.','Доступ истёк. Нажмите ещё раз для подключения.'):text('Subscription not confirmed. Retry the same button.','Подписка не подтверждена. Повторите ту же кнопку.'));
+        fail(committed?text('Saved; reopen this point to refresh.','Сохранено; откройте точку заново для обновления.'):error.message==='AUTHORIZATION_CANCELLED'?text('Connection cancelled.','Подключение отменено.'):error.message==='AUTHORIZATION_TIMEOUT'?text('Connection expired. Try again.','Время подключения истекло. Повторите попытку.'):error.message==='SUBSCRIPTIONS_NOT_CONNECTED'?text('Access expired. Click again to reconnect.','Доступ истёк. Нажмите ещё раз для подключения.'):text('Subscription not confirmed. Retry the same button.','Подписка не подтверждена. Повторите ту же кнопку.'));
       }finally{operation.busy=false;refreshActions();state();}
     }
     async function act(kind){

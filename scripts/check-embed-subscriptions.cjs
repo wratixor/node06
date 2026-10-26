@@ -10,6 +10,14 @@ async function check({browser,base,embed,active,errors}){
   await ctx.grantPermissions(['local-network-access'],{origin:parent});
   let html=fs.readFileSync(path.join(root,'index.html'),'utf8').replaceAll('https://wiki.geno-dice.com',base);
   const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(()=>{
+    const open=window.open.bind(window);
+    window.open=(url,...args)=>{
+      if(url==='about:blank')throw Error('Blank popup must never be used for subscriptions');
+      if(!sessionStorage.getItem('subscription-popup-tested')){sessionStorage.setItem('subscription-popup-tested','yes');return null;}
+      return open(url,...args);
+    };
+  });
   await page.route(parent+'/**',async route=>{
    const u=new URL(route.request().url());
    if(u.pathname==='/assets/connection.json')return route.fulfill({json:{embedOrigin:embed,serviceOrigin:base,siteId:active}});
@@ -21,7 +29,12 @@ async function check({browser,base,embed,active,errors}){
   const support=()=>page.locator('#point-panel-body .point-social [data-action="support"]');
   await support().waitFor();try{await page.waitForFunction(()=>!document.querySelector('#point-panel-body [data-action=support]').disabled);}catch(e){console.error('Action status:',await page.locator('.point-action-status').allTextContents());console.error('Script errors:',errors);console.error('Summary check:',await page.evaluate(async()=>{try{const r=await window.readNode06Public('point.social',{point_id:'skills-ru'});return {schema:r.schema,id:r.id};}catch(e){return {error:e.message};}}));throw e;}
   assert.equal(await support().getAttribute('aria-pressed'),'mixed');
-  const popupPromise=page.waitForEvent('popup');await support().click();const popup=await popupPromise;
+  // A blocked automatic launch offers a real URL; the explicit click retries
+  // under a fresh user gesture without an about:blank redirect or profile hop.
+  await support().click();
+  const connect=page.locator('#point-panel-body .point-action-status a');await connect.waitFor();
+  assert((await connect.getAttribute('href')).startsWith(base+'/embed-subscriptions/e_'));
+  const popupPromise=page.waitForEvent('popup');await connect.click();const popup=await popupPromise;
   popup.on('pageerror',e=>errors.push(e.message));await popup.waitForURL(base+'/embed-subscriptions/**');
   await popup.locator('#access-allow').waitFor();await popup.waitForFunction(()=>!document.querySelector('#access-allow').disabled);
   assert.equal(await page.url(),target);
@@ -64,6 +77,15 @@ async function check({browser,base,embed,active,errors}){
   // Prior consent resumes only its remaining lifetime, without another Allow click.
   await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='true');
   assert.equal(await page.url(),target);
+  await account.request.post(base+'/api/v1/me/embed-subscriptions/revoke',{headers:{Origin:base,'X-CSRF-Token':me.csrf_token},data:{}});
+  await page.reload();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='mixed');
+  await page.evaluate(()=>{window.open=()=>null;});
+  await support().click();await page.locator('#point-panel-body .point-action-status a').waitFor();
+  await page.locator('#point-panel-body .point-action-status button').click();
+  await page.waitForFunction(()=>!document.querySelector('#point-panel-body [data-action=support]').disabled);
+  assert.equal(await support().getAttribute('aria-pressed'),'mixed');
+  assert.equal(await page.url(),target);
+  assert.match(await page.locator('#point-panel-body .point-action-status').innerText(),/cancelled|отменено/);
   const guest=await browser.newContext({ignoreHTTPSErrors:true});
   try{const g=await guest.newPage();await g.goto(base+'/?p=skills-ru&open=skills-ru');
     await g.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.disabled===false);
@@ -72,7 +94,7 @@ async function check({browser,base,embed,active,errors}){
     assert.equal(await g.locator('#point-panel-body .point-action-status a').getAttribute('href'),base+'/account/');
     assert.equal(new URL(g.url()).pathname,'/');
   }finally{await guest.close();}
-  console.log('PASS: consented static subscription, direct toggle, highlight/reload/menu, denied cookies, resume and revocation');
+  console.log('PASS: consented static subscription, direct toggle, highlight/reload/menu, denied cookies, resume, revocation, real-URL popup retry/cancel');
  }finally{await ctx.close();}
 }
 module.exports=check;
