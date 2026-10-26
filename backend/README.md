@@ -209,5 +209,7 @@ A separate explicit15-minute grant permits point-subscription state/toggles only
 no global cookie, role, author trust or generic write authority reaches a parent.
 The account page can revoke these grants. Partitioned cookie restoration is
 optional; denied storage uses iframe memory and remaining-consent reconnection.
+Approval recognizes the existing common server account even in detached tabs;
+iframe-held PKCE completion does not require `window.opener`.
 Apply the migration/server release before relying on the updated static controls.
 General authenticated full-iframe operations remain outside this limited packet.
