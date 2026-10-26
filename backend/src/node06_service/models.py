@@ -639,3 +639,50 @@ Index(
     site_user_blocks.c.site_id,
     site_user_blocks.c.target_user_id,
 )
+
+profile_preference_state = Table(
+    "profile_preference_state",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("clock", BigInteger, nullable=False, server_default="0"),
+    Column("seeded", Boolean, nullable=False, server_default="false"),
+)
+profile_preferences = Table(
+    "profile_preferences",
+    metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("kind", String(16), primary_key=True),
+    Column("origin", String(512), primary_key=True),
+    Column("point_id", String(96), primary_key=True),
+    Column("value", JSON, nullable=False),
+    Column("deleted", Boolean, nullable=False),
+    Column("clock", BigInteger, nullable=False),
+    Column("writer_origin", String(512), nullable=False),
+    Column("writer_user_id", String(34), nullable=False),
+    Column("event_id", String(32), nullable=False),
+    CheckConstraint(
+        "kind IN ('color','favorites','subscriptions','own_points')",
+        name="ck_profile_preference_kind",
+    ),
+)
+for name in ("sync_send", "sync_receive", "sync_send_allowed", "sync_receive_allowed"):
+    profile_links.append_column(Column(name, JSON, nullable=False, server_default="[]"))
+for name in ("data_token_digest", "remote_data_token"):
+    profile_links.append_column(Column(name, String(64)))
+for name in ("sync_enabled", "sync_local_done", "sync_peer_done"):
+    profile_links.append_column(Column(name, Boolean, nullable=False, server_default="false"))
+for name in ("sync_local_cursor", "sync_peer_cursor"):
+    profile_links.append_column(Column(name, JSON))
+profile_links.append_column(
+    Column("sync_next_check", DateTime(timezone=True), nullable=False, server_default=func.now())
+)
+profile_links.append_column(Column("sync_lease", String(32)))
+for name in ("sync_lease_until", "sync_last_success"):
+    profile_links.append_column(Column(name, DateTime(timezone=True)))
+profile_links.append_column(
+    Column("sync_generation", BigInteger, nullable=False, server_default="1")
+)
+profile_links.append_column(Column("sync_error", String(64)))
+profile_links.append_column(Column("sync_attempts", Integer, nullable=False, server_default="0"))
+Index("ix_profile_links_data_token", profile_links.c.data_token_digest, unique=True)
+Index("ix_profile_links_sync_due", profile_links.c.sync_enabled, profile_links.c.sync_next_check)

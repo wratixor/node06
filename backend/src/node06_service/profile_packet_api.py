@@ -48,19 +48,27 @@ def page():
         + """<main><h1>Связанные аккаунты</h1>
 <p id="links-status" role="status">Проверяем вход…</p>
 <p>Подтвердите пару на обоих серверах. Связь действует 30 дней; её можно отозвать.
-Обмен настройками ещё не включён.</p>
+Выберите данные для автоматического обмена.
+Подписки и свои посты с другого сервера — ссылки на оригиналы; местное влияние не переносится.</p>
 <form id="links-create"><label>Другой сервер
 <input id="links-origin" type="url" placeholder="https://wiki.example" required></label>
+<div id="links-scopes"></div>
 <button type="submit" disabled>Пригласить</button></form>
 <form id="links-import"><label>Приглашение или ответ
 <input id="links-input" type="text" maxlength="4096" autocomplete="off" required></label>
 <button type="submit" disabled>Проверить</button></form>
-<section id="links-preview" hidden><p id="links-pair"></p>
+<section id="links-preview" hidden><p id="links-pair"></p><p id="links-permissions"></p>
 <button id="links-confirm" type="button">Подтвердить пару</button></section>
 <section id="links-output" hidden><label>Откройте ссылку на другом сервере в своём аккаунте
 <input id="links-url" type="text" readonly></label>
 <a id="links-go" referrerpolicy="no-referrer" rel="noreferrer">Перейти</a></section>
 <ul id="links-list"></ul><button id="links-reload" type="button" disabled>Обновить список</button>
+<section id="sync-preferences"><h2>Данные профиля</h2>
+<label>Показать<select id="sync-kind"><option value="favorites">Избранное</option>
+<option value="subscriptions">Подписки на точки</option>
+<option value="own_points">Свои посты</option></select></label>
+<p>На других серверах открывается оригинал. Подписка здесь не создаёт там голос или поддержку.</p>
+<ul id="sync-items"></ul><button id="sync-more" type="button" hidden>Ещё</button></section>
 <details><summary>Файл профиля: экспорт и сравнение</summary>
 <p id="packet-status" role="status">Проверяем вход…</p>
 <p>Файл содержит личные списки. Сравнение ничего не записывает и не связывает аккаунты.</p>
@@ -93,7 +101,12 @@ def style():
     return Response(
         "#packet-source{overflow-wrap:anywhere}#packet-result details{margin:12px 0}"
         "#packet-result summary{cursor:pointer}#packet-result li{overflow-wrap:anywhere}"
-        "#links-list p,#links-pair{overflow-wrap:anywhere}#links-list button{margin:4px}",
+        "#links-list p,#links-pair,#sync-items{overflow-wrap:anywhere}"
+        "#links-list button{margin:4px}#links-scopes{display:flex;gap:16px;flex-wrap:wrap}"
+        "#links-scopes label,.sync-options label{display:block;margin:6px 0}"
+        "#links-scopes input,.sync-options input{display:inline-block;width:auto;margin-right:6px}"
+        "#links-scopes fieldset,.sync-options fieldset{min-width:0;flex:1 1 200px}"
+        "#links-list>li{border-bottom:1px solid #293644;padding:10px 0}",
         media_type="text/css",
         headers=HEADERS,
     )

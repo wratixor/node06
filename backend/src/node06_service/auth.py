@@ -269,6 +269,13 @@ class AuthService:
         ).scalar_one_or_none()
         if user is None or session is None:
             raise AuthError("AUTH_REQUIRED")
+        if self.settings.management_origin:
+            from sqlalchemy import text
+
+            connection.execute(
+                text("SELECT set_config('node06.profile_origin', :origin, true)"),
+                {"origin": self.settings.management_origin},
+            )
         return Identity(user["id"], user["handle"])
 
     def logout(self, token: str, *, all_sessions: bool = False) -> None:

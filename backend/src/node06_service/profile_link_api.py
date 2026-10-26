@@ -8,7 +8,8 @@ from starlette.concurrency import run_in_threadpool
 
 from .auth import SESSION_COOKIE
 from .auth_api import configured_origin, service
-from .profile_links import Confirmation, Invitation, LinkID, Metadata, Peer, ProfileLinks, Secret
+from .profile_data_consent import Create, DataMetadata
+from .profile_links import Confirmation, Invitation, LinkID, Metadata, ProfileLinks, Secret
 from .profile_packet import Strict
 from .profile_peer import exchange
 from .public_points import PublicPointError
@@ -19,7 +20,7 @@ router = APIRouter()
 
 class Approval(Strict):
     invitation: Invitation
-    expected: Metadata
+    expected: DataMetadata | Metadata
 
 
 class Empty(Strict):
@@ -30,7 +31,7 @@ def local(request, mutation=True):
     if request.query_params:
         raise PublicPointError("INVALID_PARAMS", 400)
     _, auth, actor = manager(request, mutation=mutation)
-    auth._limit("profile-link-owner", actor.user_id, 120, 3600)
+    auth._limit("profile-link-owner", actor.user_id, 120 if mutation else 600, 3600)
     return make(
         request,
         authorize=lambda c, uid: auth.authorize_session(
@@ -60,9 +61,9 @@ def listing(request: Request):
 
 
 @router.post("/api/v1/me/profile-links/invite")
-def invite(payload: Peer, request: Request):
+def invite(payload: Create, request: Request):
     links, uid = local(request)
-    return links.invite(uid, payload.origin)
+    return links.invite(uid, payload.origin, payload.send, payload.receive)
 
 
 @router.post("/api/v1/me/profile-links/inspect")
@@ -112,7 +113,7 @@ class Control(Strict):
     token: Secret
 
 
-async def peer_form(request, schema):
+async def peer_form(request, schema, maximum=4096):
     configured_origin(request)
     # Peer endpoints never use/accept browser session cookies as authorization.
     if request.headers.get("origin") is not None or request.cookies:
@@ -124,7 +125,7 @@ async def peer_form(request, schema):
     ):
         raise PublicPointError("PROFILE_FORM_REQUIRED", 415)
     raw = await request.body()
-    if len(raw) > 4096:
+    if len(raw) > maximum:
         raise PublicPointError("PROFILE_FORM_TOO_LARGE", 413)
     try:
         pairs = parse_qsl(raw.decode("ascii"), strict_parsing=True, max_num_fields=8)
@@ -171,3 +172,23 @@ async def status(request: Request):
 async def peer_revoke(request: Request):
     data = await peer_form(request, Control)
     return await run_in_threadpool(lambda: peer_admit(request).token_status(data.token, True))
+
+
+@router.post("/api/v1/profile-links/metadata-data")
+async def metadata_data(request: Request):
+    data = await peer_form(request, Info)
+    return await run_in_threadpool(
+        lambda: peer_admit(request).metadata(data.secret, data.client_id, True)
+    )
+
+
+@router.post("/api/v1/profile-links/token-data")
+async def token_data(request: Request):
+    data = await peer_form(request, Code)
+    if data.grant_type != "authorization_code":
+        raise PublicPointError("PROFILE_GRANT_INVALID", 400)
+    return await run_in_threadpool(
+        lambda: peer_admit(request).redeem(
+            data.code, data.code_verifier, data.client_id, data.redirect_uri, True
+        )
+    )

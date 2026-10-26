@@ -118,11 +118,22 @@ class Social:
         else:
             self.point(c, pid)  # Public now; create a real core anchor if needed.
             exists = c.scalar(select(favorite_points.c.point_id).where(where))
-            count = c.scalar(
-                select(func.count())
-                .select_from(favorite_points)
-                .where(favorite_points.c.user_id == actor)
+            from sqlalchemy import text
+
+            from .profile_preferences import favorite_ids
+
+            origin = c.scalar(text("SELECT current_setting('node06.profile_origin',true)"))
+            active_ids = favorite_ids(c, actor, origin) if origin else []
+            count = (
+                len(active_ids)
+                if origin
+                else c.scalar(
+                    select(func.count())
+                    .select_from(favorite_points)
+                    .where(favorite_points.c.user_id == actor)
+                )
             )
+            exists = pid in active_ids if origin else exists
             if not exists and count >= 64:
                 raise SocialError("FAVORITES_LIMIT", 409)
             c.execute(
@@ -130,6 +141,9 @@ class Social:
                 .values(user_id=actor, point_id=pid)
                 .on_conflict_do_nothing()
             )
+        from .profile_preferences import configured_put
+
+        configured_put(c, actor, "favorites", pid, {}, not payload["active"])
         return {"point_id": pid, "active": payload["active"]}
 
     def _coordinates(self, c, actor, target, payload):

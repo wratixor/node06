@@ -1,4 +1,4 @@
-// Disposable local fixture. Files only; no remote requests or profile writes.
+// Disposable local fixture: explicit consent UI, private reference lists and file tools.
 const assert=require('node:assert/strict');const crypto=require('node:crypto');const fs=require('node:fs');
 function canonical(value){if(Array.isArray(value))return value.map(canonical);if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));return value;}
 function resign(value){delete value.digest;value.digest=crypto.createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');return value;}
@@ -16,6 +16,25 @@ async function check({browser,base,embed,errors}){
  assert(!JSON.stringify(links).includes(invitation.secret));
  await page.locator('#links-list button').filter({hasText:'Отозвать'}).first().click();
  await page.waitForFunction(()=>document.querySelector('#links-list').textContent.includes('Отозвана'));
+ // Explicit data invitation: all scopes start off; the fragment does not contain preferences.
+ assert.equal(await page.locator('#links-scopes input:checked').count(),0);
+ await page.locator('#links-scopes fieldset').first().locator('input[value="color"]').check();
+ await page.locator('#links-scopes fieldset').last().locator('input[value="favorites"]').check();
+ await page.locator('#links-create button').click();await page.waitForFunction(()=>!document.querySelector('#links-output').hidden);
+ const dataInvitation=JSON.parse(Buffer.from(new URLSearchParams(new URL(await page.locator('#links-url').inputValue()).hash.slice(1)).get('link-invite'),'base64').toString());assert.equal(dataInvitation.data,true);
+ links=await (await page.request.get(base+'/api/v1/me/profile-links')).json();
+ assert.deepEqual(links.items[0].sync_send_allowed,['color']);assert.deepEqual(links.items[0].sync_receive_allowed,['favorites']);
+ assert(!JSON.stringify(links).includes('remote_data_token'));
+ await page.locator('#links-list button').filter({hasText:'Отозвать'}).first().click();
+ await page.waitForFunction(()=>[...document.querySelectorAll('#links-list li')].every(li=>li.textContent.includes('Отозвана')));
+ const me=await (await page.request.get(base+'/api/v1/me')).json();
+ const foreign={origin:'https://peer.invalid',point_id:'public-original',active:true};
+ assert.equal((await page.request.post(base+'/api/v1/me/profile-sync/favorite',{headers:{Origin:base,'X-CSRF-Token':me.csrf_token},data:foreign})).status(),200);
+ await page.locator('#sync-kind').selectOption('subscriptions');await page.waitForFunction(()=>!document.querySelector('#sync-kind').disabled);await page.locator('#sync-kind').selectOption('favorites');
+ await page.locator('#sync-items a').filter({hasText:'public-original'}).waitFor();
+ assert.equal(await page.locator('#sync-items a').filter({hasText:'public-original'}).getAttribute('href'),'https://peer.invalid/?p=public-original&open=public-original');
+ await page.locator('#sync-items li').filter({hasText:'public-original'}).getByRole('button').click();
+ await page.waitForFunction(()=>!document.querySelector('#sync-items').textContent.includes('public-original'));
  // A fragment may prefill the input, but landing never imports, approves or confirms.
  const fragment=base+'/profile-sync/#link-invite='+Buffer.from(JSON.stringify({origin:'https://peer.invalid',recipient:base,id:invitation.id,secret:invitation.secret})).toString('base64');
  let writes=0;const watch=req=>{if(req.method()==='POST'&&req.url().includes('/profile-links/'))writes++;};page.on('request',watch);
