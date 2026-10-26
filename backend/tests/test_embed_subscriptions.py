@@ -384,3 +384,78 @@ def test_populated_online_migration_roundtrip_keeps_real_subscriptions(access):
             )
             assert c.scalar(select(func.count()).select_from(users)) == 1
     assert read(a, token).status_code == 401
+
+
+def test_completion_uses_same_server_account_without_opener(access):
+    a = access
+    request = prepare(a)
+    pending = a.peer.post(a.prefix + "complete", json=request)
+    assert pending.status_code == 200
+    assert pending.json() == {"connected": False}
+    assert "set-cookie" not in pending.headers
+    approve(a, request)
+    result = a.peer.post(a.prefix + "complete", json=request)
+    assert result.status_code == 200, result.text
+    assert result.json()["connected"]
+    assert "Partitioned" in result.headers["set-cookie"]
+    token = result.json()["token"]
+    assert change(a, token).status_code == 200
+    assert a.owner.client.get("/api/v1/me/subscriptions/skills-ru").json()["subscription"]["active"]
+    with a.db.connect() as c:
+        assert c.scalar(select(func.count()).select_from(users)) == 1
+    assert a.peer.post(a.prefix + "complete", json=request).status_code == 401
+
+
+def test_completion_binding_before_and_after_consent(access):
+    a = access
+    request = prepare(a)
+    for consented in (False, True):
+        if consented:
+            approve(a, request)
+        for change_field in (
+            {"verifier": secrets.token_urlsafe(32)},
+            {"state": uuid4().hex},
+            {"parent_origin": "https://other.example"},
+        ):
+            assert (
+                a.peer.post(a.prefix + "complete", json={**request, **change_field}).status_code
+                == 401
+            )
+    with a.db.begin() as c:
+        c.execute(update(grants).where(grants.c.id == request["id"]).values(revoked=True))
+    assert a.peer.post(a.prefix + "complete", json=request).status_code == 401
+
+
+def test_completion_expiry_and_native_session_revocation(access):
+    a = access
+    request = prepare(a)
+    approve(a, request)
+    with a.db.begin() as c:
+        c.execute(
+            update(grants)
+            .where(grants.c.id == request["id"])
+            .values(code_until=datetime.now(UTC) - timedelta(seconds=1))
+        )
+    assert a.peer.post(a.prefix + "complete", json=request).status_code == 401
+    request = prepare(a)
+    approve(a, request)
+    with a.db.begin() as c:
+        c.execute(
+            update(sessions).where(sessions.c.user_id == a.owner.user).values(revoked_at=func.now())
+        )
+    assert a.peer.post(a.prefix + "complete", json=request).status_code == 401
+
+
+def test_concurrent_completion_is_single_use(access):
+    from concurrent.futures import ThreadPoolExecutor
+
+    a = access
+    request = prepare(a)
+    approve(a, request)
+
+    def complete_once(_):
+        with TestClient(a.owner.app, base_url=EMBED, headers={"Origin": EMBED}) as client:
+            return client.post(a.prefix + "complete", json=request).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(complete_once, range(2))) == [200, 401]

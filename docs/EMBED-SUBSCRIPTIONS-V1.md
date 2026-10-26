@@ -44,12 +44,16 @@ presented as a known inactive subscription. Focus refreshes visible action state
 ## Protocol and least authority
 
 The local SDK/public reads are unchanged. The hidden registered-site bridge adds
-four methods, described separately from the anonymous HTTP read-method list:
+five methods, described separately from the anonymous HTTP read-method list:
 
 - `subscription.prepare({state})`: generate an iframe-only256-bit verifier,
   its S256 challenge and a bounded five-minute pending request for the actual
   validated parent. Return the request ID/state and trusted approval URL.
-- `subscription.redeem({id,state,code})`: redeem a60-second single-use code with
+- `subscription.complete({id,state})`: poll through the iframe's verifier until
+  the existing native account explicitly approves. Before approval return only
+  `{connected:false}`. After approval, exchange once within the same 60-second
+  code deadline; the capability stays inside the iframe. No opener is required.
+- `subscription.redeem({id,state,code})` (legacy clients): redeem a60-second single-use code with
   the iframe-held verifier. The parent never receives the verifier or bearer.
 - `subscription.read({point_id})`: current actor's subscription pin/active state
   only, plus expiry and a domain-separated opaque session/site tag for receipt
@@ -59,10 +63,11 @@ four methods, described separately from the anonymous HTTP read-method list:
   It cannot act as a generic API/method proxy or cast a revision ballot.
 
 A trusted approval page cannot be framed. Its native session, Origin and CSRF
-checks authorize approval/resume/revocation. The page returns only the code to
-its exact opener origin; the parent forwards it to the exact bridge window.
-Both message protocols bind source, origin, nonce/state and request ID. Codes
-are bound to exact site/parent/user/session and S256 verifier; replay fails.
+checks authorize approval/resume/revocation. The page checks the existing native server account even if its opener is absent.
+Current clients poll the server rendezvous through the iframe-held verifier;
+legacy clients may still receive a code via their exact opener origin and forward
+it to the exact bridge window. Message transports bind source/origin/channel;
+completion binds state/request ID and the iframe-only S256 proof. Codes are bound to exact site/parent/user/session and S256 verifier; replay fails.
 Nested outer parents cannot request private bridge operations. Popup denial or
 cancellation never changes a subscription or navigates to a generic profile.
 
@@ -88,7 +93,7 @@ for any other account action.
 ## Routes and bounds
 
 Embed-origin JSON POST routes under
-`/bridge/v1/{site}/subscriptions/{prepare,redeem,read,set}` are separate from the
+`/bridge/v1/{site}/subscriptions/{prepare,complete,redeem,read,set}` are separate from the
 anonymous `/read` method allowlist. Forms are not accepted; unknown
 fields, wrong pins, wrong site/origin, replay and privilege expansion fail.
 Bodies are capped at4KiB. Limits:30 prepare requests/IP/minute,240 peer calls/IP/
@@ -150,3 +155,20 @@ checks consent/toggles/highlights/reload/menu, denied cookies/resume/revocation,
 and cancels another blocked attempt without leaving the action disabled.
 Protocol/clipboard checks, JS syntax, build 61 and diff checks passed. This is
 source validation; the updated assets have not been published to Neocities yet.
+
+## Common account and detached tabs — 26 October 2026
+
+An account remains shared by every site attached to one server/database. The
+15-minute site grant is a narrow transport permission, not a separate account,
+registration or subscription store. The approval page identifies the already
+signed-in server account and hides redundant login controls.
+
+The reported page text pinpointed a detached opener: the previous UI skipped
+checking the session when `window.opener` was absent. Checking/approving now
+works in an ordinary top-level tab. The map polls `subscription.complete` every
+2.5 seconds for at most five minutes, using the bridge's original verifier. Only
+an explicitly approved, active native session/site may complete; stale/revoked,
+wrong-proof/state/site and already-exchanged requests fail. The bearer stays in
+the bridge and follows the existing expiry/revocation rules. Old code-return
+clients remain supported. No migration, cookie-domain expansion or new account.
+Server and static assets must both update before this path can work live.

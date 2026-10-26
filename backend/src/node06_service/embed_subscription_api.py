@@ -34,12 +34,15 @@ class Prepare(Strict):
     state: Nonce
 
 
-class Redeem(Strict):
+class Completion(Strict):
     id: RequestID
     parent_origin: ParentOrigin
-    code: Secret
     verifier: Secret
     state: Nonce
+
+
+class Redeem(Completion):
+    code: Secret
 
 
 class Operation(Strict):
@@ -87,6 +90,11 @@ def prepare(site_id: SiteID, payload: Prepare, request: Request):
 def redeem(site_id: SiteID, payload: Redeem, request: Request, response: Response):
     db, settings = peer(request)
     result = service.redeem(db, site_id, payload, settings.management_origin)
+    persist(response, result, site_id)
+    return result
+
+
+def persist(response, result, site_id):
     # Optional partitioned persistence; denied third-party storage still uses the
     # iframe's in-memory token. Never reuse the management session cookie.
     from datetime import datetime
@@ -104,6 +112,14 @@ def redeem(site_id: SiteID, payload: Redeem, request: Request, response: Respons
         path=f"/bridge/v1/{site_id}/subscriptions/",
     )
     response.headers["set-cookie"] += "; Partitioned"
+
+
+@router.post("/bridge/v1/{site_id}/subscriptions/complete")
+def complete(site_id: SiteID, payload: Completion, request: Request, response: Response):
+    db, settings = peer(request)
+    result = service.complete(db, site_id, payload, settings.management_origin)
+    if result["connected"]:
+        persist(response, result, site_id)
     return result
 
 
@@ -211,7 +227,7 @@ def page(rid: RequestID, request: Request):
     parent = Source.https_origin(row["parent_origin"])
     return HTMLResponse(
         '''<!doctype html><html lang="ru"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width"><title>Подписки на точки</title>
+<meta name="viewport" content="width=device-width"><title>Общий аккаунт сервера</title>
 <link rel="stylesheet" href="/account/style.css">
 <script src="/subscription-access.js" defer></script></head><body data-request="'''
         + rid
@@ -219,7 +235,9 @@ def page(rid: RequestID, request: Request):
         + escape(parent, quote=True)
         + '" data-state="'
         + row["state"]
-        + """"><main><h1>Подписки на точки</h1><p>Сайт <strong>"""
+        + """"><main><h1>Подключить общий аккаунт</h1>
+<p>Используется тот же аккаунт сервера, что и на вики.
+Повторная регистрация не нужна.</p><p>Сайт <strong>"""
         + escape(parent)
         + """</strong> сможет показывать и переключать ваши подписки на точки
 в течение 15 минут. Пароль и доступ к профилю сайту не передаются.</p>

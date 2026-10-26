@@ -12,7 +12,7 @@
   async function connectSubscriptions(present){
     if(authorization)throw Error('AUTHORIZATION_PENDING');
     const state=crypto.randomUUID().replaceAll('-','');
-    let finish,timer,watch,listener,popup=null,connected=false;
+    let finish,timer,watch,popup=null,stopped=false;
     const done=new Promise((resolve,reject)=>{finish={resolve,reject};});
     const cancel=()=>finish.reject(Error('AUTHORIZATION_CANCELLED'));
     const pending={cancel};authorization=pending;
@@ -20,21 +20,20 @@
       const prepared=await window.node06SubscriptionRequest('subscription.prepare',{state});
       const url=new URL(prepared.url),expected=window.node06ManagementOrigin?.()||body.dataset.managementOrigin;
       if(url.origin!==expected||url.pathname!=='/embed-subscriptions/'+prepared.id+'/'||prepared.state!==state)throw Error('INVALID_RESPONSE');
-      listener=async event=>{
-        const m=event.data;if(!popup||event.source!==popup||event.origin!==expected||m?.protocol!=='node06-subscriptions/1'||m.id!==prepared.id||m.state!==state||!/^[A-Za-z0-9_-]{43}$/.test(m.code||''))return;
-        window.removeEventListener('message',listener);
-        try{await window.node06SubscriptionRequest('subscription.redeem',{id:prepared.id,state,code:m.code});popup.postMessage({protocol:'node06-subscriptions/1',kind:'done',id:prepared.id,state},expected);finish.resolve();}
-        catch(error){finish.reject(error);}
+      // A browser may sever opener links or open an ordinary tab instead of a
+      // popup. Completion stays bound to the iframe-only PKCE verifier.
+      const poll=async()=>{
+        try{const result=await window.node06SubscriptionRequest('subscription.complete',{id:prepared.id,state});
+          if(stopped)return;if(result.connected){finish.resolve();return;}watch=setTimeout(poll,2500);
+        }catch(error){if(!stopped)finish.reject(error);}
       };
       const open=()=>{if(popup&&!popup.closed){popup.focus();return;}popup=window.open(url.href,'node06-subscriptions','popup,width=520,height=620');};
-      Object.assign(pending,{url:url.href,open});
-      window.addEventListener('message',listener);
-      present(pending);open();
+      Object.assign(pending,{url:url.href,open});present(pending);open();
       timer=setTimeout(()=>finish.reject(Error('AUTHORIZATION_TIMEOUT')),300000);
-      watch=setInterval(()=>{if(popup?.closed)cancel();},500);
-      await done;connected=true;
-    }finally{clearTimeout(timer);clearInterval(watch);if(listener)window.removeEventListener('message',listener);authorization=null;if(!connected&&popup&&!popup.closed)popup.close();}
+      void poll();await done;
+    }finally{stopped=true;clearTimeout(timer);clearTimeout(watch);authorization=null;if(popup&&!popup.closed)popup.close();}
   }
+
   function mount(container,id,displayed={}){
     if(displayed.deleted){container.remove();return;}
     container.className='point-social';container.dataset.pointId=id;

@@ -1880,3 +1880,16 @@ origin/revoke bounds: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md).
 This advances the narrow reversible-reaction part of P03/P08; general embed auth,
 posting/editing/ballot delegation are not included. Production rollout remains
 separate from source/browser validation.
+
+
+### 26 October 2026 — shared account in detached approval tabs
+
+Connection approval now checks the existing server account without requiring
+an opener. The static map completes through the original iframe's PKCE verifier
+and a bounded server rendezvous, so detached top-level tabs work with the same
+account/subscriptions. Native credentials never enter the parent. Existing
+consent/expiry/revocation bounds and legacy clients remain supported; no new
+migration. Regression acceptance removes opener links deliberately, verifies
+native account recognition and direct map subscription/highlighting. Canonical
+scope: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md). Server and static
+publication are still required after merge.

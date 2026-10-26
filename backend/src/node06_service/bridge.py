@@ -158,6 +158,7 @@ def register_bridge(app: FastAPI) -> None:
                         "parent_credentials": False,
                         "subscription_methods": [
                             "subscription.prepare",
+                            "subscription.complete",
                             "subscription.redeem",
                             "subscription.read",
                             "subscription.set",

@@ -4,6 +4,9 @@ async function check({browser,base,embed,active,errors}){
  assert.equal(new URL(base).hostname,'localhost','Disposable localhost fixture only');assert(new URL(embed).hostname.endsWith('.localhost'));
  const ctx=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1100,height:850}});
  try{
+  // IAB and isolated tabs can sever the opener even though the native account
+  // cookie remains available. Consent must work without a postMessage return.
+  await ctx.addInitScript(()=>{if(location.pathname.startsWith('/embed-subscriptions/'))window.opener=null;});
   const account=await ctx.newPage();account.on('pageerror',e=>errors.push(e.message));
   await account.goto(base+'/account/');await account.locator('#handle').fill('fixture-owner');await account.locator('#password').fill('fixture-test-password');await account.locator('#submit').click();await account.waitForFunction(()=>document.querySelector('#account-form').hidden);
   const parent='https://garden.localhost',root=process.env.NODE06_BROWSER_DIST;
@@ -36,7 +39,10 @@ async function check({browser,base,embed,active,errors}){
   assert((await connect.getAttribute('href')).startsWith(base+'/embed-subscriptions/e_'));
   const popupPromise=page.waitForEvent('popup');await connect.click();const popup=await popupPromise;
   popup.on('pageerror',e=>errors.push(e.message));await popup.waitForURL(base+'/embed-subscriptions/**');
+  assert.equal(await popup.evaluate(()=>window.opener),null);
   await popup.locator('#access-allow').waitFor();await popup.waitForFunction(()=>!document.querySelector('#access-allow').disabled);
+  assert.match(await popup.locator('#access-status').innerText(),/Общий аккаунт сервера: fixture-owner/);
+  assert.equal(await popup.locator('#access-login').isVisible(),false);
   assert.equal(await page.url(),target);
   await popup.locator('#access-allow').click();
   await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]').getAttribute('aria-pressed')==='true');
@@ -60,7 +66,7 @@ async function check({browser,base,embed,active,errors}){
   assert.equal(await page.url(),target);
   // Simulate denied third-party cookie storage: retain only iframe memory.
   await ctx.clearCookies({domain:new URL(embed).hostname});
-  await page.route(embed+'/bridge/v1/'+active+'/subscriptions/redeem',async route=>{
+  await page.route(embed+'/bridge/v1/'+active+'/subscriptions/complete',async route=>{
     const r=await route.fetch(),headers={...r.headers()};delete headers['set-cookie'];await ctx.clearCookies({domain:new URL(embed).hostname});
     await route.fulfill({response:r,headers});
   });
@@ -68,7 +74,7 @@ async function check({browser,base,embed,active,errors}){
   const secondPromise=page.waitForEvent('popup');await support().click();const second=await secondPromise;
   await second.waitForURL(base+'/embed-subscriptions/**');await second.waitForFunction(()=>!document.querySelector('#access-allow').disabled);await second.locator('#access-allow').click();
   await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='true');
-  if(!second.isClosed())await second.waitForEvent('close');
+  if(!second.isClosed())await second.close(); // Detached browser tabs may not allow scripted close.
   // Connecting to an existing subscription must not accidentally unsubscribe it.
   await page.waitForFunction(()=>!document.querySelector('#point-panel-body [data-action=support]').disabled);
   await support().click();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='false');
@@ -94,7 +100,7 @@ async function check({browser,base,embed,active,errors}){
     assert.equal(await g.locator('#point-panel-body .point-action-status a').getAttribute('href'),base+'/account/');
     assert.equal(new URL(g.url()).pathname,'/');
   }finally{await guest.close();}
-  console.log('PASS: consented static subscription, direct toggle, highlight/reload/menu, denied cookies, resume, revocation, real-URL popup retry/cancel');
+  console.log('PASS: consented static subscription, direct toggle, highlight/reload/menu, denied cookies, resume, revocation, real-URL popup retry/cancel, shared account without opener');
  }finally{await ctx.close();}
 }
 module.exports=check;

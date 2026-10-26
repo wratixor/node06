@@ -3,7 +3,7 @@
   const protocol = "node06-embed/1";
   const methods = ["capabilities.get", "site.get", "point.get", "points.search",
     "point.read", "points.searchPage", "point.neighbors", "point.social", "points.geometry"];
-  const subscriptionMethods=['subscription.prepare','subscription.redeem','subscription.read','subscription.set'];
+  const subscriptionMethods=['subscription.prepare','subscription.complete','subscription.redeem','subscription.read','subscription.set'];
   methods.push(...subscriptionMethods);
   let subscriptionVerifier=null,subscriptionRequest=null,subscriptionToken=null;
   async function subscription(method,params){
@@ -20,6 +20,13 @@
       const challenge=base64(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(subscriptionVerifier))));
       subscriptionRequest=await post('prepare',{state:params.state,challenge});
       return {...subscriptionRequest,url:document.body.dataset.managementOrigin+'/embed-subscriptions/'+subscriptionRequest.id+'/'};
+    }
+    if(method==='subscription.complete'){
+      if(!exact(params,['id','state'])||!subscriptionRequest||params.id!==subscriptionRequest.id||params.state!==subscriptionRequest.state)throw Error('INVALID_PARAMS');
+      const result=await post('complete',{...params,verifier:subscriptionVerifier});
+      if(!result.connected)return {connected:false};
+      subscriptionToken=result.token;subscriptionVerifier=null;subscriptionRequest=null;
+      return {connected:true,expires_at:result.expires_at};
     }
     if(method==='subscription.redeem'){
       if(!exact(params,['id','state','code'])||!subscriptionRequest||params.id!==subscriptionRequest.id||params.state!==subscriptionRequest.state||!/^[A-Za-z0-9_-]{43}$/.test(params.code))throw Error('INVALID_PARAMS');

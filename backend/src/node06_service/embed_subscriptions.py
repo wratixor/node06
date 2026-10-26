@@ -189,6 +189,41 @@ def redeem(db, sid, payload, management):
     return {"token": token, "expires_at": current["approved_until"].isoformat()}
 
 
+def complete(db, sid, payload, management):
+    """PKCE-bound rendezvous also works when a browser removes window.opener."""
+    with db.connect() as c:
+        row = c.execute(select(grants).where(grants.c.id == payload.id)).mappings().one_or_none()
+    if (
+        not row
+        or row["site_id"] != sid
+        or row["parent_origin"] != payload.parent_origin
+        or row["state"] != payload.state
+        or row["revoked"]
+        or row["pending_until"] <= now()
+        or not secrets.compare_digest(row["challenge"], challenge(payload.verifier))
+    ):
+        fail()
+    if not row["user_id"]:
+        return {"connected": False}
+    token = secrets.token_urlsafe(32)
+    with db.begin() as c:
+        current = owner_lock(c, row, management)
+        if (
+            current["pending_until"] <= now()
+            or not current["consented"]
+            or current["token_digest"]
+            or not current["code_digest"]
+            or current["code_until"] <= now()
+        ):
+            fail()
+        c.execute(
+            update(grants)
+            .where(grants.c.id == row["id"])
+            .values(token_digest=digest(token), code_digest=None)
+        )
+    return {"connected": True, "token": token, "expires_at": current["approved_until"].isoformat()}
+
+
 def lookup(db, sid, token, parent):
     with db.connect() as c:
         row = (
