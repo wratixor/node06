@@ -235,17 +235,11 @@ def page(rid: RequestID, request: Request):
         + escape(parent, quote=True)
         + '" data-state="'
         + row["state"]
-        + """"><main><h1>Подключить общий аккаунт</h1>
-<p>Используется тот же аккаунт сервера, что и на вики.
-Повторная регистрация не нужна.</p><p>Сайт <strong>"""
-        + escape(parent)
-        + """</strong> сможет показывать и переключать ваши подписки на точки
-в течение 15 минут. Пароль и доступ к профилю сайту не передаются.</p>
-<p id="access-status" role="status">Проверяем вход…</p>
-<p><a id="access-login" href="/account/" target="_blank" rel="noopener">Войти в аккаунт</a></p>
-<button id="access-check" type="button">Продолжить после входа</button>
-<button id="access-allow" type="button" disabled>Разрешить подписки</button>
-<button id="access-revoke" type="button" disabled>Отключить доступ этого сайта</button>
+        + """"><main><h1>Вход на сервер</h1>
+<p id="access-status" role="status">Проверяем общий вход…</p>
+<p><a id="access-login" href="/account/" target="_blank" rel="noopener" hidden>Войти</a></p>
+<button id="access-check" type="button" hidden>Продолжить после входа</button>
+<p id="access-return" hidden>Готово. Можно вернуться на сайт.</p>
 </main></body></html>""",
         headers={**HEADERS, "Referrer-Policy": "no-referrer"},
     )

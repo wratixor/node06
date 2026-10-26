@@ -8,18 +8,26 @@
   function node(tag,value,parent){const item=document.createElement(tag);if(value)item.textContent=value;if(parent)parent.append(item);return item;}
   function refreshActions(){for(const container of document.querySelectorAll('.point-social'))container.dispatchEvent(new Event('node06:refresh'));}
   const operations=new Map();
-  let authorization=null;
-  async function connectSubscriptions(present){
+  let authorization=null,preparedConnection=null;
+  function prepareConnection(){
+    if(preparedConnection&&Date.now()-preparedConnection.created<240000)return preparedConnection;
+    const entry={state:crypto.randomUUID().replaceAll('-',''),created:Date.now()};preparedConnection=entry;
+    entry.promise=window.node06SubscriptionRequest('subscription.prepare',{state:entry.state}).then(prepared=>{
+      const url=new URL(prepared.url),expected=window.node06ManagementOrigin?.()||body.dataset.managementOrigin;
+      if(url.origin!==expected||url.pathname!=='/embed-subscriptions/'+prepared.id+'/'||prepared.state!==entry.state)throw Error('INVALID_RESPONSE');
+      entry.ready=prepared;return prepared;
+    }).catch(error=>{if(preparedConnection===entry)preparedConnection=null;throw error;});
+    void entry.promise.catch(()=>{});return entry;
+  }
+  async function connectSubscriptions(present,entry,popup,attempted){
     if(authorization)throw Error('AUTHORIZATION_PENDING');
-    const state=crypto.randomUUID().replaceAll('-','');
-    let finish,timer,watch,popup=null,stopped=false;
+    const state=entry.state;preparedConnection=null;
+    let finish,timer,watch,stopped=false;
     const done=new Promise((resolve,reject)=>{finish={resolve,reject};});
     const cancel=()=>finish.reject(Error('AUTHORIZATION_CANCELLED'));
     const pending={cancel};authorization=pending;
     try{
-      const prepared=await window.node06SubscriptionRequest('subscription.prepare',{state});
-      const url=new URL(prepared.url),expected=window.node06ManagementOrigin?.()||body.dataset.managementOrigin;
-      if(url.origin!==expected||url.pathname!=='/embed-subscriptions/'+prepared.id+'/'||prepared.state!==state)throw Error('INVALID_RESPONSE');
+      const prepared=await entry.promise,url=new URL(prepared.url);
       // A browser may sever opener links or open an ordinary tab instead of a
       // popup. Completion stays bound to the iframe-only PKCE verifier.
       const poll=async()=>{
@@ -28,7 +36,7 @@
         }catch(error){if(!stopped)finish.reject(error);}
       };
       const open=()=>{if(popup&&!popup.closed){popup.focus();return;}popup=window.open(url.href,'node06-subscriptions','popup,width=520,height=620');};
-      Object.assign(pending,{url:url.href,open});present(pending);open();
+      Object.assign(pending,{url:url.href,open});present(pending);if(!attempted)open();
       timer=setTimeout(()=>finish.reject(Error('AUTHORIZATION_TIMEOUT')),300000);
       void poll();await done;
     }finally{stopped=true;clearTimeout(timer);clearTimeout(watch);authorization=null;if(popup&&!popup.closed)popup.close();}
@@ -87,7 +95,7 @@
         const same=kind==='favorite'||kind==='related'||kind==='edit'||kind==='copy'||kind==='remember'?true:kind==='support'?own?.subscription?.content_digest===pin?.content_digest&&own?.subscription?.revision_id===pin?.revision_id:own?.block?.content_digest===pin?.content_digest&&own?.block?.revision_id===pin?.revision_id;
         control.title=labels[kind][active?1:0]||labels[kind][0];
         if(active&&!same&&kind!=='favorite')control.title=text('Confirm for current version','Подтвердить для текущей версии');
-        if(kind==='support'&&!firstParty()&&!subscriptionKnown)control.title=text('Connect account to subscribe','Подключить аккаунт для подписки');
+        if(kind==='support'&&!firstParty()&&!subscriptionKnown)control.title=labels.support[0];
         control.setAttribute('aria-label',control.title);control.setAttribute('aria-pressed',kind==='support'&&!firstParty()&&!subscriptionKnown?'mixed':String(active));control.classList.toggle('active',active);
         if(control.tagName==='BUTTON')control.disabled=['copy','remember'].includes(kind)?false:operation.busy||!pin||Boolean(operation.receipt&&operation.receipt.kind!==kind);
         else if(origin()){control.href=address(kind);if(kind==='edit'&&!editable)control.removeAttribute('href');}
@@ -138,24 +146,28 @@
           pin=null;fail(text('Text changed. Open versions before acting.','Текст изменился. Откройте версии перед действием.'));
           const link=node('a',text('Versions','Версии'),status);link.href=address('support');link.target='_blank';link.rel='noopener noreferrer';positionStatus();
         }
+        if(!firstParty()&&body.dataset.hosted!=='true'&&!subscriptionKnown&&!authorization)prepareConnection();
         state();
       }catch(_){if(alive(sequence)){pin=null;state();fail(text('Actions unavailable. Reopen this point to retry.','Действия недоступны. Откройте точку заново.'));}}
     }
     function showConnection(pending){
-      fail(text('Confirm access in the connection window. If it did not open: ','Подтвердите доступ в окне подключения. Если оно не открылось: '));
-      const link=node('a',text('Connect subscriptions','Подключить подписки'),status);link.href=pending.url;
+      fail(text('Checking server sign-in… ','Проверяем вход на сервер… '));
+      const link=node('a',text('Continue sign-in','Продолжить вход'),status);link.href=pending.url;
       link.addEventListener('click',event=>{event.preventDefault();pending.open();});
       const cancel=node('button',text('Cancel','Отмена'),status);cancel.type='button';cancel.addEventListener('click',pending.cancel);positionStatus();
     }
     function externalClick(){
       if(operation.busy||!pin)return;
       if(authorization){if(authorization.url)showConnection(authorization);else fail(text('Preparing connection…','Подготовка подключения…'));return;}
-      void externalAct(!subscriptionKnown);
+      const connect=!subscriptionKnown,entry=connect?prepareConnection():null;
+      // A prepared real URL can open synchronously in the original click gesture.
+      const attempted=Boolean(entry?.ready),popup=attempted?window.open(entry.ready.url,'node06-subscriptions','popup,width=520,height=620'):null;
+      void externalAct(connect,entry,popup,attempted);
     }
-    async function externalAct(connect){
+    async function externalAct(connect,entry,popup,attempted){
       operation.busy=true;state();status.hidden=true;let committed=false;
       try{
-        if(connect){fail(text('Preparing connection…','Подготовка подключения…'));await connectSubscriptions(showConnection);status.hidden=true;}
+        if(connect){fail(text('Preparing connection…','Подготовка подключения…'));await connectSubscriptions(showConnection,entry,popup,attempted);status.hidden=true;}
         if(!container.isConnected&&new URLSearchParams(location.search).get('p')!==id)return;
         own=await window.node06SubscriptionRequest('subscription.read',{point_id:id});subscriptionKnown=true;
         const active=Boolean(own.subscription?.active&&own.subscription.content_digest===pin.content_digest&&own.subscription.revision_id===pin.revision_id);

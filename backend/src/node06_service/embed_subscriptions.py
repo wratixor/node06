@@ -104,7 +104,9 @@ def approve(db, rid, uid, session_token, authorize, resume=False):
         expiry = (
             reusable(c, row, uid, digest(session_token))
             if resume
-            else now() + timedelta(minutes=15)
+            else c.scalar(
+                select(sessions.c.expires_at).where(sessions.c.digest == digest(session_token))
+            )
         )
         if not expiry:
             raise PublicPointError("SUBSCRIPTION_CONSENT_REQUIRED", 409)

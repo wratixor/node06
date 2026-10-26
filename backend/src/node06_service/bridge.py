@@ -163,7 +163,7 @@ def register_bridge(app: FastAPI) -> None:
                             "subscription.read",
                             "subscription.set",
                         ],
-                        "subscription_consent_required": True,
+                        "subscription_consent_required": False,
                     }
                     if method == "capabilities.get"
                     else {"id": site.id, "origin": site.origin, "welcome_point_id": site.id}

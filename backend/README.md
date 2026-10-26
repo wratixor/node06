@@ -205,11 +205,10 @@ source tests do not establish production installation or account linking.
 
 Static-site subscription actions: [EMBED-SUBSCRIPTIONS-V1](../docs/EMBED-SUBSCRIPTIONS-V1.md),
 migration `0023_embed_subscriptions`, capability `scoped_embed_subscriptions`.
-A separate explicit15-minute grant permits point-subscription state/toggles only;
-no global cookie, role, author trust or generic write authority reaches a parent.
-The account page can revoke these grants. Partitioned cookie restoration is
-optional; denied storage uses iframe memory and remaining-consent reconnection.
-Approval recognizes the existing common server account even in detached tabs;
-iframe-held PKCE completion does not require `window.opener`.
-Apply the migration/server release before relying on the updated static controls.
-General authenticated full-iframe operations remain outside this limited packet.
+The registered static site uses the common native server login automatically,
+without a per-site permission step. A narrow bridge credential follows the
+issuing native session's lifetime; logout invalidates it. Native credentials,
+roles and generic write authority never reach a third-party parent. Partitioned
+persistence is optional; denied storage uses memory and an automatic top-level
+handoff on the next action. Detached tabs do not require `window.opener`.
+Update server and static assets together. General full-iframe auth is separate.
