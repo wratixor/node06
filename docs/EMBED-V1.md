@@ -1,6 +1,9 @@
 # NODE06 embedding protocol v1 — target contract
 
-Status: target contract, not deployed. A public read-only full iframe is now
+Status: target contract with implemented subsets (source status below).
+Scoped static-site point subscriptions are now implemented separately in
+[EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md); general embed authentication
+remains future work. A public read-only full iframe is now
 implemented as documented in [HOSTED-WIKI-V1](HOSTED-WIKI-V1.md). A public read
 bridge/parent SDK is now implemented in [PUBLIC-BRIDGE-V1](PUBLIC-BRIDGE-V1.md);
 scoped writes/grants/PKCE remain future work. Owner selected bridge

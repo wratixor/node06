@@ -123,6 +123,8 @@ def register_bridge(app: FastAPI) -> None:
             + html.escape(parents, quote=True)
             + '" data-site="'
             + html.escape(site.id, quote=True)
+            + '" data-management-origin="'
+            + html.escape(settings.management_origin, quote=True)
             + '">NODE06 public read bridge<script src="/bridge/assets/bridge.js"></script>'
             "</body></html>"
         )
@@ -150,7 +152,18 @@ def register_bridge(app: FastAPI) -> None:
                 if params:
                     return error("INVALID_PARAMS")
                 data = (
-                    {"methods": METHODS, "read_only": True, "parent_credentials": False}
+                    {
+                        "methods": METHODS,
+                        "read_only": True,
+                        "parent_credentials": False,
+                        "subscription_methods": [
+                            "subscription.prepare",
+                            "subscription.redeem",
+                            "subscription.read",
+                            "subscription.set",
+                        ],
+                        "subscription_consent_required": True,
+                    }
                     if method == "capabilities.get"
                     else {"id": site.id, "origin": site.origin, "welcome_point_id": site.id}
                 )

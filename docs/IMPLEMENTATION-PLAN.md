@@ -1867,3 +1867,16 @@ The old renderer fails the deterministic depth-two fixture; the corrected one
 passes, as does existing61-root static navigation. No migration or API authority
 change. Neocities publication and server asset deployment remain separate from
 source validation.
+
+### 26 October2026 — scoped static point subscriptions
+
+The external point heart now requests a separate15-minute subscription-only
+capability with trusted first-party consent, then toggles directly on the map.
+State is read through the private bridge and highlighted in panel/context menu;
+optional partitioned persistence restores it on reload, with memory-only fallback
+when third-party storage is denied. Guest native actions show an explicit login
+link rather than opening a generic profile. Migration0023 and scope/PKCE/session/
+origin/revoke bounds: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md).
+This advances the narrow reversible-reaction part of P03/P08; general embed auth,
+posting/editing/ballot delegation are not included. Production rollout remains
+separate from source/browser validation.

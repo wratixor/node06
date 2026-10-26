@@ -3,6 +3,36 @@
   const protocol = "node06-embed/1";
   const methods = ["capabilities.get", "site.get", "point.get", "points.search",
     "point.read", "points.searchPage", "point.neighbors", "point.social", "points.geometry"];
+  const subscriptionMethods=['subscription.prepare','subscription.redeem','subscription.read','subscription.set'];
+  methods.push(...subscriptionMethods);
+  let subscriptionVerifier=null,subscriptionRequest=null,subscriptionToken=null;
+  async function subscription(method,params){
+    if(window.parent!==window.top)throw Error('TOP_LEVEL_PARENT_REQUIRED');
+    const post=async(action,payload,token)=>{
+      const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),10000);
+      try{const r=await fetch('/bridge/v1/'+encodeURIComponent(site)+'/subscriptions/'+action,{method:'POST',credentials:document.body.dataset.managementOrigin===location.origin?'omit':'include',cache:'no-store',signal:abort.signal,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({...payload,parent_origin:parentOrigin})});const data=await r.json();if(!r.ok){if(r.status===401)subscriptionToken=null;throw Error(data.code||'SUBSCRIPTION_FAILED');}return data;}
+      finally{clearTimeout(timer);}
+    };
+    const base64=bytes=>btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
+    if(method==='subscription.prepare'){
+      if(!exact(params,['state'])||!/^[0-9a-f]{32}$/.test(params.state))throw Error('INVALID_PARAMS');
+      subscriptionVerifier=base64(crypto.getRandomValues(new Uint8Array(32)));
+      const challenge=base64(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(subscriptionVerifier))));
+      subscriptionRequest=await post('prepare',{state:params.state,challenge});
+      return {...subscriptionRequest,url:document.body.dataset.managementOrigin+'/embed-subscriptions/'+subscriptionRequest.id+'/'};
+    }
+    if(method==='subscription.redeem'){
+      if(!exact(params,['id','state','code'])||!subscriptionRequest||params.id!==subscriptionRequest.id||params.state!==subscriptionRequest.state||!/^[A-Za-z0-9_-]{43}$/.test(params.code))throw Error('INVALID_PARAMS');
+      const result=await post('redeem',{...params,verifier:subscriptionVerifier});subscriptionToken=result.token;subscriptionVerifier=null;subscriptionRequest=null;
+      return {connected:true,expires_at:result.expires_at};
+    }
+    if(method==='subscription.read'){
+      if(!exact(params,['point_id'])||!/^[a-z0-9][a-z0-9_-]{0,95}$/.test(params.point_id))throw Error('INVALID_PARAMS');
+      return post('read',params,subscriptionToken);
+    }
+    if(!exact(params,['point_id','subscription','key'])||typeof params.key!=='string'||!/^[A-Za-z0-9_-]{8,80}$/.test(params.key))throw Error('INVALID_PARAMS');
+    return post('set',params,subscriptionToken);
+  }
   const parents = document.body.dataset.parents.split(" ");
   const site = document.body.dataset.site;
   const active = new Set();
@@ -36,6 +66,12 @@
       || !/^[A-Za-z0-9_-]{1,128}$/.test(message.id) || !plain(message.params)) return;
     const { id, method, params } = message;
     if (!methods.includes(method)) { fail(id, "METHOD_NOT_ALLOWED"); return; }
+    if(subscriptionMethods.includes(method)){
+      if(active.has(id))return;if(active.size>=8){fail(id,'BUSY');return;}active.add(id);
+      try{send({kind:'result',id,data:await subscription(method,params)});}
+      catch(error){fail(id,error.name==='AbortError'?'TIMEOUT':error.message||'SUBSCRIPTION_FAILED');}
+      finally{active.delete(id);}return;
+    }
     if (method === "points.geometry") {
       if (!exact(params,["point_ids"]) || !Array.isArray(params.point_ids) ||
           params.point_ids.length < 1 || params.point_ids.length > 64 ||

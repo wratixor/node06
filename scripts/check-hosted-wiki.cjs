@@ -1025,6 +1025,7 @@ assert(active && /^s_[0-9a-f]{32}$/.test(active), 'Set NODE06_TEST_ACTIVE_SITE f
     await discovery.close();
     await require('./check-home-languages.cjs')({browser,base,embed,otherSite,errors});
     await require('./check-git-sources.cjs')({browser,base,otherSite,errors});
+    await require('./check-embed-subscriptions.cjs')({browser,base,embed,active,errors});
     await require('./check-profile-packets.cjs')({browser,base,embed,errors});
     const purged=process.env.NODE06_TEST_PURGED_POINT;
     assert(purged,'Disposable fixture must provide a purged point');

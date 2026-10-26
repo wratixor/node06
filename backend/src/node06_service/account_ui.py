@@ -48,7 +48,9 @@ required minlength="12" maxlength="128"></label>
 minlength="48" maxlength="48"></label>
 <button id="submit" type="submit">Продолжить</button></form>
 <section id="session-actions" hidden><button id="logout" type="button">Выйти здесь</button>
-<button id="logout-all" type="button">Выйти во всех браузерах</button></section>
+<button id="logout-all" type="button">Выйти во всех браузерах</button>
+<button id="revoke-subscriptions" type="button">Отозвать доступ сайтов к подпискам</button>
+</section>
 <noscript>Для этого интерфейса нужен JavaScript.</noscript>
 </main></body></html>""".replace("{personal_navigation}", navigation("account"))
 
@@ -121,6 +123,11 @@ function mode(){
  el('password').autocomplete=action==='login'?'current-password':'new-password';
 }
 el('action').addEventListener('change',mode);
+el('revoke-subscriptions').addEventListener('click',async()=>{
+ try{await api('/me/embed-subscriptions/revoke','POST',{});
+ el('status').textContent='Доступ внешних сайтов к подпискам отключён.';}
+ catch(error){el('status').textContent=error.message;}
+});
 el('dismiss-code').addEventListener('click',()=>{
  el('saved-code').value='';el('recovery-result').hidden=true;
 });

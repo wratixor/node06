@@ -686,3 +686,25 @@ profile_links.append_column(Column("sync_error", String(64)))
 profile_links.append_column(Column("sync_attempts", Integer, nullable=False, server_default="0"))
 Index("ix_profile_links_data_token", profile_links.c.data_token_digest, unique=True)
 Index("ix_profile_links_sync_due", profile_links.c.sync_enabled, profile_links.c.sync_next_check)
+
+embed_subscriptions = Table(
+    "embed_subscriptions",
+    metadata,
+    Column("id", String(34), primary_key=True),
+    Column("site_id", ForeignKey("sites.id", ondelete="CASCADE"), nullable=False),
+    Column("parent_origin", String(512), nullable=False),
+    Column("challenge", String(43), nullable=False),
+    Column("state", String(32), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("pending_until", DateTime(timezone=True), nullable=False),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE")),
+    Column("session_digest", ForeignKey("sessions.digest", ondelete="CASCADE")),
+    Column("approved_until", DateTime(timezone=True)),
+    Column("code_digest", String(64), unique=True),
+    Column("code_until", DateTime(timezone=True)),
+    Column("token_digest", String(64), unique=True),
+    Column("consented", Boolean, nullable=False, server_default="false"),
+    Column("revoked", Boolean, nullable=False, server_default="false"),
+)
+Index("ix_embed_subscriptions_user", embed_subscriptions.c.user_id)
+Index("ix_embed_subscriptions_pending", embed_subscriptions.c.pending_until)

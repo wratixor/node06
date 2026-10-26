@@ -140,6 +140,10 @@
   };
   window.node06ReturnPath = () => transportConfig ? `/sites/${transportConfig.siteId}/` : body.dataset.searchSite ? `/sites/${body.dataset.searchSite}/` : body.dataset.fieldPath || '/';
   window.node06ManagementOrigin = () => transportConfig?.serviceOrigin || body.dataset.managementOrigin || (body.dataset.hosted === "true" && !body.dataset.searchSite ? location.origin : "");
+  window.node06SubscriptionRequest = (method,params) => {
+    if(!['subscription.prepare','subscription.redeem','subscription.read','subscription.set'].includes(method))return Promise.reject(Error('METHOD_NOT_ALLOWED'));
+    return request(method,params);
+  };
   window.readNode06Public = (method, params) => {
     if (!["point.read", "points.searchPage", "point.neighbors", "point.social", "points.geometry"].includes(method))
       return Promise.reject(new Error("METHOD_NOT_ALLOWED"));
