@@ -9,6 +9,9 @@ async function check({browser,base,embed,active,errors}){
   await ctx.addInitScript(()=>{if(location.pathname.startsWith('/embed-subscriptions/'))window.opener=null;});
   const account=await ctx.newPage();account.on('pageerror',e=>errors.push(e.message));
   await account.goto(base+'/account/');await account.locator('#handle').fill('fixture-owner');await account.locator('#password').fill('fixture-test-password');await account.locator('#submit').click();await account.waitForFunction(()=>document.querySelector('#account-form').hidden);
+  const identity=await (await account.request.get(base+'/api/v1/me')).json();
+  const favoriteHeaders={Origin:base,'X-CSRF-Token':identity.csrf_token,'Idempotency-Key':require('node:crypto').randomUUID()};
+  assert.equal((await account.request.post(base+'/api/v1/me/favorites/skills-ru',{headers:favoriteHeaders,data:{active:true}})).status(),200);
   const parent='https://garden.localhost',root=process.env.NODE06_BROWSER_DIST;
   await ctx.grantPermissions(['local-network-access'],{origin:parent});
   let html=fs.readFileSync(path.join(root,'index.html'),'utf8').replaceAll('https://wiki.geno-dice.com',base);
@@ -44,6 +47,16 @@ async function check({browser,base,embed,active,errors}){
   assert.equal(await page.url(),target);
   await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]').getAttribute('aria-pressed')==='true');
   assert(await support().evaluate(e=>e.classList.contains('active')));
+  const favorite=()=>page.locator('#point-panel-body [data-action=favorite]');
+  await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=favorite]')?.getAttribute('aria-pressed')==='true');
+  assert(await favorite().evaluate(e=>e.classList.contains('active')));
+  await page.waitForFunction(()=>!document.querySelector('#point-panel-body [data-action=favorite]').disabled);
+  await favorite().click();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=favorite]').getAttribute('aria-pressed')==='false');
+  assert.deepEqual((await (await account.request.get(base+'/api/v1/me/favorites')).json()).items,[]);
+  await page.waitForFunction(()=>!document.querySelector('#point-panel-body [data-action=favorite]').disabled);
+  await favorite().click();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=favorite]').getAttribute('aria-pressed')==='true');
+  assert((await (await account.request.get(base+'/api/v1/me/favorites')).json()).items.some(p=>p.id==='skills-ru'));
+
   assert.equal(await page.locator('#point-editor-overlay').count(),0);assert.equal(await page.url(),target);
   await page.waitForFunction(()=>!document.querySelector('#point-panel-body [data-action=support]').disabled);
   await support().click();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]').getAttribute('aria-pressed')==='false');
@@ -51,11 +64,13 @@ async function check({browser,base,embed,active,errors}){
   await support().click();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]').getAttribute('aria-pressed')==='true');
   // A partitioned grant restores highlighting without exposing the management cookie.
   await page.reload();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='true');
+  assert.equal(await favorite().getAttribute('aria-pressed'),'true');
   const privateState=await page.evaluate(async()=>{const r=await window.node06SubscriptionRequest('subscription.read',{point_id:'skills-ru'});return r;});
   assert(privateState.subscription.active);assert(!JSON.stringify(privateState).includes('token'));assert(!JSON.stringify(privateState).includes('user_id'));
   // Same action state in the 3x3 sphere menu.
   await page.locator('#field-map .node.center circle').click({button:'right'});
   await page.waitForFunction(()=>document.querySelector('#point-context-menu [data-action=support]')?.getAttribute('aria-pressed')==='true');
+  assert.equal(await page.locator('#point-context-menu [data-action=favorite]').getAttribute('aria-pressed'),'true');
   await page.keyboard.press('Escape');
   const me=await (await account.request.get(base+'/api/v1/me')).json();
   assert.equal((await account.request.post(base+'/api/v1/me/embed-subscriptions/revoke',{headers:{Origin:base,'X-CSRF-Token':me.csrf_token},data:{}})).status(),200);
@@ -97,7 +112,7 @@ async function check({browser,base,embed,active,errors}){
     assert.equal(await g.locator('#point-panel-body .point-action-status a').getAttribute('href'),base+'/account/');
     assert.equal(new URL(g.url()).pathname,'/');
   }finally{await guest.close();}
-  console.log('PASS: automatic server session, static subscription, direct toggle, highlight/reload/menu, denied cookies, resume, revocation, real-URL popup retry/cancel, shared account without opener');
+  console.log('PASS: automatic server session, static subscription, direct toggle, highlight/reload/menu, denied cookies, resume, revocation, real-URL popup retry/cancel, shared account without opener, native/static favorite read-toggle-reload-menu');
  }finally{await ctx.close();}
 }
 module.exports=check;

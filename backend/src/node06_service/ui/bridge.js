@@ -3,7 +3,7 @@
   const protocol = "node06-embed/1";
   const methods = ["capabilities.get", "site.get", "point.get", "points.search",
     "point.read", "points.searchPage", "point.neighbors", "point.social", "points.geometry"];
-  const subscriptionMethods=['subscription.prepare','subscription.complete','subscription.redeem','subscription.read','subscription.set'];
+  const subscriptionMethods=['subscription.prepare','subscription.complete','subscription.redeem','subscription.read','subscription.set','favorite.set'];
   methods.push(...subscriptionMethods);
   let subscriptionVerifier=null,subscriptionRequest=null,subscriptionToken=null;
   async function subscription(method,params){
@@ -36,6 +36,10 @@
     if(method==='subscription.read'){
       if(!exact(params,['point_id'])||!/^[a-z0-9][a-z0-9_-]{0,95}$/.test(params.point_id))throw Error('INVALID_PARAMS');
       return post('read',params,subscriptionToken);
+    }
+    if(method==='favorite.set'){
+      if(!exact(params,['point_id','active','key'])||typeof params.active!=='boolean'||typeof params.key!=='string'||!/^[A-Za-z0-9_-]{8,80}$/.test(params.key))throw Error('INVALID_PARAMS');
+      return post('favorite',params,subscriptionToken);
     }
     if(!exact(params,['point_id','subscription','key'])||typeof params.key!=='string'||!/^[A-Za-z0-9_-]{8,80}$/.test(params.key))throw Error('INVALID_PARAMS');
     return post('set',params,subscriptionToken);

@@ -55,6 +55,11 @@ class Mutation(Operation):
     key: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,80}$")]
 
 
+class FavoriteMutation(Operation):
+    active: bool
+    key: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,80}$")]
+
+
 class Empty(Strict):
     pass
 
@@ -159,6 +164,15 @@ def mutate(site_id: SiteID, payload: Mutation, request: Request):
     auth._limit("social-owner", row["user_id"], 240, 3600)
     auth._limit("social-ip", request.client.host, 480, 3600)
     return service.mutate(public, row, origin, payload.point_id, payload.subscription, payload.key)
+
+
+@router.post("/bridge/v1/{site_id}/subscriptions/favorite")
+def favorite(site_id: SiteID, payload: FavoriteMutation, request: Request):
+    row, public, origin = grant(request, site_id, payload.parent_origin)
+    auth = auth_service(request)
+    auth._limit("social-owner", row["user_id"], 240, 3600)
+    auth._limit("social-ip", request.client.host, 480, 3600)
+    return service.favorite(public, row, origin, payload.point_id, payload.active, payload.key)
 
 
 def own(request, rid, mutation=False):

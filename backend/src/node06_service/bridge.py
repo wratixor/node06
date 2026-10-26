@@ -162,6 +162,7 @@ def register_bridge(app: FastAPI) -> None:
                             "subscription.redeem",
                             "subscription.read",
                             "subscription.set",
+                            "favorite.set",
                         ],
                         "subscription_consent_required": False,
                     }

@@ -249,6 +249,9 @@ def read(public, row, management, pid):
     with public.database.begin() as c:
         owner_lock(c, row, management)
         public.raw_on(c, pid)
+        from .profile_preferences import favorite_ids
+
+        favorite = pid in favorite_ids(c, row["user_id"], management)
         sub = (
             c.execute(
                 select(subscriptions).where(
@@ -268,6 +271,7 @@ def read(public, row, management, pid):
             + row["parent_origin"]
         ),
         "expires_at": row["approved_until"].isoformat(),
+        "favorite": favorite,
         "subscription": {k: sub[k] for k in ("active", "revision_id", "content_digest")}
         if sub
         else None,
@@ -277,4 +281,10 @@ def read(public, row, management, pid):
 def mutate(public, row, management, pid, payload, key):
     return Social(public, lambda c, uid: owner_lock(c, row, management)).mutate(
         row["user_id"], key, "subscription", pid, payload.model_dump()
+    )
+
+
+def favorite(public, row, management, pid, active, key):
+    return Social(public, lambda c, uid: owner_lock(c, row, management)).mutate(
+        row["user_id"], key, "favorite", pid, {"active": active}
     )
