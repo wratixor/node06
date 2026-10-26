@@ -96,12 +96,13 @@ def change(a, token, active=True, key=None):
     )
 
 
-def test_consent_subscription_read_write_and_idempotent_receipt(access):
+def test_shared_session_subscription_read_write_and_idempotent_receipt(access):
     a = access
     request = prepare(a)
     before = a.owner.client.get("/api/v1/me/subscriptions/skills-ru").json()["subscription"]
     page = a.owner.client.get("/embed-subscriptions/" + request["id"] + "/")
-    assert page.status_code == 200 and "15 минут" in page.text
+    assert page.status_code == 200 and "15 минут" not in page.text
+    assert "access-allow" not in page.text and "Разрешить" not in page.text
     assert page.headers["x-frame-options"] == "DENY"
     assert a.owner.client.get("/api/v1/me/subscriptions/skills-ru").json()["subscription"] == before
     assert (
@@ -111,6 +112,12 @@ def test_consent_subscription_read_write_and_idempotent_receipt(access):
         == 409
     )
     token = redeem(a, approve(a, request))
+    with a.db.connect() as c:
+        row = c.execute(select(grants)).mappings().one()
+        native_expiry = c.scalar(
+            select(sessions.c.expires_at).where(sessions.c.digest == row["session_digest"])
+        )
+        assert row["approved_until"] == native_expiry
     initial_read = read(a, token)
     assert initial_read.status_code == 200, initial_read.text
     assert initial_read.json()["subscription"] is None
@@ -459,3 +466,58 @@ def test_concurrent_completion_is_single_use(access):
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         assert sorted(pool.map(complete_once, range(2))) == [200, 401]
+
+
+def test_two_registered_sites_use_one_account_and_subscription_store(access):
+    a = access
+    first_token = established(a)
+    assert change(a, first_token).status_code == 200
+    other_origin = "https://other.example"
+    registry = SiteRegistry(a.db)
+    other = registry.create_pending_site(
+        owner_user_id=a.owner.user, origin=other_origin, welcome_body="Other site"
+    )
+    registry.verify_site(
+        other.site_id,
+        actor_user_id=a.owner.user,
+        proof_fetcher=lambda _: other.proof_document.encode(),
+    )
+    prefix = f"/bridge/v1/{other.site_id}/subscriptions/"
+    verifier = secrets.token_urlsafe(32)
+    prepared = a.peer.post(
+        prefix + "prepare",
+        json={
+            "parent_origin": other_origin,
+            "state": uuid4().hex,
+            "challenge": challenge(verifier),
+        },
+    )
+    assert prepared.status_code == 200, prepared.text
+    request = {**prepared.json(), "verifier": verifier, "parent_origin": other_origin}
+    approve(a, request)
+    response = a.peer.post(prefix + "complete", json=request)
+    assert response.status_code == 200, response.text
+    token = response.json()["token"]
+    state = a.peer.post(
+        prefix + "read",
+        json={"parent_origin": other_origin, "point_id": "skills-ru"},
+        headers={"Authorization": "Bearer " + token},
+    )
+    assert state.status_code == 200 and state.json()["subscription"]["active"]
+    with a.db.connect() as c:
+        assert c.scalar(select(func.count()).select_from(users)) == 1
+        assert set(c.scalars(select(grants.c.user_id))) == {a.owner.user}
+        assert c.scalar(select(func.count()).select_from(subscriptions)) == 1
+    with a.db.begin() as c:
+        c.execute(
+            update(sessions).where(sessions.c.user_id == a.owner.user).values(revoked_at=func.now())
+        )
+    assert read(a, first_token).status_code == 401
+    assert (
+        a.peer.post(
+            prefix + "read",
+            json={"parent_origin": other_origin, "point_id": "skills-ru"},
+            headers={"Authorization": "Bearer " + token},
+        ).status_code
+        == 401
+    )

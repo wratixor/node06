@@ -40,11 +40,8 @@ async function check({browser,base,embed,active,errors}){
   const popupPromise=page.waitForEvent('popup');await connect.click();const popup=await popupPromise;
   popup.on('pageerror',e=>errors.push(e.message));await popup.waitForURL(base+'/embed-subscriptions/**');
   assert.equal(await popup.evaluate(()=>window.opener),null);
-  await popup.locator('#access-allow').waitFor();await popup.waitForFunction(()=>!document.querySelector('#access-allow').disabled);
-  assert.match(await popup.locator('#access-status').innerText(),/Общий аккаунт сервера: fixture-owner/);
-  assert.equal(await popup.locator('#access-login').isVisible(),false);
+  assert.equal(await popup.locator('#access-allow').count(),0);
   assert.equal(await page.url(),target);
-  await popup.locator('#access-allow').click();
   await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]').getAttribute('aria-pressed')==='true');
   assert(await support().evaluate(e=>e.classList.contains('active')));
   assert.equal(await page.locator('#point-editor-overlay').count(),0);assert.equal(await page.url(),target);
@@ -72,7 +69,7 @@ async function check({browser,base,embed,active,errors}){
   });
   await page.reload();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='mixed');
   const secondPromise=page.waitForEvent('popup');await support().click();const second=await secondPromise;
-  await second.waitForURL(base+'/embed-subscriptions/**');await second.waitForFunction(()=>!document.querySelector('#access-allow').disabled);await second.locator('#access-allow').click();
+  await second.waitForURL(base+'/embed-subscriptions/**');assert.equal(await second.locator('#access-allow').count(),0);
   await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='true');
   if(!second.isClosed())await second.close(); // Detached browser tabs may not allow scripted close.
   // Connecting to an existing subscription must not accidentally unsubscribe it.
@@ -80,7 +77,7 @@ async function check({browser,base,embed,active,errors}){
   await support().click();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='false');
   await page.reload();await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='mixed');
   const resumePromise=page.waitForEvent('popup');await support().click();const resumed=await resumePromise;await resumed.waitForURL(base+'/embed-subscriptions/**');
-  // Prior consent resumes only its remaining lifetime, without another Allow click.
+  // Existing native login reconnects automatically, without any permission click.
   await page.waitForFunction(()=>document.querySelector('#point-panel-body [data-action=support]')?.getAttribute('aria-pressed')==='true');
   assert.equal(await page.url(),target);
   await account.request.post(base+'/api/v1/me/embed-subscriptions/revoke',{headers:{Origin:base,'X-CSRF-Token':me.csrf_token},data:{}});
@@ -100,7 +97,7 @@ async function check({browser,base,embed,active,errors}){
     assert.equal(await g.locator('#point-panel-body .point-action-status a').getAttribute('href'),base+'/account/');
     assert.equal(new URL(g.url()).pathname,'/');
   }finally{await guest.close();}
-  console.log('PASS: consented static subscription, direct toggle, highlight/reload/menu, denied cookies, resume, revocation, real-URL popup retry/cancel, shared account without opener');
+  console.log('PASS: automatic server session, static subscription, direct toggle, highlight/reload/menu, denied cookies, resume, revocation, real-URL popup retry/cancel, shared account without opener');
  }finally{await ctx.close();}
 }
 module.exports=check;

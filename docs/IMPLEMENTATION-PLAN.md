@@ -1893,3 +1893,16 @@ migration. Regression acceptance removes opener links deliberately, verifies
 native account recognition and direct map subscription/highlighting. Canonical
 scope: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md). Server and static
 publication are still required after merge.
+
+
+### 26 October 2026 — owner correction: automatic shared server login
+
+The explicit site permission and 15-minute transport policy are superseded.
+Registered static copies recognize the same native server account automatically;
+the trusted handoff issues a narrow subscription credential until that session's
+expiry, without Allow/revoke-settings buttons. Native logout invalidates it.
+Preparing the real URL before a click avoids an asynchronous popup-blocker trap;
+detached tabs and denied third-party storage retain the PKCE rendezvous fallback.
+No new registration/migration/cookie domain or CSRF exception. Browser-isolated
+native sessions can require a brief automatic top-level handoff, not a separate
+permission step. Current contract: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md).
