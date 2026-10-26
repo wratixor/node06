@@ -226,3 +226,39 @@ open the corresponding hosted entrance, full frames retain their frame path.
 Results use text previews instead of exposing UUID/language metadata as titles.
 Escape, debounce, cursor bounds, current-result checks and keyboard focus remain.
 The same read-only bridge/API contracts are unchanged by this UI simplification.
+
+## Static depth-two field refresh — 26 October2026
+
+The static renderer hydrates the requested point and both displayed neighbor
+levels, including roots already present in points.json. A saved root's outgoing
+list cannot stand in for the current server graph: incoming user links may have
+been added since the static build. Navigation, history and the existing refresh
+button repeat hydration; the refresh button also refreshes geometry. No page
+reload, graph import, authentication or extra write capability is introduced.
+
+Reads run in batches of two, with one retry for transient bridge/network errors,
+a1024-point traversal budget and existing per-point public neighbor limits.
+Cancelled navigation cannot merge late responses. Incomplete reads produce a
+visible retry notice instead of silently presenting a complete neighborhood;
+a successful retry clears it. Geometry requests refresh after topology changes.
+This does not bypass per-site moderation or expand the API's bounded hub pages.
+
+Regression: `scripts/check-field-hydration.cjs` runs against a locally served
+`dist/`, with a deterministic bridge fixture (no production requests). It covers
+saved-root incoming links, depth-two posts, transient errors, deep links, in-map
+navigation, browser history, newly added links, refresh recovery and stale
+navigation responses. Run with Playwright available to Node and
+`NODE06_PREVIEW_URL=http://127.0.0.1:8766`; the optional `NODE06_FIELD_SCRIPT`
+selects a saved baseline JS file for reproducing the original failure.
+The baseline renderer fails by omitting the second-level point; the corrected
+renderer passes. The ordinary61-root static navigation suite also passes.
+
+After merge, the repository's existing main workflow builds/publishes Neocities;
+the hosted copy receives the same assets through its normal server deployment.
+No database migration is required. Source delivery alone does not verify either
+publication; check the affected public links after deployment.
+Validation checkpoint: deterministic hydration and61-root static Chromium suites,
+installed-wheel full HTTPS hosted/bridge/iframe acceptance, build61, JS syntax,
+clipboard/protocol and backend lint passed. Anonymous production point reads
+through the hosted endpoint and the Neocities site-scoped bridge returned the
+same six direct links without truncation; no production writes were performed.

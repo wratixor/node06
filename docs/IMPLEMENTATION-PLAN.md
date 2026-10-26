@@ -1855,3 +1855,15 @@ server configuration was touched.
 Next: versioned per-field/item preferences, deletion tombstones and provenance;
 then separately consented private exchange with automatic fresher-change resolution.
 Network identity linking does not silently expand a control-only grant's data scope.
+
+### 26 October2026 — static field neighborhood hydration
+
+Corrected missing links in the Neocities map: the renderer now hydrates both
+visible neighbor levels, refreshes already known roots and repeats reads during
+navigation/history/manual refresh. Late previous-navigation replies are ignored;
+bounded transient retries and an incomplete-data notice support recovery.
+Details and regression command: [PUBLIC-BRIDGE-V1](PUBLIC-BRIDGE-V1.md).
+The old renderer fails the deterministic depth-two fixture; the corrected one
+passes, as does existing61-root static navigation. No migration or API authority
+change. Neocities publication and server asset deployment remain separate from
+source validation.
