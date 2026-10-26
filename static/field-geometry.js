@@ -31,7 +31,7 @@
     finally{if(sequence===ticket)refresh.disabled=false;}
   }
   window.addEventListener("node06:field",event=>{ids=event.detail.ids;++ticket;clearTimeout(timer);timer=setTimeout(load,120);});
-  refresh.addEventListener("click",load);
+  refresh.addEventListener("click",async()=>{await window.refreshNode06Field?.();clearTimeout(timer);await load();});
   window.addEventListener("node06:reaction",()=>void load());
   window.addEventListener("focus",()=>{if(status.getClientRects().length)void load();});
   ids=[...document.querySelectorAll("#field-map .node")].map(node=>node.dataset.id);if(ids.length)void load();

@@ -30,15 +30,48 @@
     const current=byId.get(point.id), value={coordinates:null,coordinate_source:'display-only',...current,...point,html:safeRemoteHtml(point.html),degree:point.degree??point.links.length};
     if(current)Object.assign(current,value);else{all.push(value);byId.set(point.id,value);}
   }
-  if((body.dataset.hosted!=='true'||!byId.has(dynamicRequested))&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(dynamicRequested||'')&&window.readNode06Public){
-    try{
-      const root=await window.readNode06Public('point.read',{point_id:dynamicRequested});mergePublic(root);
-      const missing=root.links.filter(id=>!byId.has(id)).slice(0,50);
-      for(let at=0;at<missing.length;at+=4){
-        const results=await Promise.allSettled(missing.slice(at,at+4).map(point_id=>window.readNode06Public('point.read',{point_id})));
-        for(const result of results)if(result.status==='fulfilled')mergePublic(result.value);else byId.get(root.id).neighbors_unavailable=true;
+  let hydrationTicket=0;
+  async function hydrateField(id){
+    if(!window.readNode06Public)return;
+    const ticket=++hydrationTicket, visited=new Set();
+    let frontier=[id], incomplete=false;
+    // The renderer displays depth two. Refresh existing roots as well: their
+    // static link lists cannot include new incoming user links.
+    for(let depth=0;depth<=2;depth++){
+      const next=new Set();
+      for(let at=0;at<frontier.length;at+=2){
+        if(ticket!==hydrationTicket)return;
+        const batch=frontier.slice(at,at+2);
+        const results=await Promise.allSettled(batch.map(async point_id=>{
+          for(let attempt=0;;attempt++){
+            try{return await window.readNode06Public('point.read',{point_id});}
+            catch(error){
+              if(attempt>=1||!['BUSY','TIMEOUT','NETWORK_ERROR','BRIDGE_CLOSED'].includes(error.message))throw error;
+              await new Promise(resolve=>setTimeout(resolve,150));
+            }
+          }
+        }));
+        if(ticket!==hydrationTicket)return;
+        for(let i=0;i<results.length;i++){
+          visited.add(batch[i]);
+          const result=results[i];
+          if(result.status!=='fulfilled'){incomplete=true;continue;}
+          if(result.value?.id!==batch[i]){incomplete=true;continue;}
+          try{mergePublic(result.value);}catch{incomplete=true;continue;}
+          if(depth<2)for(const target of result.value.links)if(!visited.has(target))next.add(target);
+        }
       }
-    }catch{body.dataset.publicReadUnavailable='true';}
+      frontier=[...next].filter(target=>!visited.has(target));
+      if(visited.size+frontier.length>1024){incomplete=true;break;}
+    }
+    if(ticket===hydrationTicket){
+      const root=byId.get(id);if(root)root.neighbors_unavailable=incomplete;
+      body.dataset.publicReadUnavailable=String(incomplete);
+      return true;
+    }
+  }
+  if((body.dataset.hosted!=='true'||!byId.has(dynamicRequested))&&/^[a-z0-9][a-z0-9_-]{0,95}$/.test(dynamicRequested||'')){
+    await hydrateField(dynamicRequested);
   }
   const geometryFallback=new Map(all.map(p=>[p.id,{coordinates:p.coordinates,coordinate_source:p.coordinate_source}]));
   let visibleSignature='';
@@ -86,9 +119,6 @@
   const panelClose=document.getElementById('point-panel-close');
   const controls=document.getElementById('field-controls');
   const shell=document.querySelector('.field-workspace');
-  if(body.dataset.publicReadUnavailable==='true'&&byId.has(dynamicRequested)){
-    const notice=document.createElement('p');notice.className='meta';notice.setAttribute('role','status');notice.textContent='Live data unavailable; showing saved roots.';shell.before(notice);
-  }
 
   let center=byId.get(requested);
   if(!center) center=[...local].sort((a,b)=>b.degree-a.degree)[0];
@@ -205,7 +235,23 @@
     else if(mode==='explore') showEmptyPanel();
     else showFeed();
     if(fromUser) updateUrl();
+    void window.refreshNode06Field?.();
   }
+
+  const hydrationStatus=document.createElement('p');hydrationStatus.className='meta';
+  hydrationStatus.setAttribute('role','status');host.before(hydrationStatus);
+  function hydrationMessage(){hydrationStatus.textContent=body.dataset.publicReadUnavailable==='true'?'Some linked points are unavailable. Press refresh to retry.':'';}
+  window.refreshNode06Field=async()=>{
+    if(body.dataset.hosted==='true')return;
+    const id=center.id;hydrationStatus.textContent='Loading linked points…';
+    const completed=await hydrateField(id);
+    if(!completed||center.id!==id)return;
+    // Newly loaded points need their own fallback before geometry can be applied.
+    for(const point of all)if(!geometryFallback.has(point.id))geometryFallback.set(point.id,{coordinates:point.coordinates,coordinate_source:point.coordinate_source});
+    hydrationMessage();visibleSignature='';renderMap();
+    if(mode==='read'&&openPoint)showPoint(openPoint,false);
+  };
+  hydrationMessage();
 
   panelClose.addEventListener('click',closePanel);
 
@@ -527,6 +573,7 @@
     if(startPage){startPage.hidden=Boolean(nextCenter);rootField.hidden=!nextCenter;}
     if(!nextCenter) return;
     center=nextCenter;
+    void window.refreshNode06Field();
     openPoint=byId.get(q.get('open'))||null;
     renderMap();
     if(mode==='feed') showFeed(); else if(mode==='read'&&openPoint) showPoint(openPoint,false); else showEmptyPanel();
