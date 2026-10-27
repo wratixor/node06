@@ -37,18 +37,30 @@ def publish(
     origin: str,
     *,
     check: bool = False,
+    core_roots=(),
 ) -> dict:
     """Atomic operator acceptance, bound to the verified site and original owner.
 
     The OS operator selects the repository, not a manifest or web caller. No
     registration or source-proof claim is fabricated. All IO precedes this call.
-    External references are deferred until trusted revision-pin indexing exists.
+    Non-core external references remain deferred until trusted pin indexing exists.
     """
     with database.begin() as connection:
-        return publish_on(connection, candidate, repository_url, origin, check=check)
+        return publish_on(
+            connection, candidate, repository_url, origin, check=check, core_roots=core_roots
+        )
 
 
-def publish_on(connection, candidate, repository_url, origin, *, check=False, authority="operator"):
+def publish_on(
+    connection,
+    candidate,
+    repository_url,
+    origin,
+    *,
+    check=False,
+    authority="operator",
+    core_roots=(),
+):
     """Trusted callers must authorize/validate a source before sharing this transaction."""
     if normalize_origin(origin) != origin:
         raise RootImportError("NON_CANONICAL_ORIGIN")
@@ -59,6 +71,26 @@ def publish_on(connection, candidate, repository_url, origin, *, check=False, au
         raise RootImportError("OPERATOR_WELCOME_REQUIRED")
     now = datetime.now(UTC)
     lock_graph(connection)
+    incoming_ids = {p.id for p in candidate.points}
+    core_targets = {target for p in candidate.points for target in p.links} - incoming_ids
+    if core_targets:
+        if authority != "operator":
+            raise RootImportError("CORE_LINKS_OPERATOR_ONLY")
+        from .public_points import PublicPointError, PublicPoints
+
+        public = PublicPoints(None, roots=core_roots, site_id=candidate.site_id)
+        if not core_targets <= public.core.keys():
+            raise RootImportError("CORE_TARGET_MISSING")
+        try:
+            for target in sorted(core_targets):
+                public.raw_on(connection, target)
+        except PublicPointError as exc:
+            raise RootImportError("CORE_TARGET_UNAVAILABLE") from exc
+        conflicts = connection.scalar(
+            select(points.c.id).where(points.c.id.in_(core_targets), points.c.origin != "root")
+        )
+        if conflicts:
+            raise RootImportError("CORE_TARGET_CONFLICT")
     site = (
         connection.execute(select(sites).where(sites.c.id == candidate.site_id).with_for_update())
         .mappings()
@@ -217,6 +249,10 @@ def publish_on(connection, candidate, repository_url, origin, *, check=False, au
             edge_claims.c.claim_ref == candidate.site_id,
         )
     )
+    for target in sorted(core_targets):
+        connection.execute(
+            pg_insert(points).values(id=target, origin="root").on_conflict_do_nothing()
+        )
     pairs = {tuple(sorted((p.id, target))) for p in candidate.points for target in p.links}
     for a, b in sorted(pairs):
         connection.execute(
@@ -264,7 +300,8 @@ def main() -> int:
     parser.add_argument("--repository-url", required=True)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    database = Database(get_settings().database_url)
+    settings = get_settings()
+    database = Database(settings.database_url)
     try:
         snapshot = GitSnapshot(args.repo, args.commit)
         if snapshot.git("remote", "get-url", "origin").decode().strip() != args.repository_url:
@@ -273,7 +310,21 @@ def main() -> int:
         if head != args.commit:
             raise RootImportError("REGISTERED_MAIN_SHA_REQUIRED")
         candidate = preflight(args.repo, args.commit, args.site_id, "node06-roots.json")
-        result = publish(database, candidate, args.repository_url, args.origin, check=args.check)
+        from .hosted import HostedBundle
+
+        local_ids = {p.id for p in candidate.points}
+        needs_core = any(target not in local_ids for p in candidate.points for target in p.links)
+        core_roots = (
+            HostedBundle(settings.hosted_dist).roots if needs_core and settings.hosted_dist else ()
+        )
+        result = publish(
+            database,
+            candidate,
+            args.repository_url,
+            args.origin,
+            check=args.check,
+            core_roots=core_roots,
+        )
     except RootImportError as exc:
         print(json.dumps({"code": exc.code, "file": exc.path, "writes_performed": False}))
         return 1

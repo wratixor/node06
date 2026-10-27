@@ -95,3 +95,14 @@ online migration downgrade/upgrade on disposable PostgreSQL using psycopg.
 Git-owned home blocks and per-site priority extend this release path through
 migration 0007. See [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md) for manifest data, source
 selection, migration preservation and application-before-content merge order.
+
+
+### Shared core graph links
+
+Operator-reviewed content may use `md://core/<id>` for a public core ID in the
+installed built engine bundle. Install the engine with this support before a
+content manifest starts using it. The publisher loads the trusted bundle through
+`NODE06_HOSTED_DIST`, validates visibility, and creates only the edge/anchor;
+it does not import another source's text or take its ownership. Generic
+`md://point/` external revisions remain rejected. Unknown, hidden and purged core
+targets abort acceptance without replacing the prior publication. No migration.

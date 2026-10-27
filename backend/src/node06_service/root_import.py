@@ -324,6 +324,10 @@ def prepare_candidate(
                     linked = ids.get(target.removeprefix("md://local/"))
                     if linked is None:
                         raise RootImportError("LOCAL_TARGET_MISSING", path, line)
+                elif target.startswith("md://core/"):
+                    linked = target.removeprefix("md://core/")
+                    if not POINT.fullmatch(linked) or linked.startswith(("p_", "s_", "r_")):
+                        raise RootImportError("INVALID_CORE_TARGET", path, line)
                 elif target.startswith("md://point/"):
                     linked = target.removeprefix("md://point/")
                     if linked in ids.values():
