@@ -25,6 +25,8 @@ def render_root(body: str, site_id: str) -> str:
                 if target.startswith("md://local/"):
                     local = target.removeprefix("md://local/")
                     pid = site_id if local == "welcome" else f"r_{site_id[2:]}_{local}"
+                elif target.startswith("md://core/"):
+                    pid = target.removeprefix("md://core/")
                 elif target.startswith("md://point/"):
                     pid = target.removeprefix("md://point/")
                 if pid and POINT.fullmatch(pid):

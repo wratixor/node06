@@ -127,3 +127,21 @@ revision-pin import остаются за рамками первого серв
 Optional repository-owned `home_page`, `local/<id>` navigation aliases and source
 priority are implemented in [HOME-BLOCKS-V1](HOME-BLOCKS-V1.md). Home data enters
 the candidate digest but does not change semantic point content digests.
+
+
+## Operator links to installed public core roots — 27 October 2026
+
+`[label](md://core/triple-body-onslaught-reaction-ru)` explicitly references a
+current installed NODE06 core point. Preflight validates bounded ID syntax and
+rejects user/site/import namespaces (`p_`, `s_`, `r_`). It does not fabricate a
+public revision pin. Operator acceptance checks exact membership in its trusted
+built root bundle and current server/site visibility, creates only a DB anchor
+if needed, and records a source-owned edge. Existing core text/revisions and
+ownership remain unchanged; removing the source link releases only that claim.
+Check-only does not create anchors. Missing/hidden/purged targets fail closed.
+
+The operator CLI obtains roots from `NODE06_HOSTED_DIST`; a content repository
+cannot supply this trusted set. Owner GitHub-source acceptance rejects this new
+syntax with `CORE_LINKS_OPERATOR_ONLY`; generic `md://point/` revision imports
+remain deferred. No network fetch or content-code execution is added. Existing
+local reciprocal references and 16-link bounds remain unchanged. No migration.

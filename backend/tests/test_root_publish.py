@@ -254,3 +254,93 @@ def test_operator_cannot_adopt_unrecognized_git_welcome(pg_database, registered)
     with pytest.raises(RootImportError, match="WELCOME_ALREADY_GIT_MANAGED"):
         publish(pg_database, candidate(site), REPO, ORIGIN)
     assert count(pg_database, root_sources) == 0
+
+
+CORE = {
+    "id": "shared-triple",
+    "lang": "en",
+    "body": "Shared triple",
+    "html": "<p>Shared triple</p>",
+    "links": [],
+    "origin": "root",
+}
+
+
+def test_operator_links_to_installed_core_without_copying_or_owning_it(pg_database, registered):
+    from node06_service.models import edge_claims, point_edges
+
+    site, _ = registered
+    proposal = candidate(site, body="[Triple](md://core/shared-triple)")
+    assert (
+        publish(pg_database, proposal, REPO, ORIGIN, core_roots=[CORE], check=True)[
+            "writes_performed"
+        ]
+        is False
+    )
+    with pg_database.connect() as c:
+        assert c.scalar(select(points.c.id).where(points.c.id == CORE["id"])) is None
+    assert publish(pg_database, proposal, REPO, ORIGIN, core_roots=[CORE])["writes_performed"]
+    with pg_database.connect() as c:
+        core = c.execute(select(points).where(points.c.id == CORE["id"])).mappings().one()
+        assert core["origin"] == "root" and core["current_revision_id"] is None
+        assert (
+            c.scalar(select(root_entries.c.point_id).where(root_entries.c.point_id == CORE["id"]))
+            is None
+        )
+        assert (
+            c.scalar(
+                select(func.count())
+                .select_from(point_edges)
+                .where(
+                    (point_edges.c.point_a == CORE["id"]) | (point_edges.c.point_b == CORE["id"])
+                )
+            )
+            == 1
+        )
+    html = render_root("[Triple](md://core/shared-triple)", site.site_id)
+    assert 'data-point-id="shared-triple"' in html and "open=shared-triple" in html
+    publish(pg_database, candidate(site, sha="b" * 40), REPO, ORIGIN)
+    with pg_database.connect() as c:
+        assert c.scalar(select(points.c.id).where(points.c.id == CORE["id"])) == CORE["id"]
+        assert (
+            c.scalar(
+                select(func.count())
+                .select_from(edge_claims)
+                .where(
+                    (edge_claims.c.point_a == CORE["id"]) | (edge_claims.c.point_b == CORE["id"])
+                )
+            )
+            == 0
+        )
+
+
+def test_core_links_fail_closed_for_missing_hidden_and_owner_source(pg_database, registered):
+    from node06_service.models import point_hides
+    from node06_service.root_publish import publish_on
+
+    site, owner = registered
+    proposal = candidate(site, body="[Triple](md://core/shared-triple)")
+    with pytest.raises(RootImportError, match="CORE_TARGET_MISSING"):
+        publish(pg_database, proposal, REPO, ORIGIN)
+    with pg_database.begin() as c:
+        with pytest.raises(RootImportError, match="CORE_LINKS_OPERATOR_ONLY"):
+            publish_on(c, proposal, REPO, ORIGIN, authority="github-owner", core_roots=[CORE])
+    with pg_database.begin() as c:
+        c.execute(points.insert().values(id=CORE["id"], origin="root"))
+        c.execute(
+            point_hides.insert().values(
+                scope="server", point_id=CORE["id"], active=True, updated_by=owner
+            )
+        )
+    with pytest.raises(RootImportError, match="CORE_TARGET_UNAVAILABLE"):
+        publish(pg_database, proposal, REPO, ORIGIN, core_roots=[CORE])
+    assert count(pg_database, root_sources) == 0
+    assert count(pg_database, root_entries) == 0
+
+
+@pytest.mark.parametrize(
+    "target", ["p_" + "a" * 32, "r_" + "a" * 32 + "_other", "s_" + "a" * 32, "bad/path"]
+)
+def test_core_syntax_cannot_address_user_or_other_source_points(registered, target):
+    with pytest.raises(RootImportError, match="INVALID_CORE_TARGET"):
+        candidate(registered[0], body=f"[Bad](md://core/{target})")

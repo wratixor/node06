@@ -1916,3 +1916,14 @@ Social favorite path preserves native limits, idempotency and profile-preference
 changes; support/influence is unchanged. Panel/menu/focus/reload use the same
 state. No new migration/permission. Server and static publication are required.
 Contract: [EMBED-SUBSCRIPTIONS-V1](EMBED-SUBSCRIPTIONS-V1.md).
+
+
+### 27 October 2026 — wiki sections and shared core relationships
+
+The content source now prepares Games/World/Skills/For developers/Logs variants,
+public character/company entrances and Core16 cards with source-verified formulas.
+The bounded operator `md://core/` relation supports links to the already published
+triples without copying their text. Core visibility/installed membership checks,
+source-owned edge claims and check-only behavior are verified. Generic external
+revision import and owner-source core acceptance remain outside this packet.
+Engine support must deploy before new wiki content is accepted; no migration.
